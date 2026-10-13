@@ -18,3 +18,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: ./verify.sh
+        env:
+          # vitest colour codes break verify.sh's 'Tests' summary grep
+          NO_COLOR: "1"
+          FORCE_COLOR: "0"
