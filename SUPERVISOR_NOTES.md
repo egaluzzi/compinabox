@@ -1,4 +1,4 @@
-# Supervisor notes — worker task (Phase 0: scaffold)
+# Supervisor notes — worker task: Phase 0 (repo scaffold and groundwork)
 
 Overwrite each time — a relay, not a log. Only one relay at a time; don't queue a worker task
 and a verification request together. Read this at the start of your session before anything
@@ -9,79 +9,116 @@ else.
 ## If this is a WORKER task
 
 ### Context
-Phase 0 of the ComplyStart build: stand up an empty, correctly-configured project skeleton so
-that every later phase (SPEC.md §14, CLAUDE.md "Build order") starts from a repo where
-`lint`, `typecheck`, `test`, and `build` all run. **This phase builds no product features.**
+First build phase. `main` currently holds docs only (CLAUDE.md, SPEC.md, CONTENT.md,
+IMPLEMENTATION_PLAN.md, verify.sh, KNOWN_ISSUES.md, HANDOFF.md template). Your job is the
+**Phase 0** checklist in `IMPLEMENTATION_PLAN.md`: an empty but correctly configured project
+where `./verify.sh` exits 0 and CI runs it on every PR. Read `CLAUDE.md` first (especially §0,
+§1, §3, §4, §6, §7, §8), then Phase 0 in `IMPLEMENTATION_PLAN.md`. Do not re-derive anything
+those settle.
 
-Work on branch `phase-0-scaffold` (create it from `main`). Do not push to `main`.
+**Branch:** create `phase-0-scaffold` from `main`. Push that branch and open a PR to `main`
+(the Definition of done needs `ci.yml` green on the PR). Do **not** merge it and do **not** push
+to `main`.
 
-**Heads-up on missing docs:** `IMPLEMENTATION_PLAN.md` does not exist in the repo yet, and
-SPEC.md §14 defines phases 1–9 with no "Phase 0". This task is therefore scoped from CLAUDE.md
-(Stack, Hosting, Repo conventions, Commands) and SPEC.md §12. Do not invent an
-IMPLEMENTATION_PLAN.md; if something below seems to contradict SPEC.md, SPEC.md wins — note
-the conflict in HANDOFF.md rather than resolving it silently.
+**This phase builds no features.** No `next-intl`, no Drizzle, no Stripe/Resend/PDF
+dependencies, no middleware, no routes beyond the one placeholder page, nothing from
+CONTENT.md rendered, no `/lib/content/*` files, no locale files. Those arrive in the phases
+that own them. Dependencies are exactly what the checklist names, plus what they transitively
+need.
 
 ### Action items
-1. **Branch.** `git checkout -b phase-0-scaffold` from `main`. Read `CLAUDE.md`, `SPEC.md`
-   (§3.2, §4, §9, §11, §12, §14) first. Don't re-derive requirements.
+Work the Phase 0 checklist top to bottom, ticking each box in `IMPLEMENTATION_PLAN.md` as it is
+done. Notes on each, including the calls already made so you don't have to:
 
-2. **Scaffold Next.js.** App Router, TypeScript (strict), Tailwind, ESLint, `src/` dir NOT used
-   (CLAUDE.md conventions are root-relative: `/app`, `/lib`). Use the current stable Next.js
-   release; pin exact versions in `package.json` and commit the lockfile (npm).
+1. **Scaffold.** `create-next-app`: TypeScript (strict), Tailwind, App Router, ESLint, `src/`
+   **off** (CLAUDE.md §6 paths are root-relative: `/app`, `/lib`), `output: 'standalone'` in the
+   Next config. Use the current stable Next.js, pin exact versions in `package.json`, commit
+   `package-lock.json` (npm only). Pin Node 22 LTS via `.nvmrc` and `engines`. Replace the
+   starter page with a neutral placeholder showing only the product name — no marketing copy, no
+   compliance or legal claim of any kind (CLAUDE.md §8).
 
-3. **`next.config`: `output: 'standalone'`** (self-hosted droplet, not Vercel — CLAUDE.md
-   "Hosting"). Do not add Vercel-specific config, packages, or analytics.
+2. **Tooling.** ESLint (flat config as generated) + Prettier (add `.prettierrc` and a
+   `format:check` script, but keep it out of `lint` so `lint` stays the plain eslint command).
+   Vitest + Testing Library (+ jsdom). Add **one smoke test** that renders the placeholder page
+   and asserts it renders — `verify.sh` runs `npx vitest run` and fails if there is no
+   `Tests …` summary line, so a suite with zero tests will fail it.
 
-4. **Install `next-intl`** and nothing else product-related. Do NOT install Stripe, Postgres
-   drivers/ORMs, Resend, PDF libraries, or screening clients — those arrive in their own phases.
-   Do not wire up locale routing, middleware, or geo-detection (that is Phase 1; the geo
-   mechanism — Cloudflare `CF-IPCountry` vs MaxMind — is decided and documented then).
+3. **Scripts, exactly the names in CLAUDE.md §7:** `dev`, `build`, `lint`, `typecheck`
+   (`tsc --noEmit`), `test` (`vitest run`), `db:generate`, `db:migrate`. Drizzle is phase 2, so
+   make `db:generate` and `db:migrate` placeholder scripts that print
+   "not available until phase 2 (Drizzle)" and **exit 1** — exiting 0 would make a migrate that
+   did nothing look like success. Record this as a judgment call. Then edit CLAUDE.md §7:
+   replace "Phase 0 fills in the real scripts; until then these are the names to use." with a
+   one-line note that `db:*` are placeholders until phase 2. Also fix the stale "(phase 0)" in
+   CLAUDE.md §4 "Deploy" bullet: the deploy workflow is **phase 9** per the plan. Change nothing
+   else in CLAUDE.md.
 
-5. **Create the directory skeleton** from CLAUDE.md "Repo conventions", each with a minimal
-   placeholder (a `.gitkeep` or a trivial stub that compiles) and **no real content**:
-   `app/[locale]/`, `app/(app)/`, `app/report/[slug]/`, `lib/content/`, `lib/documents/`.
-   Do NOT create `lib/content/{country}.ts` files — legal citations are flagged-review content
-   (CLAUDE.md Guardrails) and are out of scope here. Do not write any marketing copy or
-   compliance/legal claims anywhere; the default Next.js starter page may be replaced with a
-   neutral placeholder that contains no product claims.
+4. **`./verify.sh` passes on the scaffold.** It already exists — do not rewrite it. Run it,
+   read the failures, fix the scaffold. The only time to edit `verify.sh` is a genuine
+   false positive. Likely one: the check 4e geo grep (`grep -r … .`) recurses into
+   `node_modules` and may match a dependency; if it does, exclude `node_modules` and `.next` from
+   that grep and nothing else, and call it out in HANDOFF.md under judgment calls with the exact
+   diff. Any other edit to `verify.sh` is out of scope — log it under open questions instead.
 
-6. **Wire the Commands block** so each exists in `package.json` and exits 0 on the empty
-   scaffold: `dev`, `build`, `lint`, `typecheck` (`tsc --noEmit`), `test`. Pick **Vitest** for
-   `test` (boring, fast, TS-native) and include one trivial passing smoke test so the runner is
-   proven to execute rather than "no tests found". Then update the Commands section of
-   `CLAUDE.md` to remove the "fill these in once scaffolded" placeholder note (change nothing
-   else in CLAUDE.md).
+5. **`.env.example`** containing every key in CLAUDE.md §6, none omitted: `DATABASE_URL`,
+   `AUTH_SECRET`, `AUTH_URL`, `APP_URL`, `ENABLED_COUNTRIES` (value `br`), `RESEND_API_KEY`,
+   `EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`,
+   `SCREENING_API_KEY`, `GTM_ID`. Obvious fake placeholders only (e.g. `changeme`); never a
+   realistic-looking key.
 
-7. **`.env.example`** listing every key CLAUDE.md names (`STRIPE_SECRET_KEY`,
-   `STRIPE_WEBHOOK_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SCREENING_API_KEY`,
-   `RESEND_API_KEY`) with obviously fake placeholder values, plus a `DATABASE_URL` placeholder.
-   Ensure `.env*` (except `.env.example`) is in `.gitignore`. Never commit a real secret.
-   Flag in HANDOFF.md that CLAUDE.md lists `SUPABASE_*` while SPEC.md §12 allows plain Postgres
-   — leave both keys in, do not resolve it.
+6. **`.gitignore`:** node, `.next`, `.env*` **with `!.env.example`** re-included, Drizzle output
+   (`/drizzle/` and any `*.sqlite`-style artifacts), coverage, OS junk. Build output must be
+   ignored or `verify.sh` reports uncommitted changes.
 
-8. **`verify.sh` at repo root** (executable, `set -e`): runs `npm ci`, `npm run lint`,
-   `npm run typecheck`, `npm run test`, `npm run build`, then confirms
-   `.next/standalone/server.js` exists, and prints each step's result. Keep it dumb — no
-   judgment in the script.
+7. **`KNOWN_ISSUES.md`:** the empty table is already committed — leave it, tick the box.
 
-9. **Prove it runs, not just compiles.** After `build`, start the standalone server
-   (`node .next/standalone/server.js` on a free port via `PORT` env) and `curl` the root URL;
-   paste the HTTP status and first lines of the response into the evidence block, then stop the
-   server. A passing build alone is not sufficient evidence.
+8. **GitHub Actions `.github/workflows/ci.yml`:** on `pull_request` to `main` (and
+   `workflow_dispatch`), Ubuntu, Node from `.nvmrc`, `npm ci`, then `./verify.sh`. `verify.sh`
+   merge-bases against `origin/main`, so check out with `fetch-depth: 0`. **No deploy workflow**
+   — that is phase 9. No secrets, no Postgres service (nothing needs one yet).
 
-10. **Out of scope — stop and flag rather than do:** PM2/systemd/Caddy/Nginx config, CI/deploy
-    workflows, database setup or backup cron (CLAUDE.md requires a backup flag when starting
-    phase 2+, not here), any page content, any i18n message files, anything from phases 1–9.
-    If you think one of these is needed, say so in HANDOFF.md under open questions.
+9. **`README.md`:** how to run locally (Node version, `npm ci`, `.env` from `.env.example`,
+   `npm run dev`, `./verify.sh`) and **two paragraphs** on how the handoff files work
+   (`SUPERVISOR_NOTES.md` → worker, `HANDOFF.md` → supervisor, `IMPLEMENTATION_PLAN.md` is the
+   permanent record), linking to CLAUDE.md. Do not describe product features.
 
-11. **Commit** on `phase-0-scaffold` in small logical commits and push that branch. Do not open
-    a PR unless asked.
+10. **Prove it runs, not just builds.** After `npm run build`, start the standalone server
+    (`PORT=<free port> node .next/standalone/server.js`), `curl -s -o /dev/null -w '%{http_code}'`
+    the root and also capture the first lines of the body, then stop the server. A green build
+    alone is not evidence for this phase.
+
+11. **Out of scope — stop and log under "Not done" rather than do:** Caddy/systemd/ops files and
+    the backup script (phases 2 and 9), any deploy automation, any database setup, anything
+    from phases 1–11, and any change to `verify.sh` beyond item 4. Nothing in this phase touches
+    a Guardrail (CLAUDE.md §8); if you think something does, write "blocked" and stop.
+
+12. Commit in small logical commits, push `phase-0-scaffold`, open the PR, wait for `ci.yml` to
+    finish on the PR head commit, then write `HANDOFF.md` and push that too. Re-check that the
+    final pushed tip equals the HEAD printed by your last `./verify.sh` run — if `HANDOFF.md` is
+    the only thing committed after the run, re-run `./verify.sh` on the final commit and paste
+    that output instead.
+
+### Definition of done (from IMPLEMENTATION_PLAN.md — evidence for each goes in HANDOFF.md)
+```
+./verify.sh                      # exit 0, full output pasted unedited
+npm run build                    # produces .next/standalone
+gh run list --limit 1            # ci.yml green on the PR
+```
+`gh` may not exist in your session; use the GitHub MCP tools (actions list / check run) instead
+and paste the workflow run's conclusion, its head SHA, and the PR URL. The head SHA must equal
+your pushed branch tip. Plus item 10's live `curl` result.
+Judgment items I will check: no feature code; nothing from CONTENT.md rendered; no real or
+realistic-looking secret anywhere; the only edits to existing files are the ones named above
+(CLAUDE.md §4 and §7 lines, README.md, IMPLEMENTATION_PLAN.md checkboxes, and — only if
+justified — the item 4 grep fix).
 
 ### Report back
-Run `verify.sh`, then write your report to `HANDOFF.md` following its template. Paste real
-evidence into the evidence block (full `verify.sh` output, the `curl` result from step 9, and
-`git log --oneline` for the branch) and be specific about verification depth — don't just say
-"verified." List any deviations, version choices, and the doc conflicts noted above.
+Run `./verify.sh`, then write your report to `HANDOFF.md` following its template (overwrite the
+template text). Paste real evidence in the evidence block and be specific about verification
+depth: state that nothing here touches a database or external service, so "live database" and
+"real external calls" are N/A, and that the real HTTP round-trip was the item 10 standalone
+`curl`. List the versions chosen, every judgment call (the `db:*` placeholder scripts at
+minimum), and anything in the docs that disagreed with itself or with the scaffold.
 
 ---
 
