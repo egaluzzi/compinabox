@@ -1,4 +1,4 @@
-# Supervisor notes — worker task: Phase 0 (repo scaffold and groundwork)
+# Supervisor notes — worker task: Phase 1 (marketing shell, geo-routing, SEO scaffolding)
 
 Overwrite each time — a relay, not a log. Only one relay at a time; don't queue a worker task
 and a verification request together. Read this at the start of your session before anything
@@ -9,116 +9,167 @@ else.
 ## If this is a WORKER task
 
 ### Context
-First build phase. `main` currently holds docs only (CLAUDE.md, SPEC.md, CONTENT.md,
-IMPLEMENTATION_PLAN.md, verify.sh, KNOWN_ISSUES.md, HANDOFF.md template). Your job is the
-**Phase 0** checklist in `IMPLEMENTATION_PLAN.md`: an empty but correctly configured project
-where `./verify.sh` exits 0 and CI runs it on every PR. Read `CLAUDE.md` first (especially §0,
-§1, §3, §4, §6, §7, §8), then Phase 0 in `IMPLEMENTATION_PLAN.md`. Do not re-derive anything
-those settle.
+Phase 0 is accepted and merged to `main` (scaffold, CI, `verify.sh` green). Your job is **Phase 1**
+in `IMPLEMENTATION_PLAN.md`: the public marketing site with no backend — four-locale i18n,
+country routes, geo-redirect at `/`, SEO scaffolding, waitlist stub, consent banner.
+Read, in order: `CLAUDE.md` (§0, §2, §4, §5, §6, §8, §9), Phase 1 of `IMPLEMENTATION_PLAN.md`,
+`SPEC.md` §3, §4, §9, then `CONTENT.md` §1–§5 (this is the copy; it is pre-approved).
+Also read `KNOWN_ISSUES.md` and the Phase 0 follow-ups in the old `HANDOFF.md` (git history).
 
-**Branch:** create `phase-0-scaffold` from `main`. Push that branch and open a PR to `main`
-(the Definition of done needs `ci.yml` green on the PR). Do **not** merge it and do **not** push
-to `main`.
+**Branch:** create `phase-1-marketing` from current `main`. Push it and open a PR to `main`
+(definition of done needs `ci.yml` green on the PR). Do **not** merge, do **not** push to `main`.
 
-**This phase builds no features.** No `next-intl`, no Drizzle, no Stripe/Resend/PDF
-dependencies, no middleware, no routes beyond the one placeholder page, nothing from
-CONTENT.md rendered, no `/lib/content/*` files, no locale files. Those arrive in the phases
-that own them. Dependencies are exactly what the checklist names, plus what they transitively
-need.
+**Out of scope — log under "Not done", don't build:** database, auth, Stripe/checkout logic,
+real waitlist storage, GTM/GA4 or any tracking script, blog pages, ad-variant pages, any
+`/lib/content/*.ts` file (legal-content layer is phase 3; see item 6), dashboard/employee/report
+routes, deploy or ops files.
+
+### Decisions already made (don't re-litigate; record deviations as judgment calls)
+These are the technical calls the plan leaves open. They are in effect for this phase; the
+supervisor is adding the durable ones to CLAUDE.md §9.
+
+- **Routing model.** Locale is derived from the URL's country segment, not from a locale prefix:
+  `/` → `en`, `/ar` → `es-AR`, `/br` → `pt-BR`, `/mx` → `es-MX`. Do not use next-intl's
+  locale-prefix routing; use `next-intl` for messages/formatting with the locale resolved by us
+  (`app/page.tsx` for `/`, `app/[country]/...` with `country ∈ ar|br|mx`, anything else → 404).
+  Locale codes must never appear in a URL (`verify.sh` 4f checks this).
+- **Edge file name.** The plan says "middleware". Next 16 may have renamed that file convention
+  (e.g. `proxy.ts`). Use whatever the installed Next version documents as current, and note it.
+- **Geo redirect rules**, implemented as a **pure function** (unit-tested) called by that file,
+  matcher limited to `/` only:
+  1. Cookie `country` ∈ `ar|br|mx|other` beats the header. Invalid cookie values are ignored.
+  2. `ar|br|mx` → redirect to that prefix. `other` → no redirect (the visitor chose the picker).
+  3. No/invalid cookie: read `CF-IPCountry` (case-insensitive). `AR|BR|MX` → redirect. Anything
+     else (`XX`, `T1`, other countries, absent header) → no redirect, render `/`.
+  4. Redirect is **307**, with `Cache-Control: no-store`. Never 301/308: the answer depends on
+     the visitor and Cloudflare sits in front.
+  5. Never redirect any path other than `/`. Deep links like `/ar/pricing` stay as requested.
+  6. Visiting a country page does **not** set the cookie; only an explicit click does.
+- **Cookie semantics.** `country` (1 year, `SameSite=Lax`, path `/`): `ar|br|mx` = chosen market,
+  `other` = "show me the picker". The **"change country" control** on localized pages sets
+  `country=other` and navigates to `/` — otherwise a visitor with `country=br` could never reach
+  the picker. Choosing a country in the picker sets that country's value. The site logo/home link
+  on a localized page goes to that country's page, not `/`.
+- **Language toggle on `/`** (SPEC §3.4) is EN/ES/PT mapping to locales `en` / `es-MX` / `pt-BR`
+  (Spanish toggle uses the neutral tuteo, not Argentine voseo). It stores cookie `lang`
+  (`en|es|pt`), switches the UI language only (never the country), and `/` renders per cookie
+  (default `en`, which is what crawlers and cookie-less requests get). `/` may therefore be
+  dynamically rendered; that's accepted.
+- **`ENABLED_COUNTRIES`** (env, comma list, default `br`) is read **at request time**, not baked
+  at build: mark the pages that depend on it (`/{country}`, `/{country}/pricing`, `sitemap.xml`,
+  `robots`-adjacent logic) dynamic. Reason: CI builds the artifact, the droplet's `.env` supplies
+  the value; build-time baking would silently ignore it. Put the parsing in one tested helper.
+- **Disabled country behaviour** (CLAUDE.md §2): pages render normally, pricing CTA replaced by the
+  waitlist form (same component as the generic page's), `<meta name="robots" content="noindex">`,
+  excluded from `sitemap.xml`.
+- **Pricing page:** no invented numbers. Show the CONTENT.md plan header, the 7-item included
+  list, and a "pricing to be announced" line (Esteban owns pricing). The enabled-country CTA links
+  to `/checkout`, for which you add a minimal `noindex` placeholder page ("not available yet") —
+  no form, no payment code.
+- **Citations live in messages, not code.** The legal-basis text with law names comes verbatim from
+  CONTENT.md into `messages/*.json` (that is allowed: `verify.sh` 4c scans only `app` and
+  `lib/documents`). Do not hardcode a statute name/number in any `.tsx`/`.ts` file.
+- **Waitlist form** posts to a stub route that validates the email, drops honeypot hits, and writes
+  **one `console.log` line with email + country + timestamp only — never IP, user-agent or any
+  header.** No persistence; phase 2 replaces it. Returns a friendly success state in the UI.
+- **Consent banner:** non-blocking bottom bar (SPEC §10: no interstitial over the CTA), stores
+  `consent=accepted|rejected` (1 year), loads **nothing** yet. Lives in the root layout.
 
 ### Action items
-Work the Phase 0 checklist top to bottom, ticking each box in `IMPLEMENTATION_PLAN.md` as it is
-done. Notes on each, including the calls already made so you don't have to:
+Work the Phase 1 checklist top to bottom, ticking each box in `IMPLEMENTATION_PLAN.md`.
 
-1. **Scaffold.** `create-next-app`: TypeScript (strict), Tailwind, App Router, ESLint, `src/`
-   **off** (CLAUDE.md §6 paths are root-relative: `/app`, `/lib`), `output: 'standalone'` in the
-   Next config. Use the current stable Next.js, pin exact versions in `package.json`, commit
-   `package-lock.json` (npm only). Pin Node 22 LTS via `.nvmrc` and `engines`. Replace the
-   starter page with a neutral placeholder showing only the product name — no marketing copy, no
-   compliance or legal claim of any kind (CLAUDE.md §8).
-
-2. **Tooling.** ESLint (flat config as generated) + Prettier (add `.prettierrc` and a
-   `format:check` script, but keep it out of `lint` so `lint` stays the plain eslint command).
-   Vitest + Testing Library (+ jsdom). Add **one smoke test** that renders the placeholder page
-   and asserts it renders — `verify.sh` runs `npx vitest run` and fails if there is no
-   `Tests …` summary line, so a suite with zero tests will fail it.
-
-3. **Scripts, exactly the names in CLAUDE.md §7:** `dev`, `build`, `lint`, `typecheck`
-   (`tsc --noEmit`), `test` (`vitest run`), `db:generate`, `db:migrate`. Drizzle is phase 2, so
-   make `db:generate` and `db:migrate` placeholder scripts that print
-   "not available until phase 2 (Drizzle)" and **exit 1** — exiting 0 would make a migrate that
-   did nothing look like success. Record this as a judgment call. Then edit CLAUDE.md §7:
-   replace "Phase 0 fills in the real scripts; until then these are the names to use." with a
-   one-line note that `db:*` are placeholders until phase 2. Also fix the stale "(phase 0)" in
-   CLAUDE.md §4 "Deploy" bullet: the deploy workflow is **phase 9** per the plan. Change nothing
-   else in CLAUDE.md.
-
-4. **`./verify.sh` passes on the scaffold.** It already exists — do not rewrite it. Run it,
-   read the failures, fix the scaffold. The only time to edit `verify.sh` is a genuine
-   false positive. Likely one: the check 4e geo grep (`grep -r … .`) recurses into
-   `node_modules` and may match a dependency; if it does, exclude `node_modules` and `.next` from
-   that grep and nothing else, and call it out in HANDOFF.md under judgment calls with the exact
-   diff. Any other edit to `verify.sh` is out of scope — log it under open questions instead.
-
-5. **`.env.example`** containing every key in CLAUDE.md §6, none omitted: `DATABASE_URL`,
-   `AUTH_SECRET`, `AUTH_URL`, `APP_URL`, `ENABLED_COUNTRIES` (value `br`), `RESEND_API_KEY`,
-   `EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`,
-   `SCREENING_API_KEY`, `GTM_ID`. Obvious fake placeholders only (e.g. `changeme`); never a
-   realistic-looking key.
-
-6. **`.gitignore`:** node, `.next`, `.env*` **with `!.env.example`** re-included, Drizzle output
-   (`/drizzle/` and any `*.sqlite`-style artifacts), coverage, OS junk. Build output must be
-   ignored or `verify.sh` reports uncommitted changes.
-
-7. **`KNOWN_ISSUES.md`:** the empty table is already committed — leave it, tick the box.
-
-8. **GitHub Actions `.github/workflows/ci.yml`:** on `pull_request` to `main` (and
-   `workflow_dispatch`), Ubuntu, Node from `.nvmrc`, `npm ci`, then `./verify.sh`. `verify.sh`
-   merge-bases against `origin/main`, so check out with `fetch-depth: 0`. **No deploy workflow**
-   — that is phase 9. No secrets, no Postgres service (nothing needs one yet).
-
-9. **`README.md`:** how to run locally (Node version, `npm ci`, `.env` from `.env.example`,
-   `npm run dev`, `./verify.sh`) and **two paragraphs** on how the handoff files work
-   (`SUPERVISOR_NOTES.md` → worker, `HANDOFF.md` → supervisor, `IMPLEMENTATION_PLAN.md` is the
-   permanent record), linking to CLAUDE.md. Do not describe product features.
-
-10. **Prove it runs, not just builds.** After `npm run build`, start the standalone server
-    (`PORT=<free port> node .next/standalone/server.js`), `curl -s -o /dev/null -w '%{http_code}'`
-    the root and also capture the first lines of the body, then stop the server. A green build
-    alone is not evidence for this phase.
-
-11. **Out of scope — stop and log under "Not done" rather than do:** Caddy/systemd/ops files and
-    the backup script (phases 2 and 9), any deploy automation, any database setup, anything
-    from phases 1–11, and any change to `verify.sh` beyond item 4. Nothing in this phase touches
-    a Guardrail (CLAUDE.md §8); if you think something does, write "blocked" and stop.
-
-12. Commit in small logical commits, push `phase-0-scaffold`, open the PR, wait for `ci.yml` to
-    finish on the PR head commit, then write `HANDOFF.md` and push that too. Re-check that the
-    final pushed tip equals the HEAD printed by your last `./verify.sh` run — if `HANDOFF.md` is
-    the only thing committed after the run, re-run `./verify.sh` on the final commit and paste
-    that output instead.
+1. **i18n plumbing.** `next-intl` (pin exact version), four message files
+   `messages/{en,es-AR,pt-BR,es-MX}.json`, typed message keys, a locale resolver per the routing
+   model above. Static rendering for everything not listed as dynamic above.
+2. **Copy: verbatim from CONTENT.md.** Hero, subheadlines, CTAs, "why", legal-basis explainers,
+   country FAQ items, meta titles/descriptions, how-it-works, shared FAQ, pricing labels, checkout
+   micro-copy as it exists. **Copy, don't rewrite** — keep wording, punctuation and the
+   "*This is general information, not legal advice*" lines exactly.
+3. **Gap-filling translations (flagged, never silent).** CONTENT.md is incomplete across locales:
+   the generic page exists only in English; the shared sections (how-it-works, shared FAQ, pricing
+   labels, checkout micro-copy) exist only in Argentine Spanish; the footer disclaimer exists only
+   in English; the 7-item "what you get" list exists only in English; the consent-banner strings
+   don't exist at all. Where a needed string has no source in that locale, produce a **faithful
+   translation** of the existing source string (EN↔ES↔PT; Argentine voseo → tuteo for `es-MX`),
+   never a rewording and never new claims. For the footer disclaimer, the "does this certify
+   compliance?" FAQ answer and the legal-basis lines, translate as literally as natural language
+   allows — they are liability-sensitive (CLAUDE.md §8). Record every such string in a new file
+   `messages/DRAFTS.md`: one row per `locale | key | source key/locale it was translated from`.
+   Esteban reviews that file before launch (supervisor tracks it in CLAUDE.md §11).
+   A message-parity test must fail if any locale file is missing a key another has.
+4. **Routes** per plan: `/`, `/{country}`, `/{country}/pricing`, `/{country}/how-it-works`,
+   `/{country}/faq`, `/{country}/legal-basis`, `/legal/{terms,privacy,disclaimer}`. Legal pages are
+   placeholders headed "DRAFT — pending review" (in the page's language) with no substantive legal
+   text. `/legal/disclaimer` may show the footer disclaimer text.
+5. **Geo redirect** per the rules above, with unit tests covering: header BR/AR/MX, header DE,
+   header absent, header `XX`/`T1`, lowercase header, cookie beats header (both directions), cookie
+   `other`, invalid cookie, non-root path never redirected, 307 + `no-store`.
+6. **Picker + controls.** Country picker prominent on `/` (not buried in nav), "change country"
+   control on every localized page, EN/ES/PT toggle on `/`. Choices set cookies per the semantics
+   above (small client components; the rest stays server-rendered).
+7. **`ENABLED_COUNTRIES` flag** and waitlist behaviour per above, plus the waitlist stub route.
+8. **SEO.** Per-page `<title>`/description from messages (CONTENT.md has them for `/` and each
+   landing; derive other pages' from the page's own heading, flagged in DRAFTS.md if translated),
+   `metadataBase` from `APP_URL`, `hreflang` + `x-default` using locale codes in `hreflang` and
+   URL prefixes in `href` (CLAUDE.md §5), `sitemap.xml` (enabled countries only, plus `/`),
+   `robots.txt` disallowing `/dashboard`, `/employee`, `/checkout`, `/onboarding`, JSON-LD
+   `Organization` (home + landings) and `FAQPage` (every FAQ page, and `/` if it renders the FAQ).
+9. **Footer disclaimer** (CONTENT.md §1) on every page, in the page's language.
+10. **Consent banner** per above.
+11. **`verify.sh` — you may make exactly these two edits and nothing else:**
+    (a) make the vitest summary parse colour-proof (strip ANSI escape codes from `OUT` before the
+    `grep`), then **remove** the `NO_COLOR`/`FORCE_COLOR` workaround from `ci.yml` and confirm CI
+    still passes; (b) add a smoke step after `build` (skipped when `SKIP_BUILD=1`) that runs a new
+    `scripts/smoke.sh`: it starts `node .next/standalone/server.js` on a free `PORT`, waits until it
+    answers, asserts the Definition-of-done `curl` checks below (all of them, against that port),
+    kills the server on exit via `trap`, and exits nonzero on any failed assertion. Show the diff of
+    `verify.sh` in HANDOFF.md. Standalone output needs `public/` and `.next/static` next to
+    `server.js` to serve assets — copy them in the script if the smoke test needs them, don't
+    change the app for it.
+12. **Tests (Vitest):** geo resolver; `ENABLED_COUNTRIES` parser; message-key parity across the four
+    locales; the disabled-country page renders the waitlist form and no pricing CTA; the enabled
+    one the reverse; waitlist route rejects bad email and honeypot and logs no IP/header fields.
+13. **Performance:** record a Lighthouse **mobile** run of `/br` against the standalone build
+    (headless Chromium is at `/opt/pw-browsers`; do not run `playwright install`). Paste LCP and CLS.
+    If it can't be run, say so — don't estimate. Note that localhost numbers are indicative only.
+14. Update CLAUDE.md §7 only if commands differ. Tick the Phase 1 boxes. Commit in small logical
+    commits, push `phase-1-marketing`, open the PR, wait for `ci.yml` on the PR head, then write
+    `HANDOFF.md`.
 
 ### Definition of done (from IMPLEMENTATION_PLAN.md — evidence for each goes in HANDOFF.md)
+`./verify.sh` exits 0 (now including the smoke step), `npm run build` produces the standalone
+output, `ci.yml` green on the PR head (cite run id + head SHA via the GitHub tools if `gh` is
+absent), and these pass against the standalone build (the smoke script asserts them; paste its
+output):
 ```
-./verify.sh                      # exit 0, full output pasted unedited
-npm run build                    # produces .next/standalone
-gh run list --limit 1            # ci.yml green on the PR
+curl -sI -H "CF-IPCountry: BR" http://localhost:$PORT/ | grep -i "location: .*/br"
+curl -sI -H "CF-IPCountry: AR" http://localhost:$PORT/ | grep -i "location: .*/ar"
+curl -sI -H "CF-IPCountry: DE" http://localhost:$PORT/ | grep -E "^HTTP/.* 200"
+curl -sI -H "CF-IPCountry: BR" -H "Cookie: country=mx" http://localhost:$PORT/ | grep -i "location: .*/mx"
+curl -sI -H "CF-IPCountry: BR" http://localhost:$PORT/ar/pricing | grep -E "^HTTP/.* 200"
+curl -s http://localhost:$PORT/ar | grep -i 'noindex'
+curl -s http://localhost:$PORT/br | grep -ic 'noindex'     # expect 0
+curl -s http://localhost:$PORT/sitemap.xml | grep -c "<loc>"   # > 0
 ```
-`gh` may not exist in your session; use the GitHub MCP tools (actions list / check run) instead
-and paste the workflow run's conclusion, its head SHA, and the PR URL. The head SHA must equal
-your pushed branch tip. Plus item 10's live `curl` result.
-Judgment items I will check: no feature code; nothing from CONTENT.md rendered; no real or
-realistic-looking secret anywhere; the only edits to existing files are the ones named above
-(CLAUDE.md §4 and §7 lines, README.md, IMPLEMENTATION_PLAN.md checkboxes, and — only if
-justified — the item 4 grep fix).
+Extra assertions to add to the smoke script: `-H "CF-IPCountry: BR" -H "Cookie: country=other"` on `/`
+→ 200 no redirect; the redirect response is 307 and carries `cache-control: no-store`; `/checkout`
+and `/legal/terms` return 200; `/zz` returns 404; `/pt-BR` returns 404; `robots.txt` contains the
+four disallows.
+
+Judgment items I will check: copy matches CONTENT.md word for word; every gap-filled string is
+listed in `messages/DRAFTS.md`; no statute name/number in any `.ts`/`.tsx`; no tracking script;
+no `lib/content/*.ts` created; Lighthouse LCP < 2.5s on `/br` (mobile).
 
 ### Report back
-Run `./verify.sh`, then write your report to `HANDOFF.md` following its template (overwrite the
-template text). Paste real evidence in the evidence block and be specific about verification
-depth: state that nothing here touches a database or external service, so "live database" and
-"real external calls" are N/A, and that the real HTTP round-trip was the item 10 standalone
-`curl`. List the versions chosen, every judgment call (the `db:*` placeholder scripts at
-minimum), and anything in the docs that disagreed with itself or with the scaffold.
+Run `./verify.sh`, then write `HANDOFF.md` per its template (overwrite the template text). In
+addition to the usual evidence:
+- **Copy spot-check table:** for each of the four locales, 5 rows of `message key | rendered text |
+  the CONTENT.md line it came from (quoted)`, so a mismatch is visible side by side.
+- **`messages/DRAFTS.md` row count per locale**, so I can see how much was gap-filled.
+- Verification depth: say plainly that the geo behaviour was checked with simulated headers against
+  the standalone build, not through Cloudflare (domain/Cloudflare access is an open input), and
+  that nothing touches a database or external service.
+- Every judgment call, especially any deviation from the decisions above, with why.
 
 ---
 

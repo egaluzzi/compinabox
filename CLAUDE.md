@@ -135,6 +135,9 @@ Settled by Esteban or decided by the supervisor and recorded. Don't reopen; if a
 - **PDF:** react-pdf; Puppeteer only as flagged fallback. (2026-10-12) — droplet memory.
 - **Screening:** OpenSanctions behind `ScreeningProvider`. (2026-10-12) — free tier, swappable.
 - **Payments abstraction:** `PaymentProvider` interface from phase 2 so Mercado Pago/Pix can be added without touching checkout UI. (2026-10-12)
+- **Geo/cookie behaviour at `/`** (2026-10-13): cookie `country` ∈ `ar|br|mx|other` beats `CF-IPCountry`; `other` means "show the picker" and is what the "change country" control sets (otherwise a cookie'd visitor could never reach `/`). Redirects are 307 + `no-store`. Generic-page language toggle is EN/ES/PT = locales `en`/`es-MX`/`pt-BR`, cookie `lang`.
+- **`ENABLED_COUNTRIES` is read at request time**, not build time (2026-10-13) — CI builds the artifact, the droplet's `.env` supplies the value.
+- **Gap-filled translations** (2026-10-13): where CONTENT.md has a string in one locale only, the worker translates it faithfully and lists it in `messages/DRAFTS.md`; Esteban reviews that file before launch (§11).
 
 ## 10. Explicitly out of scope / dropped
 
@@ -154,3 +157,4 @@ Considered and declined — don't build unless Esteban asks again:
 - [ ] Stripe account (test keys for phase 2; live keys before launch)
 - [ ] Resend account + sending domain
 - [ ] Legal review of `/lib/content/br.ts` citations and the BR privacy policy before launch (SPEC §11)
+- [ ] Review of `messages/DRAFTS.md` (gap-filled translations, incl. footer disclaimer) by a native speaker / legal before launch
