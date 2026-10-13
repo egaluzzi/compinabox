@@ -44,12 +44,15 @@ The site's copy must never claim the product *guarantees* legal compliance or sa
 ### 3.1 Supported "full" markets
 Argentina, Brazil, Mexico — each gets a localized page with country-specific legal citations, language (es-AR, pt-BR, es-MX), currency, and payment method mix.
 
+**Rollout order: Brazil first; Argentina and Mexico later** (see CLAUDE.md §2 for the reasoning). All three country pages exist from launch, but only countries listed in `ENABLED_COUNTRIES` (initially `br`) can check out. A disabled country's pages render normally with a waitlist form in place of the pricing CTA and a `noindex` tag until enabled.
+
 ### 3.2 Detection logic
-1. On first visit, resolve the visitor's country via IP geolocation. **Hosting is self-managed on a DigitalOcean droplet (see §12), not Vercel/Cloudflare Pages, so there's no free edge geo header — put Cloudflare in front of the droplet as a reverse proxy/CDN (DNS-only or proxied) purely to get its `CF-IPCountry` header for free at the edge, same pattern as the managed platforms would give you. If Cloudflare in front is not wanted, fall back to a server-side GeoIP lookup in Next.js middleware using the MaxMind GeoLite2-Country database (free, self-hosted, no per-request external API call — download and refresh the .mmdb file on a cron, don't call a third-party geo API live).**
-2. If resolved country ∈ {AR, BR, MX} → redirect/rewrite to that locale (`/ar`, `/br`, `/mx`) and render localized content.
-3. If resolved country ∉ {AR, BR, MX} (including unresolved/VPN/unknown) → land on **generic/global page** (`/`) in English (or Spanish, see 3.4) with a **country/region picker** prominently placed (not buried in nav).
-4. Persist the user's explicit choice (cookie or localStorage) so manual overrides stick and aren't re-geo'd on next visit.
+1. Cloudflare proxies DNS in front of the droplet (§12) and sets `CF-IPCountry` on every request. Next.js middleware reads that header to resolve the visitor's country. If the header is absent (local dev, direct hits to the droplet IP), the country is `unknown`. There is no other geo mechanism — no MaxMind database, no live geo API.
+2. If resolved country ∈ {AR, BR, MX} → redirect to that country prefix (`/ar`, `/br`, `/mx`) and render localized content. This applies to disabled countries too — an Argentine visitor lands on `/ar` and sees the waitlist, never `/br`.
+3. If resolved country ∉ {AR, BR, MX} (including `unknown`/VPN) → land on the **generic/global page** (`/`) in English with a **country/region picker** prominently placed (not buried in nav).
+4. Persist the user's explicit choice in a cookie (`country`, 1 year) so manual overrides stick and aren't re-geo'd on next visit. The cookie always wins over `CF-IPCountry`.
 5. A visible "change country" control must exist on every localized page — geo-detection is a default, never a lock-in.
+6. Redirects only apply to the root `/`. Deep links to `/ar/...`, `/br/...`, `/mx/...` are never redirected based on geo — a Brazilian visitor who opens `/ar/pricing` sees the Argentina page.
 
 ### 3.3 The generic/global page
 Not a stub. It needs to do real work for visitors who are:
@@ -58,15 +61,15 @@ Not a stub. It needs to do real work for visitors who are:
 
 Content: product explanation, the "why" (government + multinational supplier triggers), the 3 supported countries with flags/links, a waitlist form for unsupported countries, and FAQ. No country-specific legal citations on this page — keep it jurisdiction-neutral and defensible.
 
-### 3.4 Generic page language
-Default to English for the generic page (it's catching non-AR/BR/MX traffic, often international buyers researching vendors). Offer a manual language toggle (EN/ES/PT) regardless of detected country.
+### 3.4 Locales
+Four locales: `en` (generic page at `/`), `es-AR` (`/ar`), `pt-BR` (`/br`), `es-MX` (`/mx`). Public URLs use the two-letter country prefix; locale codes are internal and must never appear in URLs. The generic page defaults to English and offers a manual language toggle (EN/ES/PT) that switches the UI language without changing the country (i.e. `/` can render in Spanish for a visitor from Colombia). `hreflang` tags use the locale codes; `href`s use the URL prefixes; `/` is also `x-default`.
 
 ---
 
 ## 4. Site map
 
 ```
-/                      → generic/global landing + country picker
+/                      → generic/global landing + country picker (en)
 /ar                    → Argentina landing (es-AR)
 /br                    → Brazil landing (pt-BR)
 /mx                    → Mexico landing (es-MX)
@@ -77,9 +80,9 @@ Default to English for the generic page (it's catching non-AR/BR/MX traffic, oft
 /{country}/blog/...    → SEO content (see §9)
 /checkout              → Stripe/payment flow (country pre-filled from referrer)
 /onboarding            → post-payment setup wizard (company name, industry, logo upload, admin email)
-/app/*                 → authenticated customer dashboard (see §6)
+/dashboard/*           → authenticated customer dashboard (see §6)
 /report/{company-slug} → PUBLIC whistleblower intake page, one per customer, no login required
-/employee/*            → authenticated-by-link employee portal (training, acknowledgment, disclosures)
+/employee/*            → tokenized-link employee portal (training, acknowledgment, disclosures)
 /legal/terms, /legal/privacy, /legal/disclaimer
 ```
 
@@ -137,9 +140,9 @@ This is the unifying record layer — not just training completion. One roster p
 
 ---
 
-## 6. Customer dashboard (`/app/*`)
+## 6. Customer dashboard (`/dashboard/*`)
 
-Authenticated (email/password or magic link). One admin per account at minimum (multi-admin can be v2).
+Authenticated via Auth.js magic link (email → Resend → one-time sign-in link). No passwords in v1. One admin per account at minimum (multi-admin can be v2).
 
 Sections: Overview (completion %, open whistleblower cases, binder download), Documents (code of conduct + policies, regenerate/edit), Employees (roster, invite, acknowledgment status), Training (completion tracking), Whistleblower (case log), Vendors (due diligence questionnaire status + screening results), Billing (subscription, invoices), Settings (company profile, logo, industry).
 
@@ -174,10 +177,10 @@ Each country page's "legal basis" section should cite the specific law, in plain
 
 - Server-side rendered or statically generated pages (Next.js App Router with SSG/ISR — do not ship a client-only SPA for the marketing pages).
 - Unique `<title>` and meta description per locale page (content in CONTENT.md).
-- `hreflang` tags linking `/ar`, `/br`, `/mx`, and `/` as alternate-language versions of the same intent.
+- `hreflang` tags linking `/ar` (`es-AR`), `/br` (`pt-BR`), `/mx` (`es-MX`), and `/` (`en`, also `x-default`) as alternate-language versions of the same intent.
 - Structured data: `Organization`, `Product` (with pricing), `FAQPage` schema on the FAQ page, `Article` schema on blog posts.
 - Clean URL structure as in §4 — no query-string-based routing for indexable pages.
-- `sitemap.xml` auto-generated, `robots.txt` allowing all marketing pages, disallowing `/app/*`, `/checkout`, `/onboarding`.
+- `sitemap.xml` auto-generated, `robots.txt` allowing all marketing pages, disallowing `/dashboard/*`, `/employee/*`, `/checkout`, `/onboarding`. Disabled countries' pages additionally carry `noindex` (§3.1).
 - Core Web Vitals: target LCP < 2.5s, CLS < 0.1 — keep marketing pages light (no heavy client JS above the fold).
 - Blog/content section per country (`/{country}/blog`) seeded with SEO-targeted articles — topic list in CONTENT.md §6. This is the primary organic acquisition channel; budget real content investment here, not an afterthought.
 
@@ -203,16 +206,17 @@ Each country page's "legal basis" section should cite the specific law, in plain
 
 ---
 
-## 12. Recommended tech stack
+## 12. Tech stack (decided — reasoning in CLAUDE.md §3–§4 and §9)
 
-- **Frontend/SSR:** Next.js (App Router), i18n via `next-intl` or similar, Tailwind for styling.
-- **Hosting:** Self-managed on Esteban's DigitalOcean droplet (not Vercel/Cloudflare Pages). Run Next.js in standalone output mode behind a reverse proxy — Caddy (simpler, automatic Let's Encrypt TLS) or Nginx + Certbot — with the Next.js process managed by PM2 or a systemd service, not run bare in a terminal. Put Cloudflare in front (DNS-level, proxied) for CDN caching, DDoS protection, and the free `CF-IPCountry` geo header (§3.2) — this gets you most of what Vercel's edge would have given you, on infrastructure Esteban already controls. Deploy via a simple CI step (GitHub Actions building the app and rsync/SSH-ing the build to the droplet, or pulling a Docker image) rather than manual deploys.
-- **Database:** Postgres — either self-hosted on the same droplet (fine for early traffic) or a small managed Postgres instance (DigitalOcean Managed Databases, or Supabase if the auth/storage convenience is worth the extra vendor). If self-hosting Postgres, make sure backups are automated from day one (`pg_dump` on a cron to object storage) — this is handling whistleblower report data, so losing it isn't an option.
-- **Payments:** Stripe, with Mercado Pago as a fast-follow for AR/BR local rails.
-- **PDF generation:** `@react-pdf/renderer` or server-side Puppeteer for the binder/certificate (§5.7) and individual policy exports.
-- **Email:** Resend or SendGrid (welcome emails, employee training invites, report notifications).
-- **Sanctions screening:** a third-party screening API (e.g., OpenSanctions, ComplyAdvantage) rather than building watchlist ingestion in-house.
-- **Analytics/tracking:** GTM + GA4, as in §10.
+- **Frontend/SSR:** Next.js (App Router), TypeScript, `next-intl` for i18n, Tailwind. `output: 'standalone'`.
+- **Hosting:** Esteban's DigitalOcean droplet. Cloudflare proxies DNS in front (CDN, DDoS protection, `CF-IPCountry` for §3.2, origin TLS in Full-strict mode). Caddy on the droplet terminates TLS and reverse-proxies to the Node process, which runs under a systemd unit. Deploys run from GitHub Actions on push to `main`: build → rsync the standalone output over SSH → restart the unit. Migrations against the live database are a deliberate manual step until Esteban approves automating them.
+- **Database:** Postgres self-hosted on the droplet. ORM: Drizzle, with migrations committed in `/lib/db/migrations/`. Nightly `pg_dump` to DigitalOcean Spaces must be in place and restore-tested before phase 2 is accepted — this is whistleblower data, losing it isn't an option.
+- **Auth:** Auth.js v5, magic-link provider via Resend, for customer admins. Employees (§5.4, §5.5) and vendors (§5.6) use signed, single-use tokenized links — no accounts.
+- **Payments:** Stripe behind a `PaymentProvider` interface, with Mercado Pago/Pix as a fast-follow for AR/BR local rails (§15).
+- **PDF generation:** `@react-pdf/renderer` for the binder/certificate (§5.7) and individual policy exports. Puppeteer only as a flagged fallback.
+- **Email:** Resend (welcome emails, magic links, employee training invites, report notifications).
+- **Sanctions screening:** OpenSanctions API (yente) behind a `ScreeningProvider` interface so ComplyAdvantage can be swapped in later.
+- **Analytics/tracking:** GTM + GA4, loaded only after cookie consent, as in §10.
 
 ---
 
@@ -233,24 +237,17 @@ BillingRecord (id, company_id, amount, currency, utm_source, utm_medium, utm_cam
 
 ---
 
-## 14. Build phases (suggested order for Claude Code)
+## 14. Build phases
 
-1. Marketing shell: routing/geo-detection (§3), generic + 3 country landing pages, SEO scaffolding (§9), no backend yet.
-2. Checkout + payment (§8) + Company/User provisioning.
-3. Document generation engine (§5.1, 5.2) + country legal-content data layer (§7).
-4. Customer dashboard shell (§6).
-5. Whistleblower public intake + case log (§5.3).
-6. Employee portal: training (§5.4) + acknowledgment tracking (§5.5).
-7. Vendor questionnaire + sanctions screening (§5.6).
-8. Binder/certificate generator (§5.7) — pulls from everything above, build last.
-9. Ads/tracking wiring (§10), blog/content seeding (§9).
+The authoritative, ordered plan with a definition of done per phase is **`IMPLEMENTATION_PLAN.md`**. Summary: 0 scaffold → 1 marketing shell + geo + SEO → 2 DB, auth, checkout, provisioning → 3 document engine + Brazil legal content → 4 dashboard shell → 5 whistleblower intake + case log → 6 employee portal → 7 vendor screening → 8 binder → 9 production deploy + tracking + blog (**Brazil launch**) → 10 enable Argentina → 11 enable Mexico.
 
 ---
 
 ## 15. Open decisions for Esteban (not for Claude Code to guess)
 
 - Final product name/brand (this doc uses "ComplyStart" as a placeholder throughout — replace before content is finalized).
-- Pricing per country.
-- Whether to build the whistleblower module standalone or integrate/white-label existing whistleblower infrastructure if available to the business.
+- Pricing per country (Brazil first).
 - Monthly vs annual-only billing.
 - Local payment rails (Mercado Pago/Pix) — v1 or fast-follow.
+
+Settled decisions — database, auth, geo, URLs, standalone whistleblower module, hosting topology, Brazil-first rollout — are logged in CLAUDE.md §9 and are not open. The full list of inputs still needed from Esteban is CLAUDE.md §11.
