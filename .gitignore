@@ -1,0 +1,28 @@
+# dependencies
+/node_modules
+
+# build output
+/.next/
+/out/
+/build
+*.tsbuildinfo
+next-env.d.ts
+
+# testing
+/coverage
+
+# env (keep the example)
+.env*
+!.env.example
+
+# drizzle output
+/drizzle/
+*.sqlite
+*.sqlite3
+
+# logs
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+*.pem
