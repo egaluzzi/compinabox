@@ -113,7 +113,7 @@ BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cu
 if [ -n "$BANNED" ]; then echo "$BANNED" | head; bad "forbidden claims" "copy implies guaranteed compliance or ISO certification"; else note "forbidden claims" "none"; fi
 
 # 4e. Second geo mechanism must not exist (CLAUDE.md §4)
-if grep -rqiE 'maxmind|geolite|ip-api|ipinfo' --include='*.ts' --include='*.tsx' --include='package.json' . 2>/dev/null; then
+if grep -rqiE 'maxmind|geolite|ip-api|ipinfo' --include='*.ts' --include='*.tsx' --include='package.json' --exclude-dir=node_modules --exclude-dir=.next . 2>/dev/null; then
   bad "geo" "second geo mechanism referenced — only CF-IPCountry is allowed"
 else
   note "geo" "CF-IPCountry only"

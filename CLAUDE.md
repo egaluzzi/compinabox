@@ -61,7 +61,7 @@ Self-managed on Esteban's DigitalOcean droplet — **not** Vercel/Netlify or any
 - **Cloudflare proxies DNS** (orange-cloud) in front of the droplet: CDN, DDoS protection, hides the origin IP, and provides the `CF-IPCountry` header used for geo-detection (SPEC §3.2). Middleware reads `CF-IPCountry`; header absent (local dev, direct hits) → country `unknown` → generic page. **There is no second geo mechanism** — no MaxMind, no geo API. Two code paths means one untested one.
 - **Caddy** on the droplet terminates TLS (Cloudflare origin cert, "Full (strict)") and reverse-proxies to the Node process. Caddy owns 80/443; the app must not hardcode port assumptions.
 - **systemd unit `complystart.service`** runs the Next.js standalone server. Deploy scripts restart it. Never `npm start` in a detached terminal, never PM2 (one process manager is enough).
-- **Deploy:** GitHub Actions on push to `main` → build → rsync the standalone output to the droplet over SSH → `npm run db:migrate` → `systemctl restart complystart`. Until that workflow exists (phase 0), deploys are manual: `git pull && npm ci && npm run build && npm run db:migrate && sudo systemctl restart complystart`.
+- **Deploy:** GitHub Actions on push to `main` → build → rsync the standalone output to the droplet over SSH → `npm run db:migrate` → `systemctl restart complystart`. Until that workflow exists (phase 9), deploys are manual: `git pull && npm ci && npm run build && npm run db:migrate && sudo systemctl restart complystart`.
   - **Migrations against the live database are a deliberate step with Esteban in the loop**, never the tail of a merge (escalation rule 3). The GitHub Action may run migrations automatically only once phase 2 is accepted and he has confirmed backups are verified.
 - **Backups:** nightly `pg_dump` → DigitalOcean Spaces, with a monthly restore test. **Must exist and be verified before phase 2 is accepted** — this is whistleblower data. Workers starting phase 2+ must confirm it's in place or write "blocked".
 - **Secrets** live in `/opt/compinabox/.env` on the droplet, never committed, never assumed injected by a platform. `.env.example` lists every key with placeholder values.
@@ -110,7 +110,7 @@ npm run db:generate  # drizzle-kit generate — new migration from schema change
 npm run db:migrate   # drizzle-kit migrate — apply migrations
 ./verify.sh          # all of the above + invariants; exit 0 required before HANDOFF.md
 ```
-Phase 0 fills in the real scripts; until then these are the names to use.
+`db:*` are placeholders (print a message, exit 1) until phase 2 (Drizzle).
 
 ## 8. Guardrails — stop and write "blocked" in HANDOFF.md, never decide these in a worker session
 
