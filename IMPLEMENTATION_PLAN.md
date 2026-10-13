@@ -12,15 +12,15 @@ One worker session per phase. Worker reads `SUPERVISOR_NOTES.md` → implements 
 
 ## Phase 0 — Repo scaffold and groundwork
 
-- [ ] `create-next-app` with TypeScript, Tailwind, App Router, `src/` off, `output: 'standalone'`
-- [ ] ESLint + Prettier, Vitest + Testing Library, `tsc --noEmit` script
-- [ ] `package.json` scripts exactly as named in CLAUDE.md §7
-- [ ] `verify.sh` runnable end to end (it exists; make it pass on the scaffold)
-- [ ] `.env.example` with every key in CLAUDE.md §6
-- [ ] `.gitignore` (node, `.env*`, `.next`, Drizzle output)
-- [ ] `KNOWN_ISSUES.md` empty table committed
-- [ ] GitHub Actions: `ci.yml` running `./verify.sh` on every PR. **Deploy workflow is NOT this phase** — see phase 9.
-- [ ] `README.md`: how to run locally, how the handoff files work (two paragraphs, link to CLAUDE.md)
+- [x] `create-next-app` with TypeScript, Tailwind, App Router, `src/` off, `output: 'standalone'`
+- [x] ESLint + Prettier, Vitest + Testing Library, `tsc --noEmit` script
+- [x] `package.json` scripts exactly as named in CLAUDE.md §7
+- [x] `verify.sh` runnable end to end (it exists; make it pass on the scaffold)
+- [x] `.env.example` with every key in CLAUDE.md §6
+- [x] `.gitignore` (node, `.env*`, `.next`, Drizzle output)
+- [x] `KNOWN_ISSUES.md` empty table committed
+- [x] GitHub Actions: `ci.yml` running `./verify.sh` on every PR. **Deploy workflow is NOT this phase** — see phase 9.
+- [x] `README.md`: how to run locally, how the handoff files work (two paragraphs, link to CLAUDE.md)
 
 **Definition of done**
 ```
