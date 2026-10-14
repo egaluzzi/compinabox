@@ -10,9 +10,10 @@ export const uploadsDir = () =>
 const TYPES = {
   png: "image/png",
   jpg: "image/jpeg",
-  webp: "image/webp",
+  webp: "image/webp", // legacy: served if present, never accepted (react-pdf cannot embed WebP)
 } as const;
-type Ext = keyof typeof TYPES;
+/** Extensions a new upload may have: PNG/JPEG only, so the logo can be embedded in PDFs. */
+type Ext = "png" | "jpg";
 
 /** Magic-byte sniff. SVG (and anything else) is deliberately not accepted. */
 export function sniffImage(buf: Uint8Array): Ext | null {
@@ -20,15 +21,6 @@ export function sniffImage(buf: Uint8Array): Ext | null {
   if (buf.length >= 8 && b(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a))
     return "png";
   if (buf.length >= 3 && b(0xff, 0xd8, 0xff)) return "jpg";
-  if (
-    buf.length >= 12 &&
-    b(0x52, 0x49, 0x46, 0x46) && // RIFF
-    buf[8] === 0x57 &&
-    buf[9] === 0x45 &&
-    buf[10] === 0x42 &&
-    buf[11] === 0x50 // WEBP
-  )
-    return "webp";
   return null;
 }
 
@@ -49,7 +41,7 @@ export const UPLOAD_NAME = /^[a-f0-9]{32}\.(png|jpg|webp)$/;
 
 export function contentTypeFor(name: string): string | null {
   const m = UPLOAD_NAME.exec(name);
-  return m ? TYPES[m[1] as Ext] : null;
+  return m ? TYPES[m[1] as keyof typeof TYPES] : null;
 }
 
 export async function readUpload(name: string): Promise<Buffer | null> {

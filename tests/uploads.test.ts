@@ -38,13 +38,13 @@ beforeEach(() => {
 });
 
 describe("logo validation", () => {
-  it("accepts PNG / JPEG / WebP by magic bytes", () => {
+  it("accepts PNG / JPEG by magic bytes and rejects WebP (react-pdf cannot embed it)", () => {
     expect(sniffImage(PNG)).toBe("png");
     expect(sniffImage(JPG)).toBe("jpg");
-    expect(sniffImage(WEBP)).toBe("webp");
+    expect(sniffImage(WEBP)).toBeNull();
   });
   it("rejects SVG, GIF, HTML and empty input regardless of what the client claims", async () => {
-    for (const bad of [SVG, GIF, HTML_AS_PNG_NAME, Buffer.alloc(0)])
+    for (const bad of [SVG, GIF, WEBP, HTML_AS_PNG_NAME, Buffer.alloc(0)])
       expect(await saveLogo(bad)).toEqual({ ok: false });
     expect(readdirSync(dir)).toEqual([]);
   });

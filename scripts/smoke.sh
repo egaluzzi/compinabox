@@ -176,6 +176,45 @@ LOGO=$(SQL "select logo_file from companies where id=(select company_id from use
 check "uploaded logo served with fixed content-type + nosniff" "curl -sI $B/uploads/$LOGO | tr -d '\r' | grep -iq '^content-type: image/png' && curl -sI $B/uploads/$LOGO | tr -d '\r' | grep -iq '^x-content-type-options: nosniff'"
 check "/dashboard now loads for the signed-in admin" "curl -s -o /dev/null -w '%{http_code}' -b '$JAR2' $B/dashboard | grep -q 200"
 
+# ---------------------------------------------------------------------------------------------
+# Phase 3: documents — generated at onboarding completion, viewed, exported to PDF, versioned,
+# tenant-isolated, append-only in the database. Real Postgres + real HTTP + real PDF rendering.
+# (The logo uploaded above is a deliberately undecodable PNG stub: the PDF must still render.)
+# ---------------------------------------------------------------------------------------------
+CID=$(SQL "select company_id from users where email='$EMAIL'")
+DOC1=$(SQL "select id from documents where company_id='$CID' and type='code_of_conduct' and version=1")
+check "onboarding created the six documents, all version 1" "[ \"\$(SQL \"select count(*) from documents where company_id='$CID' and version=1\")\" = 6 ] && [ \"\$(SQL \"select count(distinct type) from documents where company_id='$CID'\")\" = 6 ]"
+check "documents list -> 200 and links the code of conduct" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR2' $B/dashboard/documents)\" = 200 ] && curl -s -b '$JAR2' $B/dashboard/documents | grep -q '/dashboard/documents/$DOC1'"
+check "document view -> 200 with title and company name" "curl -s -b '$JAR2' $B/dashboard/documents/$DOC1 | grep -q 'Código de Conduta' && curl -s -b '$JAR2' $B/dashboard/documents/$DOC1 | grep -q 'Smoke Renamed'"
+curl -s -D /tmp/pdf.hdr -o /tmp/doc1.pdf -b "$JAR2" "$B/dashboard/documents/$DOC1/pdf"
+check "PDF download: %PDF body, application/pdf, attachment with ASCII filename, no-store" "head -c 5 /tmp/doc1.pdf | grep -q '%PDF-' && tr -d '\r' </tmp/pdf.hdr | grep -iq '^content-type: application/pdf' && tr -d '\r' </tmp/pdf.hdr | grep -iqE '^content-disposition: attachment; filename=\"[a-z0-9-]+\.pdf\"' && tr -d '\r' </tmp/pdf.hdr | grep -iq '^cache-control: no-store'"
+check "PDF logs the unusable logo once and still renders (stub logo)" "grep -c 'is missing or unreadable' '$LOG' | grep -q '^1\$'"
+check "documents routes without a session: view -> /login, PDF -> 401" "curl -s -D - -o /dev/null $B/dashboard/documents/$DOC1 | tr -d '\r' | grep -iqE '^location: .*/login' && [ \"\$(curl -s -o /dev/null -w '%{http_code}' $B/dashboard/documents/$DOC1/pdf)\" = 401 ]"
+
+# a second company's session must get 404 (not 403, not the content) for the first company's document
+JAR3=$(mktemp)
+EMAIL3="smoke3-$(date +%s)-$$@example.test"
+R3=$(curl -s -c "$JAR3" -X POST -H 'content-type: application/json' --data "{\"country\":\"br\",\"companyName\":\"Other Ltda\",\"taxId\":\"11222333000181\",\"billingEmail\":\"$EMAIL3\"}" "$B/api/checkout"); ATT3=$(echo "$R3" | JQ attemptId)
+curl -s -o /dev/null -X POST -d 'outcome=pay' "$B/api/fake-payments/$ATT3"
+curl -s -b "$JAR3" -c "$JAR3" "$B/api/checkout/status?attempt=$ATT3" -o /tmp/st3.out
+check "second company is provisioned and signed in" "grep -q '\"signedIn\":true' /tmp/st3.out"
+check "second company: first company's document view -> 404" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR3' $B/dashboard/documents/$DOC1)\" = 404 ]"
+check "second company: first company's document PDF -> 404" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR3' $B/dashboard/documents/$DOC1/pdf)\" = 404 ]"
+check "second company: malformed document id -> 404" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR3' $B/dashboard/documents/not-a-uuid/pdf)\" = 404 ]"
+
+# regenerate: unchanged -> nothing new; renamed company -> v2 for all six, v1 still readable and unchanged
+check "regenerate with unchanged inputs creates nothing" "curl -s -o /dev/null -w '%{redirect_url}' -b '$JAR2' -F type=all $B/api/documents/regenerate | grep -q 'regenerated=unchanged' && [ \"\$(SQL \"select count(*) from documents where company_id='$CID'\")\" = 6 ]"
+V1_SUM=$(SQL "select md5(content) from documents where id='$DOC1'")
+check "rename the company via onboarding: documents untouched until regenerated" "curl -s -o /dev/null -w '%{redirect_url}' -b '$JAR2' -F companyName='Smoke Renamed Again' -F industry=technology $B/api/onboarding | grep -q '/dashboard' && [ \"\$(SQL \"select count(*) from documents where company_id='$CID'\")\" = 6 ]"
+check "regenerate after the rename creates v2 for all six" "curl -s -o /dev/null -w '%{redirect_url}' -b '$JAR2' -F type=all $B/api/documents/regenerate | grep -q 'regenerated=created' && [ \"\$(SQL \"select count(*) from documents where company_id='$CID' and version=2\")\" = 6 ] && [ \"\$(SQL \"select count(*) from documents where company_id='$CID'\")\" = 12 ]"
+check "v1 is intact: same content in the database, still viewable with the old name" "[ \"\$(SQL \"select md5(content) from documents where id='$DOC1'\")\" = '$V1_SUM' ] && curl -s -b '$JAR2' $B/dashboard/documents/$DOC1 | grep -q 'Smoke Renamed' && ! curl -s -b '$JAR2' $B/dashboard/documents/$DOC1 | grep -q 'Renamed Again'"
+DOC2=$(SQL "select id from documents where company_id='$CID' and type='code_of_conduct' and version=2")
+check "v2 carries the new name" "curl -s -b '$JAR2' $B/dashboard/documents/$DOC2 | grep -q 'Smoke Renamed Again'"
+check "regenerate: bad type -> 400, no session -> 401" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR2' -F type=nope $B/api/documents/regenerate)\" = 400 ] && [ \"\$(curl -s -o /dev/null -w '%{http_code}' -F type=all $B/api/documents/regenerate)\" = 401 ]"
+check "database: direct UPDATE of a document is rejected (append-only trigger)" "OUT=\$(psql '$DATABASE_URL' -qc \"update documents set content='x' where id='$DOC1'\" 2>&1); [ \$? -ne 0 ] && echo \"\$OUT\" | grep -q 'append-only' && [ \"\$(SQL \"select md5(content) from documents where id='$DOC1'\")\" = '$V1_SUM' ]"
+check "database: direct DELETE of a document is rejected (append-only trigger)" "OUT=\$(psql '$DATABASE_URL' -qc \"delete from documents where id='$DOC1'\" 2>&1); [ \$? -ne 0 ] && echo \"\$OUT\" | grep -q 'append-only' && [ \"\$(SQL \"select count(*) from documents where id='$DOC1'\")\" = 1 ]"
+rm -f "$JAR3" /tmp/pdf.hdr /tmp/doc1.pdf /tmp/st3.out
+
 # failed payment path
 R=$(curl -s -c "$JAR" -X POST -H 'content-type: application/json' --data "{\"country\":\"br\",\"companyName\":\"Fail Ltda\",\"taxId\":\"11222333000181\",\"billingEmail\":\"fail-$EMAIL\"}" "$B/api/checkout"); FATT=$(echo "$R" | JQ attemptId)
 curl -s -o /dev/null -X POST -d 'outcome=fail' "$B/api/fake-payments/$FATT"

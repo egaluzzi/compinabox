@@ -8,6 +8,20 @@
       "when": 1791976552929,
       "tag": "0000_fearless_xorn",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791983707434,
+      "tag": "0001_lucky_living_tribunal",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791983713599,
+      "tag": "0002_documents_append_only",
+      "breakpoints": true
     }
   ]
 }

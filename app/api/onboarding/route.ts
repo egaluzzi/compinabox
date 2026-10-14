@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getTenant } from "@/lib/auth/tenant";
 import { getDb } from "@/lib/db/client";
 import { updateCompanyProfile } from "@/lib/db/tenant";
+import { ensureInitialDocuments } from "@/lib/documents/store";
 import { isIndustry } from "@/lib/industries";
 import { saveLogo } from "@/lib/uploads";
 
@@ -30,10 +31,16 @@ export async function POST(request: Request) {
     logoFile = saved.file;
   }
 
-  await updateCompanyProfile(getDb(), tenant.companyId, {
-    name,
-    industry,
-    logoFile,
+  // Profile update and the six documents commit together. If generation throws, the whole
+  // transaction rolls back and the request fails loudly (500): a completed profile without
+  // documents must never exist silently.
+  await getDb().transaction(async (tx) => {
+    await updateCompanyProfile(tx, tenant.companyId, {
+      name,
+      industry,
+      logoFile,
+    });
+    await ensureInitialDocuments(tx, tenant.companyId, tenant.userId);
   });
   return back(request, "/dashboard");
 }

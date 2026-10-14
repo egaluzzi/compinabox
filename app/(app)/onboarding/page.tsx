@@ -69,7 +69,7 @@ export default async function Onboarding({
           <input
             name="logo"
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/png,image/jpeg"
             className={field}
           />
           <span className="text-xs font-normal text-slate-600">
