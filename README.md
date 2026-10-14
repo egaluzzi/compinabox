@@ -38,8 +38,10 @@ Whistleblower data lives in this database; backups must exist and a restore must
 
 **Restore (and the monthly restore test):**
 1. Fetch a dump: `s3cmd get s3://<space>/complystart-backups/complystart-<stamp>.sql.gz`
-2. Test restore into a scratch database and compare row counts:
-   `DATABASE_URL=<live url> SCRATCH_ADMIN_URL=<url of a role that may create databases, ending /postgres> scripts/restore-test.sh complystart-<stamp>.sql.gz` — prints a per-table comparison and `restore-test: PASS` or `FAIL`. The scratch database is dropped afterwards.
+2. Run the restore test: `SCRATCH_ADMIN_URL=<url of a role that may create databases, ending /postgres> scripts/restore-test.sh complystart-<stamp>.sql.gz` (no `DATABASE_URL` needed). It restores the dump into a scratch database, compares each table's restored row count with the number of rows recorded **in the dump itself** (its `COPY` blocks), prints a per-table `in dump` / `restored` table, and drops the scratch database. It works on a dump of any age; the live database is never touched.
+   - **PASS means:** the dump is a valid gzip, restores with no SQL error, and every table in it (including `drizzle.__drizzle_migrations`) came back with exactly the rows the dump contains and no table is missing.
+   - **FAIL means:** a bad gzip, a SQL/COPY error (truncated or damaged dump), or a missing/mismatching table — the table is named in the output.
+   - **PASS does not mean:** that the dump is complete relative to the live database (rows deleted from the file consistently are invisible to it), or that the dump is recent — check the timestamp in the file name against the nightly schedule.
 3. Real recovery: stop the app (`sudo systemctl stop complystart`), create an empty database, `gunzip -c complystart-<stamp>.sql.gz | psql <new database url>`, point `DATABASE_URL` at it, start the app. Note: a dump holds everything up to its timestamp; anything written since is lost.
 
 To exercise the scripts without Spaces: `BACKUP_DEST=local:/some/dir scripts/backup.sh`.
