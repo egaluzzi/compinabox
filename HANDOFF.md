@@ -184,7 +184,7 @@ verify.sh: PASS (HEAD f279e2a)
 
 ## CI
 
-CI run **38489077543** on head `f279e2a20e03ec848ea01041b027029c6919cea8`: the API still showed `in_progress` (step "Run ./verify.sh") when this file was written; the supervisor should confirm the conclusion on the PR page. Local `./verify.sh` on the same SHA passed (above).
+CI run **38489077543** on head `f279e2a20e03ec848ea01041b027029c6919cea8`: `status: completed`, `conclusion: success` (read via the API after this file was first pushed). Local `./verify.sh` on the same SHA also passed (above).
 
 ## Open questions
 
