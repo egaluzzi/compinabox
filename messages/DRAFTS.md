@@ -8,7 +8,7 @@ launch (CLAUDE.md §11); the footer disclaimer and the "does this certify…?" F
 Source column: the locale/key the text was translated from, or "new UI string" where CONTENT.md has no source at all
 (the worker wrote the English and translated it faithfully).
 
-Row counts: en=143, es-AR=130, pt-BR=152, es-MX=140
+Row counts: en=198, es-AR=185, pt-BR=207, es-MX=195
 
 | locale | key | translated from |
 | :- | :- | :- |
@@ -293,8 +293,6 @@ Row counts: en=143, es-AR=130, pt-BR=152, es-MX=140
 | en | industry.energy | new UI string (no CONTENT.md source) |
 | en | industry.agribusiness | new UI string (no CONTENT.md source) |
 | en | industry.other | new UI string (no CONTENT.md source) |
-| en | dashboard.title | new UI string (no CONTENT.md source) |
-| en | dashboard.placeholder | new UI string (no CONTENT.md source) |
 | en | email.signinSubject | new UI string (no CONTENT.md source) |
 | en | email.signinBody | new UI string (no CONTENT.md source) |
 | en | email.signinButton | new UI string (no CONTENT.md source) |
@@ -353,8 +351,6 @@ Row counts: en=143, es-AR=130, pt-BR=152, es-MX=140
 | es-AR | industry.energy | en |
 | es-AR | industry.agribusiness | en |
 | es-AR | industry.other | en |
-| es-AR | dashboard.title | en |
-| es-AR | dashboard.placeholder | en |
 | es-AR | email.signinSubject | en |
 | es-AR | email.signinBody | en |
 | es-AR | email.signinButton | en |
@@ -413,8 +409,6 @@ Row counts: en=143, es-AR=130, pt-BR=152, es-MX=140
 | pt-BR | industry.energy | en |
 | pt-BR | industry.agribusiness | en |
 | pt-BR | industry.other | en |
-| pt-BR | dashboard.title | en |
-| pt-BR | dashboard.placeholder | en |
 | pt-BR | email.signinSubject | en |
 | pt-BR | email.signinBody | en |
 | pt-BR | email.signinButton | en |
@@ -473,8 +467,6 @@ Row counts: en=143, es-AR=130, pt-BR=152, es-MX=140
 | es-MX | industry.energy | en |
 | es-MX | industry.agribusiness | en |
 | es-MX | industry.other | en |
-| es-MX | dashboard.title | en |
-| es-MX | dashboard.placeholder | en |
 | es-MX | email.signinSubject | en |
 | es-MX | email.signinBody | en |
 | es-MX | email.signinButton | en |
@@ -577,3 +569,231 @@ Row counts: en=143, es-AR=130, pt-BR=152, es-MX=140
 | pt-BR | documents.types.conflictsOfInterest | en |
 | pt-BR | documents.types.thirdPartyPublicOfficials | en |
 | pt-BR | documents.types.whistleblowerProtection | en |
+| en | dashboard.title | new UI string (no CONTENT.md source) |
+| en | dashboard.skipToContent | new UI string (no CONTENT.md source) |
+| en | dashboard.navLabel | new UI string (no CONTENT.md source) |
+| en | dashboard.signedInAs | new UI string (no CONTENT.md source) |
+| en | dashboard.signOut | new UI string (no CONTENT.md source) |
+| en | dashboard.logoAlt | new UI string (no CONTENT.md source) |
+| en | dashboard.unavailable | new UI string (no CONTENT.md source) |
+| en | dashboard.nav.overview | new UI string (no CONTENT.md source) |
+| en | dashboard.nav.documents | new UI string (no CONTENT.md source) |
+| en | dashboard.nav.employees | new UI string (no CONTENT.md source) |
+| en | dashboard.nav.training | new UI string (no CONTENT.md source) |
+| en | dashboard.nav.whistleblower | new UI string (no CONTENT.md source) |
+| en | dashboard.nav.vendors | new UI string (no CONTENT.md source) |
+| en | dashboard.nav.billing | new UI string (no CONTENT.md source) |
+| en | dashboard.nav.settings | new UI string (no CONTENT.md source) |
+| en | dashboard.overview.title | new UI string (no CONTENT.md source) |
+| en | dashboard.overview.intro | new UI string (no CONTENT.md source) |
+| en | dashboard.overview.documents | new UI string (no CONTENT.md source) |
+| en | dashboard.overview.documentsCount | new UI string (no CONTENT.md source) |
+| en | dashboard.overview.documentsDraft | new UI string (no CONTENT.md source) |
+| en | dashboard.overview.employees | new UI string (no CONTENT.md source) |
+| en | dashboard.overview.employeesCount | new UI string (no CONTENT.md source) |
+| en | dashboard.overview.openCases | new UI string (no CONTENT.md source) |
+| en | dashboard.overview.openCasesCount | new UI string (no CONTENT.md source) |
+| en | dashboard.overview.completion | new UI string (no CONTENT.md source) |
+| en | dashboard.overview.completionNote | new UI string (no CONTENT.md source) |
+| en | dashboard.overview.binder | new UI string (no CONTENT.md source) |
+| en | dashboard.overview.binderDownload | new UI string (no CONTENT.md source) |
+| en | dashboard.overview.sections | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.empty | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.action | new UI string (no CONTENT.md source) |
+| en | dashboard.training.empty | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.empty | new UI string (no CONTENT.md source) |
+| en | dashboard.vendors.empty | new UI string (no CONTENT.md source) |
+| en | dashboard.vendors.action | new UI string (no CONTENT.md source) |
+| en | dashboard.billing.subscriptionLabel | new UI string (no CONTENT.md source) |
+| en | dashboard.billing.subscription.active | new UI string (no CONTENT.md source) |
+| en | dashboard.billing.history | new UI string (no CONTENT.md source) |
+| en | dashboard.billing.empty | new UI string (no CONTENT.md source) |
+| en | dashboard.billing.date | new UI string (no CONTENT.md source) |
+| en | dashboard.billing.amount | new UI string (no CONTENT.md source) |
+| en | dashboard.billing.status | new UI string (no CONTENT.md source) |
+| en | dashboard.billing.paid | new UI string (no CONTENT.md source) |
+| en | dashboard.settings.savedNotice | new UI string (no CONTENT.md source) |
+| en | dashboard.settings.savedLink | new UI string (no CONTENT.md source) |
+| en | dashboard.settings.currentLogo | new UI string (no CONTENT.md source) |
+| en | dashboard.settings.noLogo | new UI string (no CONTENT.md source) |
+| en | dashboard.settings.replaceLogo | new UI string (no CONTENT.md source) |
+| en | dashboard.settings.save | new UI string (no CONTENT.md source) |
+| en | dashboard.settings.account | new UI string (no CONTENT.md source) |
+| en | dashboard.settings.readOnlyNote | new UI string (no CONTENT.md source) |
+| en | dashboard.settings.taxId | new UI string (no CONTENT.md source) |
+| en | dashboard.settings.country | new UI string (no CONTENT.md source) |
+| en | dashboard.settings.adminEmail | new UI string (no CONTENT.md source) |
+| en | dashboard.settings.countries.ar | new UI string (no CONTENT.md source) |
+| en | dashboard.settings.countries.br | new UI string (no CONTENT.md source) |
+| en | dashboard.settings.countries.mx | new UI string (no CONTENT.md source) |
+| es-AR | dashboard.title | en |
+| es-AR | dashboard.skipToContent | en |
+| es-AR | dashboard.navLabel | en |
+| es-AR | dashboard.signedInAs | en |
+| es-AR | dashboard.signOut | en |
+| es-AR | dashboard.logoAlt | en |
+| es-AR | dashboard.unavailable | en |
+| es-AR | dashboard.nav.overview | en |
+| es-AR | dashboard.nav.documents | en |
+| es-AR | dashboard.nav.employees | en |
+| es-AR | dashboard.nav.training | en |
+| es-AR | dashboard.nav.whistleblower | en |
+| es-AR | dashboard.nav.vendors | en |
+| es-AR | dashboard.nav.billing | en |
+| es-AR | dashboard.nav.settings | en |
+| es-AR | dashboard.overview.title | en |
+| es-AR | dashboard.overview.intro | en |
+| es-AR | dashboard.overview.documents | en |
+| es-AR | dashboard.overview.documentsCount | en |
+| es-AR | dashboard.overview.documentsDraft | en |
+| es-AR | dashboard.overview.employees | en |
+| es-AR | dashboard.overview.employeesCount | en |
+| es-AR | dashboard.overview.openCases | en |
+| es-AR | dashboard.overview.openCasesCount | en |
+| es-AR | dashboard.overview.completion | en |
+| es-AR | dashboard.overview.completionNote | en |
+| es-AR | dashboard.overview.binder | en |
+| es-AR | dashboard.overview.binderDownload | en |
+| es-AR | dashboard.overview.sections | en |
+| es-AR | dashboard.employees.empty | en |
+| es-AR | dashboard.employees.action | en |
+| es-AR | dashboard.training.empty | en |
+| es-AR | dashboard.whistleblower.empty | en |
+| es-AR | dashboard.vendors.empty | en |
+| es-AR | dashboard.vendors.action | en |
+| es-AR | dashboard.billing.subscriptionLabel | en |
+| es-AR | dashboard.billing.subscription.active | en |
+| es-AR | dashboard.billing.history | en |
+| es-AR | dashboard.billing.empty | en |
+| es-AR | dashboard.billing.date | en |
+| es-AR | dashboard.billing.amount | en |
+| es-AR | dashboard.billing.status | en |
+| es-AR | dashboard.billing.paid | en |
+| es-AR | dashboard.settings.savedNotice | en |
+| es-AR | dashboard.settings.savedLink | en |
+| es-AR | dashboard.settings.currentLogo | en |
+| es-AR | dashboard.settings.noLogo | en |
+| es-AR | dashboard.settings.replaceLogo | en |
+| es-AR | dashboard.settings.save | en |
+| es-AR | dashboard.settings.account | en |
+| es-AR | dashboard.settings.readOnlyNote | en |
+| es-AR | dashboard.settings.taxId | en |
+| es-AR | dashboard.settings.country | en |
+| es-AR | dashboard.settings.adminEmail | en |
+| es-AR | dashboard.settings.countries.ar | en |
+| es-AR | dashboard.settings.countries.br | en |
+| es-AR | dashboard.settings.countries.mx | en |
+| pt-BR | dashboard.title | en |
+| pt-BR | dashboard.skipToContent | en |
+| pt-BR | dashboard.navLabel | en |
+| pt-BR | dashboard.signedInAs | en |
+| pt-BR | dashboard.signOut | en |
+| pt-BR | dashboard.logoAlt | en |
+| pt-BR | dashboard.unavailable | en |
+| pt-BR | dashboard.nav.overview | en |
+| pt-BR | dashboard.nav.documents | en |
+| pt-BR | dashboard.nav.employees | en |
+| pt-BR | dashboard.nav.training | en |
+| pt-BR | dashboard.nav.whistleblower | en |
+| pt-BR | dashboard.nav.vendors | en |
+| pt-BR | dashboard.nav.billing | en |
+| pt-BR | dashboard.nav.settings | en |
+| pt-BR | dashboard.overview.title | en |
+| pt-BR | dashboard.overview.intro | en |
+| pt-BR | dashboard.overview.documents | en |
+| pt-BR | dashboard.overview.documentsCount | en |
+| pt-BR | dashboard.overview.documentsDraft | en |
+| pt-BR | dashboard.overview.employees | en |
+| pt-BR | dashboard.overview.employeesCount | en |
+| pt-BR | dashboard.overview.openCases | en |
+| pt-BR | dashboard.overview.openCasesCount | en |
+| pt-BR | dashboard.overview.completion | en |
+| pt-BR | dashboard.overview.completionNote | en |
+| pt-BR | dashboard.overview.binder | en |
+| pt-BR | dashboard.overview.binderDownload | en |
+| pt-BR | dashboard.overview.sections | en |
+| pt-BR | dashboard.employees.empty | en |
+| pt-BR | dashboard.employees.action | en |
+| pt-BR | dashboard.training.empty | en |
+| pt-BR | dashboard.whistleblower.empty | en |
+| pt-BR | dashboard.vendors.empty | en |
+| pt-BR | dashboard.vendors.action | en |
+| pt-BR | dashboard.billing.subscriptionLabel | en |
+| pt-BR | dashboard.billing.subscription.active | en |
+| pt-BR | dashboard.billing.history | en |
+| pt-BR | dashboard.billing.empty | en |
+| pt-BR | dashboard.billing.date | en |
+| pt-BR | dashboard.billing.amount | en |
+| pt-BR | dashboard.billing.status | en |
+| pt-BR | dashboard.billing.paid | en |
+| pt-BR | dashboard.settings.savedNotice | en |
+| pt-BR | dashboard.settings.savedLink | en |
+| pt-BR | dashboard.settings.currentLogo | en |
+| pt-BR | dashboard.settings.noLogo | en |
+| pt-BR | dashboard.settings.replaceLogo | en |
+| pt-BR | dashboard.settings.save | en |
+| pt-BR | dashboard.settings.account | en |
+| pt-BR | dashboard.settings.readOnlyNote | en |
+| pt-BR | dashboard.settings.taxId | en |
+| pt-BR | dashboard.settings.country | en |
+| pt-BR | dashboard.settings.adminEmail | en |
+| pt-BR | dashboard.settings.countries.ar | en |
+| pt-BR | dashboard.settings.countries.br | en |
+| pt-BR | dashboard.settings.countries.mx | en |
+| es-MX | dashboard.title | en |
+| es-MX | dashboard.skipToContent | en |
+| es-MX | dashboard.navLabel | en |
+| es-MX | dashboard.signedInAs | en |
+| es-MX | dashboard.signOut | en |
+| es-MX | dashboard.logoAlt | en |
+| es-MX | dashboard.unavailable | en |
+| es-MX | dashboard.nav.overview | en |
+| es-MX | dashboard.nav.documents | en |
+| es-MX | dashboard.nav.employees | en |
+| es-MX | dashboard.nav.training | en |
+| es-MX | dashboard.nav.whistleblower | en |
+| es-MX | dashboard.nav.vendors | en |
+| es-MX | dashboard.nav.billing | en |
+| es-MX | dashboard.nav.settings | en |
+| es-MX | dashboard.overview.title | en |
+| es-MX | dashboard.overview.intro | en |
+| es-MX | dashboard.overview.documents | en |
+| es-MX | dashboard.overview.documentsCount | en |
+| es-MX | dashboard.overview.documentsDraft | en |
+| es-MX | dashboard.overview.employees | en |
+| es-MX | dashboard.overview.employeesCount | en |
+| es-MX | dashboard.overview.openCases | en |
+| es-MX | dashboard.overview.openCasesCount | en |
+| es-MX | dashboard.overview.completion | en |
+| es-MX | dashboard.overview.completionNote | en |
+| es-MX | dashboard.overview.binder | en |
+| es-MX | dashboard.overview.binderDownload | en |
+| es-MX | dashboard.overview.sections | en |
+| es-MX | dashboard.employees.empty | en |
+| es-MX | dashboard.employees.action | en |
+| es-MX | dashboard.training.empty | en |
+| es-MX | dashboard.whistleblower.empty | en |
+| es-MX | dashboard.vendors.empty | en |
+| es-MX | dashboard.vendors.action | en |
+| es-MX | dashboard.billing.subscriptionLabel | en |
+| es-MX | dashboard.billing.subscription.active | en |
+| es-MX | dashboard.billing.history | en |
+| es-MX | dashboard.billing.empty | en |
+| es-MX | dashboard.billing.date | en |
+| es-MX | dashboard.billing.amount | en |
+| es-MX | dashboard.billing.status | en |
+| es-MX | dashboard.billing.paid | en |
+| es-MX | dashboard.settings.savedNotice | en |
+| es-MX | dashboard.settings.savedLink | en |
+| es-MX | dashboard.settings.currentLogo | en |
+| es-MX | dashboard.settings.noLogo | en |
+| es-MX | dashboard.settings.replaceLogo | en |
+| es-MX | dashboard.settings.save | en |
+| es-MX | dashboard.settings.account | en |
+| es-MX | dashboard.settings.readOnlyNote | en |
+| es-MX | dashboard.settings.taxId | en |
+| es-MX | dashboard.settings.country | en |
+| es-MX | dashboard.settings.adminEmail | en |
+| es-MX | dashboard.settings.countries.ar | en |
+| es-MX | dashboard.settings.countries.br | en |
+| es-MX | dashboard.settings.countries.mx | en |

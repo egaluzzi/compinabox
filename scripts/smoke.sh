@@ -198,6 +198,8 @@ R3=$(curl -s -c "$JAR3" -X POST -H 'content-type: application/json' --data "{\"c
 curl -s -o /dev/null -X POST -d 'outcome=pay' "$B/api/fake-payments/$ATT3"
 curl -s -b "$JAR3" -c "$JAR3" "$B/api/checkout/status?attempt=$ATT3" -o /tmp/st3.out
 check "second company is provisioned and signed in" "grep -q '\"signedIn\":true' /tmp/st3.out"
+# the dashboard gate requires completed onboarding; finish it so the 404 checks below test tenant isolation, not the gate
+check "second company completes onboarding" "curl -s -o /dev/null -w '%{redirect_url}' -b '$JAR3' -F companyName='Other Ltda' -F industry=retail $B/api/onboarding | grep -q '/dashboard'"
 check "second company: first company's document view -> 404" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR3' $B/dashboard/documents/$DOC1)\" = 404 ]"
 check "second company: first company's document PDF -> 404" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR3' $B/dashboard/documents/$DOC1/pdf)\" = 404 ]"
 check "second company: malformed document id -> 404" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR3' $B/dashboard/documents/not-a-uuid/pdf)\" = 404 ]"
@@ -207,12 +209,84 @@ check "regenerate with unchanged inputs creates nothing" "curl -s -o /dev/null -
 V1_SUM=$(SQL "select md5(content) from documents where id='$DOC1'")
 check "rename the company via onboarding: documents untouched until regenerated" "curl -s -o /dev/null -w '%{redirect_url}' -b '$JAR2' -F companyName='Smoke Renamed Again' -F industry=technology $B/api/onboarding | grep -q '/dashboard' && [ \"\$(SQL \"select count(*) from documents where company_id='$CID'\")\" = 6 ]"
 check "regenerate after the rename creates v2 for all six" "curl -s -o /dev/null -w '%{redirect_url}' -b '$JAR2' -F type=all $B/api/documents/regenerate | grep -q 'regenerated=created' && [ \"\$(SQL \"select count(*) from documents where company_id='$CID' and version=2\")\" = 6 ] && [ \"\$(SQL \"select count(*) from documents where company_id='$CID'\")\" = 12 ]"
-check "v1 is intact: same content in the database, still viewable with the old name" "[ \"\$(SQL \"select md5(content) from documents where id='$DOC1'\")\" = '$V1_SUM' ] && curl -s -b '$JAR2' $B/dashboard/documents/$DOC1 | grep -q 'Smoke Renamed' && ! curl -s -b '$JAR2' $B/dashboard/documents/$DOC1 | grep -q 'Renamed Again'"
+check "v1 is intact: same content in the database, still viewable with the old name" "[ \"\$(SQL \"select md5(content) from documents where id='$DOC1'\")\" = '$V1_SUM' ] && curl -s -b '$JAR2' $B/dashboard/documents/$DOC1 | grep -o '<article.*</article>' | grep -q 'Smoke Renamed' && ! curl -s -b '$JAR2' $B/dashboard/documents/$DOC1 | grep -o '<article.*</article>' | grep -q 'Renamed Again'"
 DOC2=$(SQL "select id from documents where company_id='$CID' and type='code_of_conduct' and version=2")
 check "v2 carries the new name" "curl -s -b '$JAR2' $B/dashboard/documents/$DOC2 | grep -q 'Smoke Renamed Again'"
 check "regenerate: bad type -> 400, no session -> 401" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR2' -F type=nope $B/api/documents/regenerate)\" = 400 ] && [ \"\$(curl -s -o /dev/null -w '%{http_code}' -F type=all $B/api/documents/regenerate)\" = 401 ]"
 check "database: direct UPDATE of a document is rejected (append-only trigger)" "OUT=\$(psql '$DATABASE_URL' -qc \"update documents set content='x' where id='$DOC1'\" 2>&1); [ \$? -ne 0 ] && echo \"\$OUT\" | grep -q 'append-only' && [ \"\$(SQL \"select md5(content) from documents where id='$DOC1'\")\" = '$V1_SUM' ]"
 check "database: direct DELETE of a document is rejected (append-only trigger)" "OUT=\$(psql '$DATABASE_URL' -qc \"delete from documents where id='$DOC1'\" 2>&1); [ \$? -ne 0 ] && echo \"\$OUT\" | grep -q 'append-only' && [ \"\$(SQL \"select count(*) from documents where id='$DOC1'\")\" = 1 ]"
+# ---------------------------------------------------------------------------------------------
+# Phase 4: the dashboard shell — eight sections behind one gate, tenant isolation across every
+# section, security headers, Settings, sign-out. Real Postgres, real HTTP, real session cookies.
+# Company 1 = "$EMAIL" (JAR2), company 2 = "Other Ltda" (JAR3).
+# ---------------------------------------------------------------------------------------------
+C2=$(SQL "select company_id from users where email='$EMAIL3'")
+# distinctive payments so a leak between the two companies is unmistakable (R$ 76.543,21 / R$ 12.345,67)
+SQL "insert into billing_records (company_id, amount_cents, currency, paid_at) values ('$CID', 7654321, 'BRL', now()), ('$C2', 1234567, 'BRL', now())" >/dev/null
+NAME1=$(SQL "select name from companies where id='$CID'")
+SECTIONS="'' documents employees training whistleblower vendors billing settings"
+dash() { case "$1" in "") echo "$B/dashboard";; *) echo "$B/dashboard/$1";; esac; }
+
+for s in $SECTIONS; do
+  s=${s//\'/}
+  U=$(dash "$s")
+  check "dashboard/${s:-overview}: signed in -> 200 with the main nav and all eight section links" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR2' $U)\" = 200 ] && H=\$(curl -s -b '$JAR2' $U) && echo \"\$H\" | grep -q 'aria-label=\"Navegação principal\"' && echo \"\$H\" | grep -q '<main id=\"main\"' && for p in '' /documents /employees /training /whistleblower /vendors /billing /settings; do echo \"\$H\" | grep -q \"href=\\\"/dashboard\$p\\\"\" || exit 1; done"
+  check "dashboard/${s:-overview}: marks itself aria-current=\"page\"" "curl -s -b '$JAR2' $U | grep -oE '<a [^>]*aria-current=\"page\"[^>]*>' | grep -q 'href=\"/dashboard${s:+/$s}\"'"
+  check "dashboard/${s:-overview}: no session -> redirect to /login" "curl -s -D - -o /dev/null $U | tr -d '\r' | grep -iqE '^location: .*/login'"
+  check "dashboard/${s:-overview}: company 2 never sees company 1's name, payment or document id" "H=\$(curl -s -b '$JAR3' $U) && ! echo \"\$H\" | grep -q '$NAME1' && ! echo \"\$H\" | grep -q '76.543,21' && ! echo \"\$H\" | grep -q '$DOC1'"
+  check "dashboard/${s:-overview}: company 1 never sees company 2's name or payment" "H=\$(curl -s -b '$JAR2' $U) && ! echo \"\$H\" | grep -q 'Other Ltda' && ! echo \"\$H\" | grep -q '12.345,67'"
+done
+check "billing: each company sees its own payment, formatted pt-BR" "curl -s -b '$JAR2' $B/dashboard/billing | grep -q '76.543,21' && curl -s -b '$JAR3' $B/dashboard/billing | grep -q '12.345,67'"
+check "overview: counts come from the session's company (0 employees, 0 open cases)" "H=\$(curl -s -b '$JAR2' $B/dashboard) && echo \"\$H\" | grep -q 'Nenhum colaborador ainda' && echo \"\$H\" | grep -q 'Nenhuma denúncia em aberto' && echo \"\$H\" | grep -q '6 de 6 documentos gerados'"
+check "documents list: draft status shown next to the documents" "[ \"\$(curl -s -b '$JAR2' $B/dashboard/documents | grep -o 'RASCUNHO' | wc -l)\" -ge 12 ]"
+check "document pages: no session -> /login; company 2 -> 404 (unchanged inside the shell)" "curl -s -D - -o /dev/null $B/dashboard/documents/$DOC1 | tr -d '\r' | grep -iqE '^location: .*/login' && [ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR3' $B/dashboard/documents/$DOC1)\" = 404 ]"
+
+# security headers, live, on every authenticated surface
+for u in /dashboard /dashboard/settings /dashboard/documents /onboarding /login; do
+  check "headers on $u: private no-store, frame-ancestors 'none', X-Frame-Options DENY, Referrer-Policy same-origin" "H=\$(curl -s -D - -o /dev/null -b '$JAR2' $B$u | tr -d '\r') && echo \"\$H\" | grep -iq '^cache-control: private, no-store' && echo \"\$H\" | grep -iq \"^content-security-policy: frame-ancestors 'none'\" && echo \"\$H\" | grep -iq '^x-frame-options: DENY' && echo \"\$H\" | grep -iq '^referrer-policy: same-origin'"
+done
+check "PDF keeps its own Cache-Control: no-store" "curl -s -D - -o /dev/null -b '$JAR2' $B/dashboard/documents/$DOC1/pdf | tr -d '\r' | grep -iq '^cache-control: no-store'"
+
+# Settings: rename + new logo, onboarding_completed_at and documents untouched, foreign company id ignored
+OLDLOGO=$(SQL "select logo_file from companies where id='$CID'")
+ONB_BEFORE=$(SQL "select extract(epoch from onboarding_completed_at) from companies where id='$CID'")
+C2NAME=$(SQL "select name from companies where id='$C2'")
+REAL_PNG=tests/fixtures/logo.png
+check "settings: no session -> 401" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -F companyName='Nope Ltda' -F industry=retail $B/dashboard/settings/save)\" = 401 ]"
+check "settings: SVG disguised as PNG -> error=logo, nothing changed" "curl -s -o /dev/null -w '%{redirect_url}' -b '$JAR2' -F companyName='Smoke Settings Ltda' -F industry=retail -F 'logo=@$SVG;type=image/png' $B/dashboard/settings/save | grep -q 'error=logo' && [ \"\$(SQL \"select name from companies where id='$CID'\")\" = '$NAME1' ]"
+check "settings: save -> 303 to ?saved=1" "curl -s -o /dev/null -w '%{redirect_url}' -b '$JAR2' -F companyName='Smoke Settings Ltda' -F industry=retail -F companyId=$C2 -F company_id=$C2 -F 'logo=@$REAL_PNG;type=image/png' $B/dashboard/settings/save | grep -q '/dashboard/settings?saved=1'"
+NEWLOGO=$(SQL "select logo_file from companies where id='$CID'")
+check "settings: DB has the new name, industry and a new logo file" "[ \"\$(SQL \"select name from companies where id='$CID'\")\" = 'Smoke Settings Ltda' ] && [ \"\$(SQL \"select industry from companies where id='$CID'\")\" = retail ] && [ -n '$NEWLOGO' ] && [ '$NEWLOGO' != '$OLDLOGO' ]"
+check "settings: onboarding_completed_at is intact" "[ \"\$(SQL \"select extract(epoch from onboarding_completed_at) from companies where id='$CID'\")\" = '$ONB_BEFORE' ]"
+check "settings: company 2 untouched by the posted company id" "[ \"\$(SQL \"select name from companies where id='$C2'\")\" = '$C2NAME' ]"
+check "settings: saving regenerated nothing (still 12 documents)" "[ \"\$(SQL \"select count(*) from documents where company_id='$CID'\")\" = 12 ]"
+check "settings: old logo file is kept on disk" "[ -f '$UPLOADS/$OLDLOGO' ]"
+check "settings: page shows the new logo and the not-regenerated notice linking to Documents" "H=\$(curl -s -b '$JAR2' '$B/dashboard/settings?saved=1') && echo \"\$H\" | grep -q '/uploads/$NEWLOGO' && echo \"\$H\" | grep -q 'não são regenerados automaticamente' && echo \"\$H\" | grep -q 'href=\"/dashboard/documents\"'"
+check "settings: header shows the new name, tax id and admin email are read-only text" "H=\$(curl -s -b '$JAR2' $B/dashboard/settings) && echo \"\$H\" | grep -q 'Smoke Settings Ltda' && echo \"\$H\" | grep -q '$EMAIL' && ! echo \"\$H\" | grep -q 'name=\"taxId\"' && ! echo \"\$H\" | grep -q 'name=\"email\"'"
+check "audit trail: v1 document view still carries the name it was generated with (PDF: tests/dashboard-audit)" "A=\$(curl -s -b '$JAR2' $B/dashboard/documents/$DOC1 | grep -o '<article.*</article>') && echo \"\$A\" | grep -q 'Smoke Renamed' && ! echo \"\$A\" | grep -q 'Smoke Settings'"
+
+# Sign-out: the header form is an Auth.js server action; submit it exactly as a browser would
+JAR4=$(mktemp); cp "$JAR2" "$JAR4"
+mapfile -d '' -t SO_ARGS < <(curl -s -b "$JAR4" "$B/dashboard" | node -e '
+  let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+    const form=(d.split("<form").slice(1).find(f=>f.includes("Sair"))||"").split("</form>")[0];
+    const dec=s=>s.replace(/&quot;/g,"\"").replace(/&#x27;/g,"\x27").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&");
+    for(const m of form.matchAll(/<input\b[^>]*>/g)){
+      const a=n=>{const r=new RegExp("\\b"+n+"=\"([^\"]*)\"").exec(m[0]);return r?dec(r[1]):null};
+      if(a("type")==="hidden"&&a("name")) process.stdout.write("--form-string\0"+a("name")+"="+(a("value")??"")+"\0");
+    }
+  })')
+check "sign-out form carries a server action (hidden action fields found)" "[ ${#SO_ARGS[@]} -ge 2 ]"
+check "before sign-out the copied session reaches the dashboard" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR4' $B/dashboard)\" = 200 ]"
+SO_HDR=$(mktemp)
+curl -s -D - -o /dev/null -b "$JAR4" -c "$JAR4" "${SO_ARGS[@]}" "$B/dashboard" | tr -d '\r' >"$SO_HDR"
+check "sign-out action: 303 to /login" "head -1 '$SO_HDR' | grep -q ' 303 ' && grep -iqE '^location: .*/login' '$SO_HDR'"
+check "sign-out action: session cookie is cleared" "! grep -q 'authjs.session-token.*[A-Za-z0-9_-]\\{40,\\}' '$JAR4'"
+check "after sign-out: /dashboard redirects to /login" "curl -s -D - -o /dev/null -b '$JAR4' $B/dashboard | tr -d '\r' | grep -iqE '^location: .*/login'"
+check "after sign-out: a section and the PDF route are refused too" "curl -s -D - -o /dev/null -b '$JAR4' $B/dashboard/billing | tr -d '\r' | grep -iqE '^location: .*/login' && [ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR4' $B/dashboard/documents/$DOC1/pdf)\" = 401 ]"
+check "other browser (company 1's original jar) is a separate cookie and unaffected" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR2' $B/dashboard)\" = 200 ]"
+rm -f "$JAR4" "$SO_HDR"
+
 rm -f "$JAR3" /tmp/pdf.hdr /tmp/doc1.pdf /tmp/st3.out
 
 # failed payment path

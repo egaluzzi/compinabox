@@ -19,7 +19,7 @@ export default async function Onboarding({
   const t = getT(COUNTRY_LOCALE[company.country as Country] ?? "en");
   const field = "mt-1 w-full rounded border border-slate-300 px-3 py-2";
   return (
-    <div className="space-y-4">
+    <main className="mx-auto w-full max-w-3xl space-y-4 px-4 py-8 text-slate-900">
       <h1 className="text-3xl font-bold">{t("onboarding.title")}</h1>
       <p className="text-slate-700">{t("onboarding.intro")}</p>
       {error && (
@@ -83,6 +83,6 @@ export default async function Onboarding({
           {t("onboarding.submit")}
         </button>
       </form>
-    </div>
+    </main>
   );
 }

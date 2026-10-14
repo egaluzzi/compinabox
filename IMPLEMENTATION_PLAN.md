@@ -121,15 +121,15 @@ Judgment: every citation string lives in `br.ts`, none in templates (`grep -rn "
 
 SPEC §6. Wraps the phase 3 document pages in a real app shell and adds the remaining sections as honest empty states, so phases 5–7 each just fill in their section.
 
-- [ ] `/dashboard` layout + nav: Overview, Documents, Employees, Training, Whistleblower, Vendors, Billing, Settings; active state, sign-out, responsive (mobile works), accessible landmarks. Language = the company's country locale
-- [ ] One helper (`requireTenant`) used by **every** dashboard page and route handler (layouts don't re-run on client navigation, so the layout alone is not a gate); enforces session + completed onboarding; a test fails if any file under `app/(app)/dashboard` skips it
-- [ ] Overview: real tenant-scoped counts where the tables exist (documents, employees, open whistleblower cases), completion % shown as "—" until phase 6 defines it, binder download placeholder
-- [ ] Documents: phase 3 pages inside the shell (list, view, regenerate, PDF); draft-review status visible
-- [ ] Employees, Training, Whistleblower, Vendors: empty states written for the finished product; actions that don't exist yet are absent or visibly disabled
-- [ ] Settings: edit company name, industry, logo; tax ID, country and admin email shown read-only; saving does **not** regenerate documents (it says so and links to Documents); does not touch `onboarding_completed_at`
-- [ ] Billing: payment history from `BillingRecord` (date, formatted amount, status) + subscription status; no cancel/manage flow (billing terms are an open input)
-- [ ] Authenticated pages send `Cache-Control: private, no-store`, frame-ancestors denial and `Referrer-Policy: same-origin`
-- [ ] Every page server-side filters by session `company_id`; no route reads `company_id` from URL, query or body (new verify.sh invariant)
+- [x] `/dashboard` layout + nav: Overview, Documents, Employees, Training, Whistleblower, Vendors, Billing, Settings; active state, sign-out, responsive (mobile works), accessible landmarks. Language = the company's country locale
+- [x] One helper (`requireTenant`) used by **every** dashboard page and route handler (layouts don't re-run on client navigation, so the layout alone is not a gate); enforces session + completed onboarding; a test fails if any file under `app/(app)/dashboard` skips it
+- [x] Overview: real tenant-scoped counts where the tables exist (documents, employees, open whistleblower cases), completion % shown as "—" until phase 6 defines it, binder download placeholder
+- [x] Documents: phase 3 pages inside the shell (list, view, regenerate, PDF); draft-review status visible
+- [x] Employees, Training, Whistleblower, Vendors: empty states written for the finished product; actions that don't exist yet are absent or visibly disabled
+- [x] Settings: edit company name, industry, logo; tax ID, country and admin email shown read-only; saving does **not** regenerate documents (it says so and links to Documents); does not touch `onboarding_completed_at`
+- [x] Billing: payment history from `BillingRecord` (date, formatted amount, status) + subscription status; no cancel/manage flow (billing terms are an open input)
+- [x] Authenticated pages send `Cache-Control: private, no-store`, frame-ancestors denial and `Referrer-Policy: same-origin`
+- [x] Every page server-side filters by session `company_id`; no route reads `company_id` from URL, query or body (new verify.sh invariant)
 
 **Definition of done**
 ```

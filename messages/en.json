@@ -176,7 +176,82 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "placeholder": "Your dashboard is coming soon."
+    "skipToContent": "Skip to content",
+    "navLabel": "Main navigation",
+    "signedInAs": "Signed in as {email}",
+    "signOut": "Sign out",
+    "logoAlt": "{name} logo",
+    "unavailable": "Not available yet.",
+    "nav": {
+      "overview": "Overview",
+      "documents": "Documents",
+      "employees": "Employees",
+      "training": "Training",
+      "whistleblower": "Whistleblower",
+      "vendors": "Vendors",
+      "billing": "Billing",
+      "settings": "Settings"
+    },
+    "overview": {
+      "title": "Overview",
+      "intro": "What exists in your account today.",
+      "documents": "Documents",
+      "documentsCount": "{count} of {total} documents generated",
+      "documentsDraft": "{count, plural, one {# document in draft, pending review} other {# documents in draft, pending review}}",
+      "employees": "Employees",
+      "employeesCount": "{count, plural, =0 {No employees yet} one {# employee} other {# employees}}",
+      "openCases": "Open whistleblower cases",
+      "openCasesCount": "{count, plural, =0 {No open cases} one {# open case} other {# open cases}}",
+      "completion": "Completion",
+      "completionNote": "Shown once employee records exist.",
+      "binder": "Binder",
+      "binderDownload": "Download binder",
+      "sections": "Sections"
+    },
+    "employees": {
+      "empty": "No employees yet. Once your team is added, each person's reading and acknowledgment status will appear here.",
+      "action": "Add employees"
+    },
+    "training": {
+      "empty": "No training records yet. Each employee's training completion will appear here."
+    },
+    "whistleblower": {
+      "empty": "No reports received yet. Reports submitted through your reporting channel will appear here, with their status and history."
+    },
+    "vendors": {
+      "empty": "No vendors yet. Vendors you add will appear here, with their questionnaire status and screening result.",
+      "action": "Add vendor"
+    },
+    "billing": {
+      "subscriptionLabel": "Subscription status",
+      "subscription": {
+        "active": "Active"
+      },
+      "history": "Payment history",
+      "empty": "No payments recorded yet.",
+      "date": "Date",
+      "amount": "Amount",
+      "status": "Status",
+      "paid": "Paid"
+    },
+    "settings": {
+      "savedNotice": "Settings saved. Documents already generated are not regenerated automatically.",
+      "savedLink": "Go to Documents",
+      "currentLogo": "Current logo",
+      "noLogo": "No logo uploaded.",
+      "replaceLogo": "Replace logo (optional)",
+      "save": "Save changes",
+      "account": "Account details",
+      "readOnlyNote": "These details cannot be changed here.",
+      "taxId": "Tax ID",
+      "country": "Country",
+      "adminEmail": "Admin email",
+      "countries": {
+        "ar": "Argentina",
+        "br": "Brazil",
+        "mx": "Mexico"
+      }
+    }
   },
   "email": {
     "signinSubject": "Your sign-in link",
