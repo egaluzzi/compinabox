@@ -158,4 +158,4 @@ Dashboard shell/nav (phase 4); customer text editing (v1 = regenerate only); tra
 No new entries; none needed (no tolerated failures).
 
 ## CI
-(see PR — recorded below once it has run)
+GitHub Actions `verify` on PR #4, head eec8bcd: **success** (run 38572045125, 13:28:19–13:29:50Z). No review comments at the time of writing.
