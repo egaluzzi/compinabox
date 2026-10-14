@@ -40,6 +40,10 @@ export const users = pgTable("users", {
   emailVerified: timestamp("email_verified", { withTimezone: true }),
   name: text("name"),
   image: text("image"),
+  // Sessions issued before this instant are void (set to now() on sign-out). See getTenant().
+  sessionsValidAfter: timestamp("sessions_valid_after", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

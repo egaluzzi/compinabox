@@ -21,6 +21,7 @@ export async function buildSessionCookie(user: SessionUser) {
       email: user.email,
       userId: user.id,
       companyId: user.companyId,
+      sat: Date.now(), // session issue time in ms; getTenant() compares it to users.sessions_valid_after
     },
     secret,
     salt: name,

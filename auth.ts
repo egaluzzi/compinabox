@@ -68,12 +68,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
             .where(eq(schema.users.id, user.id));
           token.userId = user.id;
           token.companyId = row?.companyId;
+          token.sat = Date.now(); // session issue time in ms (see getTenant)
         }
         return token;
       },
       async session({ session, token }) {
         if (session.user) session.user.id = token.userId as string;
         session.companyId = token.companyId as string | undefined;
+        session.issuedAtMs = token.sat as number | undefined;
         return session;
       },
     },

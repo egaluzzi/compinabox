@@ -267,6 +267,7 @@ check "audit trail: v1 document view still carries the name it was generated wit
 
 # Sign-out: the header form is an Auth.js server action; submit it exactly as a browser would
 JAR4=$(mktemp); cp "$JAR2" "$JAR4"
+JAR_OLD=$(mktemp); cp "$JAR2" "$JAR_OLD" # the cookie as it was BEFORE sign-out: replayed below
 mapfile -d '' -t SO_ARGS < <(curl -s -b "$JAR4" "$B/dashboard" | node -e '
   let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
     const form=(d.split("<form").slice(1).find(f=>f.includes("Sair"))||"").split("</form>")[0];
@@ -284,8 +285,23 @@ check "sign-out action: 303 to /login" "head -1 '$SO_HDR' | grep -q ' 303 ' && g
 check "sign-out action: session cookie is cleared" "! grep -q 'authjs.session-token.*[A-Za-z0-9_-]\\{40,\\}' '$JAR4'"
 check "after sign-out: /dashboard redirects to /login" "curl -s -D - -o /dev/null -b '$JAR4' $B/dashboard | tr -d '\r' | grep -iqE '^location: .*/login'"
 check "after sign-out: a section and the PDF route are refused too" "curl -s -D - -o /dev/null -b '$JAR4' $B/dashboard/billing | tr -d '\r' | grep -iqE '^location: .*/login' && [ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR4' $B/dashboard/documents/$DOC1/pdf)\" = 401 ]"
-check "other browser (company 1's original jar) is a separate cookie and unaffected" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR2' $B/dashboard)\" = 200 ]"
-rm -f "$JAR4" "$SO_HDR"
+# Phase 4b: sign-out is server-side. The cookie copied before sign-out must now be refused everywhere.
+code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+check "REPLAY pre-sign-out cookie: /dashboard -> /login" "curl -s -D - -o /dev/null -b '$JAR_OLD' $B/dashboard | tr -d '\r' | grep -iqE '^location: .*/login'"
+check "REPLAY pre-sign-out cookie: /dashboard/billing -> /login" "curl -s -D - -o /dev/null -b '$JAR_OLD' $B/dashboard/billing | tr -d '\r' | grep -iqE '^location: .*/login'"
+check "REPLAY pre-sign-out cookie: PDF route -> 401" "[ \"\$(code -b '$JAR_OLD' $B/dashboard/documents/$DOC1/pdf)\" = 401 ]"
+check "REPLAY pre-sign-out cookie: settings/save -> 401" "[ \"\$(code -b '$JAR_OLD' -F companyName='Replay Ltda' -F industry=retail $B/dashboard/settings/save)\" = 401 ]"
+check "REPLAY pre-sign-out cookie: regenerate -> 401" "[ \"\$(code -b '$JAR_OLD' -F type=all $B/api/documents/regenerate)\" = 401 ]"
+check "REPLAY did not change the company name" "[ \"\$(SQL \"select name from companies where id='$CID'\")\" = 'Smoke Settings Ltda' ]"
+# a new sign-in link after the sign-out gives a session that works (and the old cookie stays dead)
+signin "$EMAIL" >/dev/null
+SLINK2=$(node -e 'const fs=require("fs"),d=process.argv[1];let out="";for(const f of fs.readdirSync(d).sort()){const m=JSON.parse(fs.readFileSync(d+"/"+f,"utf8"));if(m.to===process.argv[2]&&/callback/.test(m.text))out=m.text.match(/https?:\/\/\S+/)[0]}console.log(out)' "$OUTBOX" "$EMAIL")
+JAR5=$(mktemp)
+check "sign in again after sign-out: link sets a new session" "[ '$SLINK2' != '$SLINK' ] && curl -s -D - -o /dev/null -c '$JAR5' '$SLINK2' | tr -d '\r' | grep -iq 'set-cookie: authjs.session-token='"
+check "sign in again: new session reaches /dashboard (200) and the PDF" "[ \"\$(code -b '$JAR5' $B/dashboard)\" = 200 ] && [ \"\$(code -b '$JAR5' $B/dashboard/documents/$DOC1/pdf)\" = 200 ]"
+check "sign in again: the pre-sign-out cookie is still refused" "curl -s -D - -o /dev/null -b '$JAR_OLD' $B/dashboard | tr -d '\r' | grep -iqE '^location: .*/login'"
+check "the original jar (same user, another browser) ended too: all of that user's sessions end" "curl -s -D - -o /dev/null -b '$JAR2' $B/dashboard | tr -d '\r' | grep -iqE '^location: .*/login'"
+rm -f "$JAR4" "$SO_HDR" "$JAR_OLD" "$JAR5"
 
 rm -f "$JAR3" /tmp/pdf.hdr /tmp/doc1.pdf /tmp/st3.out
 

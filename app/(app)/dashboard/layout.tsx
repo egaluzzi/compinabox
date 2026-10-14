@@ -2,11 +2,17 @@ import type { ReactNode } from "react";
 import { signOut } from "@/auth";
 import { DashboardNav } from "@/components/DashboardNav";
 import { requireTenant } from "@/lib/auth/require-tenant";
+import { revokeSessions } from "@/lib/auth/tenant";
 import { getDb } from "@/lib/db/client";
 import { getTenantUser } from "@/lib/db/tenant";
 
 async function signOutAction() {
   "use server";
+  // Revoke server-side first: a copied cookie must stop working, not just this browser's. A
+  // failed write throws, so sign-out never silently falls back to clearing only the cookie.
+  // User and company come from the session (requireTenant), never from the request.
+  const { tenant } = await requireTenant();
+  await revokeSessions(getDb(), tenant);
   await signOut({ redirectTo: "/login" });
 }
 
