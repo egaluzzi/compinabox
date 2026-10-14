@@ -1,7 +1,7 @@
 # Handoff — Phase 2 follow-up: restore-test.sh (PR #3), 2026-10-14
 
 Scope: only the defect in SUPERVISOR_NOTES.md (origin/main aa6695c). Nothing else touched. Not merged.
-**Code tip: 94e7f9f** (`./verify.sh` run on exactly this commit). The pushed tip is one commit later and adds only this file. I merged `origin/main` into the branch first (a3dce66) to pick up the notes; that merge touched only CLAUDE.md / IMPLEMENTATION_PLAN.md / SUPERVISOR_NOTES.md, none of my files.
+**Code tip: 94e7f9f** (`./verify.sh` run on exactly this commit). The pushed tip is c9b4fd5 (adds only this file) plus a final commit recording CI. I merged `origin/main` into the branch first (a3dce66) to pick up the notes; that merge touched only CLAUDE.md / IMPLEMENTATION_PLAN.md / SUPERVISOR_NOTES.md, none of my files.
 
 ## What changed
 `scripts/restore-test.sh` no longer reads the live database or needs `DATABASE_URL`; only `SCRATCH_ADMIN_URL` is required. It now: `gzip -t`s the dump; parses the dump (`CREATE TABLE` gives the table list, each `COPY … FROM stdin;` block up to `\.` gives that table's row count); restores into a scratch DB with `ON_ERROR_STOP`; counts every user-schema table in the restored DB; prints `in dump` / `restored`; fails on any psql error, any mismatch, or a table on one side only (`MISSING`), naming the table(s). README "Restore" step 2 rewritten (what PASS / FAIL / PASS-does-not-mean say).
@@ -215,7 +215,7 @@ verify.sh: PASS (HEAD 94e7f9f)
 ```
 
 ## CI
-Run 38559106019 on head 94e7f9f (code tip): see the PR checks; result recorded below if it had finished when I pushed this file.
+Code tip 94e7f9f: run 38559106019 — **success**. Pushed tip c9b4fd5 (HANDOFF.md only): run 38559210949 — **success**. (Conclusions from the Actions API; logs not read line by line.) The commit that adds this CI note triggers one more docs-only run.
 
 ## Open questions
 - Detecting a dump that is *missing data* (case v) needs an independent count taken at dump time. Option: `backup.sh` appends a manifest of per-table counts (from one `REPEATABLE READ` snapshot, same as pg_dump's) inside the archive, and restore-test compares against it. Small change, not done (out of scope). Without it, the monthly test proves "restores cleanly and completely as written", not "matches the DB at dump time".
