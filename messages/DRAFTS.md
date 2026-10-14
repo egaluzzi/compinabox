@@ -8,7 +8,7 @@ launch (CLAUDE.md §11); the footer disclaimer and the "does this certify…?" F
 Source column: the locale/key the text was translated from, or "new UI string" where CONTENT.md has no source at all
 (the worker wrote the English and translated it faithfully).
 
-Row counts: en=119, es-AR=106, pt-BR=128, es-MX=116
+Row counts: en=143, es-AR=130, pt-BR=152, es-MX=140
 
 | locale | key | translated from |
 | :- | :- | :- |
@@ -481,3 +481,99 @@ Row counts: en=119, es-AR=106, pt-BR=128, es-MX=116
 | es-MX | email.welcomeSubject | en |
 | es-MX | email.welcomeBody | en |
 | es-MX | email.welcomeButton | en |
+| en | documents.title | new UI string (no CONTENT.md source) |
+| en | documents.intro | new UI string (no CONTENT.md source) |
+| en | documents.version | new UI string (no CONTENT.md source) |
+| en | documents.generatedOn | new UI string (no CONTENT.md source) |
+| en | documents.view | new UI string (no CONTENT.md source) |
+| en | documents.download | new UI string (no CONTENT.md source) |
+| en | documents.regenerate | new UI string (no CONTENT.md source) |
+| en | documents.regenerateAll | new UI string (no CONTENT.md source) |
+| en | documents.regenerateHint | new UI string (no CONTENT.md source) |
+| en | documents.versions | new UI string (no CONTENT.md source) |
+| en | documents.current | new UI string (no CONTENT.md source) |
+| en | documents.backToList | new UI string (no CONTENT.md source) |
+| en | documents.created | new UI string (no CONTENT.md source) |
+| en | documents.unchanged | new UI string (no CONTENT.md source) |
+| en | documents.pageOf | new UI string (no CONTENT.md source) |
+| en | documents.languageNote | new UI string (no CONTENT.md source) |
+| en | documents.empty | new UI string (no CONTENT.md source) |
+| en | documents.errRegenerate | new UI string (no CONTENT.md source) |
+| en | documents.types.codeOfConduct | new UI string (no CONTENT.md source) |
+| en | documents.types.antiBribery | new UI string (no CONTENT.md source) |
+| en | documents.types.giftsHospitality | new UI string (no CONTENT.md source) |
+| en | documents.types.conflictsOfInterest | new UI string (no CONTENT.md source) |
+| en | documents.types.thirdPartyPublicOfficials | new UI string (no CONTENT.md source) |
+| en | documents.types.whistleblowerProtection | new UI string (no CONTENT.md source) |
+| es-AR | documents.title | en |
+| es-AR | documents.intro | en |
+| es-AR | documents.version | en |
+| es-AR | documents.generatedOn | en |
+| es-AR | documents.view | en |
+| es-AR | documents.download | en |
+| es-AR | documents.regenerate | en |
+| es-AR | documents.regenerateAll | en |
+| es-AR | documents.regenerateHint | en |
+| es-AR | documents.versions | en |
+| es-AR | documents.current | en |
+| es-AR | documents.backToList | en |
+| es-AR | documents.created | en |
+| es-AR | documents.unchanged | en |
+| es-AR | documents.pageOf | en |
+| es-AR | documents.languageNote | en |
+| es-AR | documents.empty | en |
+| es-AR | documents.errRegenerate | en |
+| es-AR | documents.types.codeOfConduct | en |
+| es-AR | documents.types.antiBribery | en |
+| es-AR | documents.types.giftsHospitality | en |
+| es-AR | documents.types.conflictsOfInterest | en |
+| es-AR | documents.types.thirdPartyPublicOfficials | en |
+| es-AR | documents.types.whistleblowerProtection | en |
+| es-MX | documents.title | en |
+| es-MX | documents.intro | en |
+| es-MX | documents.version | en |
+| es-MX | documents.generatedOn | en |
+| es-MX | documents.view | en |
+| es-MX | documents.download | en |
+| es-MX | documents.regenerate | en |
+| es-MX | documents.regenerateAll | en |
+| es-MX | documents.regenerateHint | en |
+| es-MX | documents.versions | en |
+| es-MX | documents.current | en |
+| es-MX | documents.backToList | en |
+| es-MX | documents.created | en |
+| es-MX | documents.unchanged | en |
+| es-MX | documents.pageOf | en |
+| es-MX | documents.languageNote | en |
+| es-MX | documents.empty | en |
+| es-MX | documents.errRegenerate | en |
+| es-MX | documents.types.codeOfConduct | en |
+| es-MX | documents.types.antiBribery | en |
+| es-MX | documents.types.giftsHospitality | en |
+| es-MX | documents.types.conflictsOfInterest | en |
+| es-MX | documents.types.thirdPartyPublicOfficials | en |
+| es-MX | documents.types.whistleblowerProtection | en |
+| pt-BR | documents.title | en |
+| pt-BR | documents.intro | en |
+| pt-BR | documents.version | en |
+| pt-BR | documents.generatedOn | en |
+| pt-BR | documents.view | en |
+| pt-BR | documents.download | en |
+| pt-BR | documents.regenerate | en |
+| pt-BR | documents.regenerateAll | en |
+| pt-BR | documents.regenerateHint | en |
+| pt-BR | documents.versions | en |
+| pt-BR | documents.current | en |
+| pt-BR | documents.backToList | en |
+| pt-BR | documents.created | en |
+| pt-BR | documents.unchanged | en |
+| pt-BR | documents.pageOf | en |
+| pt-BR | documents.languageNote | en |
+| pt-BR | documents.empty | en |
+| pt-BR | documents.errRegenerate | en |
+| pt-BR | documents.types.codeOfConduct | en |
+| pt-BR | documents.types.antiBribery | en |
+| pt-BR | documents.types.giftsHospitality | en |
+| pt-BR | documents.types.conflictsOfInterest | en |
+| pt-BR | documents.types.thirdPartyPublicOfficials | en |
+| pt-BR | documents.types.whistleblowerProtection | en |

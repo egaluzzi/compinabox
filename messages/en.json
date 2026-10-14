@@ -156,10 +156,10 @@
     "industry": "Industry",
     "industryPlaceholder": "Select an industry",
     "logo": "Logo (optional)",
-    "logoHint": "PNG, JPEG or WebP, up to 1 MB.",
+    "logoHint": "PNG or JPEG, up to 1 MB.",
     "submit": "Save and continue",
     "saved": "Saved.",
-    "errLogo": "The logo must be a PNG, JPEG or WebP image up to 1 MB.",
+    "errLogo": "The logo must be a PNG or JPEG image up to 1 MB.",
     "errGeneric": "We could not save your details. Please try again."
   },
   "industry": {
@@ -185,5 +185,33 @@
     "welcomeSubject": "Set up your account",
     "welcomeBody": "Your payment was received. Use this link to set up your account. It expires in 24 hours and can be used once; after that you can request a new sign-in link at any time.",
     "welcomeButton": "Set up my account"
+  },
+  "documents": {
+    "title": "Documents",
+    "intro": "Your code of conduct and policies. Each regeneration creates a new version; earlier versions stay readable.",
+    "version": "Version {n}",
+    "generatedOn": "Generated on {date}",
+    "view": "View",
+    "download": "Download PDF",
+    "regenerate": "Regenerate",
+    "regenerateAll": "Regenerate all documents",
+    "regenerateHint": "Regenerating uses your company's current name and industry. If nothing changed, no new version is created.",
+    "versions": "Versions",
+    "current": "Current",
+    "backToList": "Back to documents",
+    "created": "A new version was created.",
+    "unchanged": "Nothing changed, so no new version was created.",
+    "pageOf": "Page {page} of {total}",
+    "languageNote": "The text of these documents is in Portuguese (Brazil).",
+    "empty": "Your documents will appear here once you finish setting up your company.",
+    "errRegenerate": "The documents could not be regenerated. Please try again.",
+    "types": {
+      "codeOfConduct": "Code of conduct",
+      "antiBribery": "Anti-bribery and anti-corruption policy",
+      "giftsHospitality": "Gifts, hospitality and entertainment policy",
+      "conflictsOfInterest": "Conflicts of interest policy",
+      "thirdPartyPublicOfficials": "Third-party and public official dealings policy",
+      "whistleblowerProtection": "Whistleblower protection policy"
+    }
   }
 }

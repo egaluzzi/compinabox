@@ -156,10 +156,10 @@
     "industry": "Rubro",
     "industryPlaceholder": "Elegí un rubro",
     "logo": "Logo (opcional)",
-    "logoHint": "PNG, JPEG o WebP, hasta 1 MB.",
+    "logoHint": "PNG o JPEG, hasta 1 MB.",
     "submit": "Guardar y continuar",
     "saved": "Guardado.",
-    "errLogo": "El logo debe ser una imagen PNG, JPEG o WebP de hasta 1 MB.",
+    "errLogo": "El logo debe ser una imagen PNG o JPEG de hasta 1 MB.",
     "errGeneric": "No pudimos guardar tus datos. Intentá de nuevo."
   },
   "industry": {
@@ -185,5 +185,33 @@
     "welcomeSubject": "Configurá tu cuenta",
     "welcomeBody": "Recibimos tu pago. Usá este enlace para configurar tu cuenta. Vence en 24 horas y sirve una sola vez; después podés pedir un nuevo enlace de acceso cuando quieras.",
     "welcomeButton": "Configurar mi cuenta"
+  },
+  "documents": {
+    "title": "Documentos",
+    "intro": "Tu código de conducta y tus políticas. Cada regeneración crea una nueva versión; las versiones anteriores siguen disponibles.",
+    "version": "Versión {n}",
+    "generatedOn": "Generado el {date}",
+    "view": "Ver",
+    "download": "Descargar PDF",
+    "regenerate": "Regenerar",
+    "regenerateAll": "Regenerar todos los documentos",
+    "regenerateHint": "Al regenerar se usan el nombre y el sector actuales de tu empresa. Si nada cambió, no se crea una nueva versión.",
+    "versions": "Versiones",
+    "current": "Actual",
+    "backToList": "Volver a documentos",
+    "created": "Se creó una nueva versión.",
+    "unchanged": "No hubo cambios, así que no se creó una nueva versión.",
+    "pageOf": "Página {page} de {total}",
+    "languageNote": "El texto de estos documentos está en portugués (Brasil).",
+    "empty": "Tus documentos aparecerán acá cuando termines de configurar tu empresa.",
+    "errRegenerate": "No se pudieron regenerar los documentos. Intentá de nuevo.",
+    "types": {
+      "codeOfConduct": "Código de conducta",
+      "antiBribery": "Política anticorrupción y antisoborno",
+      "giftsHospitality": "Política de obsequios, hospitalidad y entretenimiento",
+      "conflictsOfInterest": "Política de conflicto de intereses",
+      "thirdPartyPublicOfficials": "Política de relación con terceros y funcionarios públicos",
+      "whistleblowerProtection": "Política de protección al denunciante"
+    }
   }
 }

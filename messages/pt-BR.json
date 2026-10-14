@@ -156,10 +156,10 @@
     "industry": "Setor",
     "industryPlaceholder": "Selecione um setor",
     "logo": "Logotipo (opcional)",
-    "logoHint": "PNG, JPEG ou WebP, até 1 MB.",
+    "logoHint": "PNG ou JPEG, até 1 MB.",
     "submit": "Salvar e continuar",
     "saved": "Salvo.",
-    "errLogo": "O logotipo deve ser uma imagem PNG, JPEG ou WebP de até 1 MB.",
+    "errLogo": "O logotipo deve ser uma imagem PNG ou JPEG de até 1 MB.",
     "errGeneric": "Não foi possível salvar seus dados. Tente novamente."
   },
   "industry": {
@@ -185,5 +185,33 @@
     "welcomeSubject": "Configure sua conta",
     "welcomeBody": "Recebemos o seu pagamento. Use este link para configurar sua conta. Ele expira em 24 horas e funciona uma única vez; depois disso, você pode solicitar um novo link de acesso quando quiser.",
     "welcomeButton": "Configurar minha conta"
+  },
+  "documents": {
+    "title": "Documentos",
+    "intro": "Seu código de conduta e suas políticas. Cada regeneração cria uma nova versão; as versões anteriores continuam disponíveis.",
+    "version": "Versão {n}",
+    "generatedOn": "Gerado em {date}",
+    "view": "Ver",
+    "download": "Baixar PDF",
+    "regenerate": "Regenerar",
+    "regenerateAll": "Regenerar todos os documentos",
+    "regenerateHint": "A regeneração usa o nome e o setor atuais da sua empresa. Se nada mudou, nenhuma nova versão é criada.",
+    "versions": "Versões",
+    "current": "Atual",
+    "backToList": "Voltar para documentos",
+    "created": "Uma nova versão foi criada.",
+    "unchanged": "Nada mudou, então nenhuma nova versão foi criada.",
+    "pageOf": "Página {page} de {total}",
+    "languageNote": "O texto destes documentos está em português (Brasil).",
+    "empty": "Seus documentos aparecerão aqui quando você terminar de configurar sua empresa.",
+    "errRegenerate": "Não foi possível regenerar os documentos. Tente novamente.",
+    "types": {
+      "codeOfConduct": "Código de conduta",
+      "antiBribery": "Política anticorrupção e antissuborno",
+      "giftsHospitality": "Política de brindes, presentes e hospitalidade",
+      "conflictsOfInterest": "Política de conflito de interesses",
+      "thirdPartyPublicOfficials": "Política de relacionamento com terceiros e agentes públicos",
+      "whistleblowerProtection": "Política de proteção ao denunciante"
+    }
   }
 }
