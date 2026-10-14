@@ -1,17 +1,130 @@
-# Handoff — Phase 0: repo scaffold and groundwork, 2026-10-13
+# Handoff — Phase 1 follow-up fixes (PR #2), 2026-10-14
 
-## Evidence block
+Scope: the two fixes in SUPERVISOR_NOTES.md (origin/main 6ce16b4). Nothing else changed. Do not merge — PR #2 is still open.
 
-Full `./verify.sh` output on code tip 73d8ef5 (run locally, after the last code commit):
+**Code tip: f279e2a** (`f279e2a20e03ec848ea01041b027029c6919cea8`). The pushed tip is one commit later and adds only this file.
+Commits: `verify.sh` fix (own commit), then `proxy` fix.
+
+## What changed
+
+1. **`verify.sh` 4d exemption** now requires a non-letter (or line start) before the negation word, so `no` inside `plano` no longer exempts a claim.
+2. **`proxy.ts` redirect** builds the absolute `Location` from `APP_URL` (origin only; a path on `APP_URL` is dropped), falling back to `request.url`
+   when `APP_URL` is unset or does not parse. Still 307 + `Cache-Control: no-store`. The pure helper is `redirectLocation()` in `lib/geo.ts`.
+   Unit tests (4 new, `tests/proxy.test.ts`): set -> `https://example.test/br`; path on `APP_URL` ignored; unset -> `http://localhost:3000/br`;
+   invalid (`not a url`) -> falls back, no throw. `scripts/smoke.sh` needed no change and still passes.
+
+## Item 1 evidence — raw output (the first block shows the defect with the OLD filter; the rest is the NEW filter, same pipeline as `verify.sh` 4d)
+
+```
+$ OLD exemption on "Nosso plano garante a conformidade":
+(nothing flagged -> slipped through)
+
+=== must be FLAGGED (lines printed = flagged) ===
+1:We guarantee compliance
+2:Nosso plano garante a conformidade
+3:Garantizamos el cumplimiento
+4:Tu programa garantiza el cumplimiento
+=== must be EXEMPT (nothing printed below = exempt) ===
+[en scanned]
+[es-AR scanned]
+[es-MX scanned]
+[pt-BR scanned]
+=== real scan pipeline on repo ===
+(nothing flagged)
+```
+
+The "must be exempt" lines are the three real footer disclaimers read straight from `messages/*.json` (`en`; `es-AR`+`es-MX`; `pt-BR`); each scanned clean.
+The last block is the unmodified pipeline over `app messages lib/content` in the repo: nothing flagged.
+
+## Extra check on item 2 (runtime, not just unit tests)
+
+Standalone server started with `APP_URL=https://example.test` and no other config:
+```
+$ curl -sI -H "CF-IPCountry: BR" http://localhost:3995/
+HTTP/1.1 307 Temporary Redirect
+cache-control: no-store
+location: https://example.test/br
+```
+So the env var is read at request time, not inlined at build. (Still simulated headers; not through Caddy/Cloudflare.)
+
+## Diff (`verify.sh`, `proxy.ts`, `lib/geo.ts`; test file changes are the 4 tests above)
+
+```diff
+diff --git a/lib/geo.ts b/lib/geo.ts
+index 77eb969..08bc99f 100644
+--- a/lib/geo.ts
++++ b/lib/geo.ts
+@@ -31,3 +31,23 @@ export function resolveGeoRedirect({
+   const header = cfCountry?.trim().toLowerCase();
+   return isCountry(header) ? header : null;
+ }
++
++/**
++ * Absolute redirect target. Behind Caddy the process sees an internal scheme/host in
++ * `request.url`, so APP_URL (the public origin) wins when it is set and parses;
++ * otherwise fall back to the request's own URL.
++ */
++export function redirectLocation(
++  country: Country,
++  requestUrl: string,
++  appUrl: string | undefined,
++): URL {
++  if (appUrl) {
++    try {
++      return new URL(`/${country}`, new URL(appUrl).origin);
++    } catch {
++      // invalid APP_URL: fall through
++    }
++  }
++  return new URL(`/${country}`, requestUrl);
++}
+diff --git a/proxy.ts b/proxy.ts
+index e7cb3e2..4c1738c 100644
+--- a/proxy.ts
++++ b/proxy.ts
+@@ -1,5 +1,5 @@
+ import { NextResponse, type NextRequest } from "next/server";
+-import { resolveGeoRedirect } from "@/lib/geo";
++import { redirectLocation, resolveGeoRedirect } from "@/lib/geo";
+ 
+ // Next 16 renamed the `middleware` file convention to `proxy`.
+ // Geo redirect from `/` only (SPEC §3.2); the decision lives in lib/geo.ts.
+@@ -12,8 +12,9 @@ export function proxy(request: NextRequest) {
+   if (!target) return NextResponse.next();
+ 
+   // 307 + no-store: the answer depends on the visitor, and Cloudflare sits in front.
++  // Location is built from APP_URL: behind Caddy request.url carries the internal scheme/host.
+   const response = NextResponse.redirect(
+-    new URL(`/${target}`, request.url),
++    redirectLocation(target, request.url, process.env.APP_URL),
+     307,
+   );
+   response.headers.set("Cache-Control", "no-store");
+diff --git a/verify.sh b/verify.sh
+index b8f92f7..bee492d 100755
+--- a/verify.sh
++++ b/verify.sh
+@@ -119,7 +119,7 @@ fi
+ # 4d. Forbidden claims in copy (CLAUDE.md §8)
+ # A *negated* guarantee ("does not guarantee compliance", "no garantiza el cumplimiento", "não garante a conformidade")
+ # is the approved footer disclaimer (CONTENT.md §1), not a claim — those lines are exempt.
+-BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cumplimiento|garante (a )?conformidade|ISO ?3730[12]|certif(ied|icado|icada) (by|por) (la )?ley' app messages lib/content 2>/dev/null | grep -viE '(does not|do not|doesn.t|no|não|nao|never|nunca) +(guarantee|garantiza|garante)' || true)
++BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cumplimiento|garante (a )?conformidade|ISO ?3730[12]|certif(ied|icado|icada) (by|por) (la )?ley' app messages lib/content 2>/dev/null | grep -viE '(^|[^[:alpha:]])(does not|do not|doesn.t|no|não|nao|never|nunca) +(guarantee|garantiza|garante)' || true)
+ if [ -n "$BANNED" ]; then echo "$BANNED" | head; bad "forbidden claims" "copy implies guaranteed compliance or ISO certification"; else note "forbidden claims" "none"; fi
+ 
+ # 4e. Second geo mechanism must not exist (CLAUDE.md §4)
+```
+
+## Full `./verify.sh` output on code tip f279e2a (exit code 0)
 
 ```
 --- commit state
-current HEAD               73d8ef5  (2026-10-13T18:05:19+00:00)
-branch                     phase-0-scaffold
-comparing against          8ab4a41
-commits this pass          6
+current HEAD               f279e2a  (2026-10-14T00:14:24+00:00)
+branch                     phase-1-marketing
+comparing against          de2d416
+commits this pass          9
 uncommitted changes        0 file(s)
-test files changed          2 files changed, 26 insertions(+)
+test files changed          7 files changed, 386 insertions(+), 12 deletions(-)
 --- secrets
 secrets                    none found
 .env.example               present
@@ -20,19 +133,45 @@ lint                       ok
 --- typecheck
 typecheck                  ok
 --- tests
- RUN  v5.0.4 /home/user/compinabox
+ Test Files  6 passed (6)
+      Tests  60 passed (60)
+   Start at  00:14:33
+   Duration  1.70s (environment 64%, setup 20%, import 6%, tests 6%, transform 3%, worker 1%)
 
- ✓ tests/home.test.tsx (1 test) 174ms
-
- Test Files  1 passed (1)
-      Tests  1 passed (1)
-   Start at  18:06:09
-   Duration  1.21s (environment 68%, tests 17%, setup 9%, import 3%, transform 2%)
+Environment  jsdom was created 6 times · 2.33s total, 64% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
 test exit code             0
-counts                     total=1 pass=1 fail=0 skip=0
+counts                     total=60 pass=60 fail=0 skip=0
 --- build
 build                      ok
 standalone output          present
+--- smoke
+ok    BR header -> redirect to /br
+ok    AR header -> redirect to /ar
+ok    DE header -> 200 on /
+ok    cookie country=mx beats BR header
+ok    deep link /ar/pricing not redirected (200)
+ok    /ar carries noindex (disabled country)
+ok    /br has no noindex (enabled country)
+ok    sitemap.xml has <loc> entries
+ok    sitemap.xml excludes disabled /ar
+ok    cookie country=other + BR header -> 200, no redirect
+ok    redirect status is 307
+ok    redirect carries cache-control: no-store
+ok    invalid country cookie ignored, header decides
+ok    /checkout -> 200
+ok    /legal/terms -> 200
+ok    /zz -> 404
+ok    /pt-BR -> 404
+ok    robots.txt disallows /dashboard
+ok    robots.txt disallows /employee
+ok    robots.txt disallows /checkout
+ok    robots.txt disallows /onboarding
+ok    ENABLED_COUNTRIES=br,ar at runtime: /ar has no noindex
+ok    ENABLED_COUNTRIES=br,ar at runtime: /mx still noindex
+smoke: PASS (port 42409)
+smoke                      ok
 --- invariants
 db                         no schema yet (pre-phase 2)
 forbidden claims           none
@@ -40,59 +179,13 @@ geo                        CF-IPCountry only
 urls                       no locale codes in paths
 KNOWN_ISSUES.md            present
 --- result
-verify.sh: PASS (HEAD 73d8ef5)
+verify.sh: PASS (HEAD f279e2a)
 ```
 
-```
-verify.sh exit code:   0
-current HEAD:          73d8ef5 (code tip). The pushed tip is one commit later and adds ONLY HANDOFF.md
-                       (verify.sh requires a clean tree, so output cannot be pasted into the commit it
-                       describes). CI re-ran verify.sh on the PR merge ref (HEAD cf14184 in its log).
-branch:                phase-0-scaffold
-PR:                    https://github.com/egaluzzi/compinabox/pull/1
-uncommitted changes:   0
-test files changed:    2 files changed, 26 insertions(+)   (tests/home.test.tsx smoke test + vitest.setup.ts)
-```
+## CI
 
-CI (ci.yml): run 1 (head 025d87b) **failed**, see Bugs. Run 2 (id 38443926988, head SHA
-73d8ef518507e9730d215500bafe909ba368eeae = code tip) log ends `verify.sh: PASS`. Caveat: the GitHub
-MCP status API still reported "in_progress" for run 2 when I read the job log, so I am quoting the
-log, not a `conclusion` field. Supervisor should confirm green on the PR page.
+CI run **38489077543** on head `f279e2a20e03ec848ea01041b027029c6919cea8`: `status: completed`, `conclusion: success` (read via the API after this file was first pushed). Local `./verify.sh` on the same SHA also passed (above).
 
-`npm run build` produced .next/standalone (verify.sh: "standalone output present").
+## Open questions
 
-## Verification depth
-
-- **Unit tests (mocked):** one jsdom smoke test renders the placeholder page and finds the "ComplyStart" heading. Proves only that the page renders.
-- **Live database:** N/A — nothing touches a database.
-- **Real HTTP round-trip:** yes. After build: `PORT=3458 node .next/standalone/server.js`, `curl` of `/` returned **200**, body started `<!DOCTYPE html><html lang="en">...` and contains `<h1 class="text-3xl font-semibold">ComplyStart</h1>`. Server stopped afterwards.
-- **Real external calls:** N/A — none exist.
-
-## What was built
-
-All Phase 0 checklist boxes ticked in IMPLEMENTATION_PLAN.md. Next.js 16.4.0 / React 19.3.0 / Tailwind 4.3.3 (via @tailwindcss/postcss) / TypeScript 5.9.3 / ESLint 9 (flat config, eslint-config-next) / Prettier / Vitest 5.0.4 + Testing Library + jsdom; `output: 'standalone'`; `.nvmrc` = 22 and `engines` ">=22 <23"; placeholder page (product name only); exact versions in package.json, package-lock.json committed; scripts per CLAUDE.md §7 plus `format:check` and `start`; `.env.example` (all 12 keys, `changeme` placeholders); `.gitignore`; `.github/workflows/ci.yml` (pull_request to main + workflow_dispatch, fetch-depth 0, Node from .nvmrc, npm ci, ./verify.sh; no deploy, no secrets); README; CLAUDE.md §4 "(phase 0)" -> "(phase 9)" and §7 note edited. KNOWN_ISSUES.md untouched.
-
-## Bugs found and fixed
-
-- **verify.sh not executable in git (mode 100644).** CI's `./verify.sh` would fail with permission denied. Fixed with `chmod +x` (mode change only). Would have broken CI.
-- **CI run 1 failed:** vitest emits ANSI colour codes on the CI runner, so verify.sh's `^\s*Tests\s` summary grep missed the line ("no summary line") although the test passed. Fixed in `ci.yml` via `NO_COLOR=1`/`FORCE_COLOR=0` env, **not** by editing verify.sh. Not an issue locally (non-TTY). Worth hardening in verify.sh later (supervisor's call).
-
-## Judgment calls made
-
-- `db:generate` / `db:migrate` are placeholders printing "not available until phase 2 (Drizzle)" to stderr and exiting 1, as instructed.
-- verify.sh edit (item 4): geo grep (4e) matched `node_modules/vite/dist/node/index.d.ts`. Diff: added `--exclude-dir=node_modules --exclude-dir=.next` to that one grep. Plus the mode change above. Nothing else.
-- `create-next-app` was run in a scratch dir and copied in (the repo root was non-empty). The generator's output differed from older Next versions; I removed its `cacheComponents`, `partialPrefetching` and Turbopack-Tailwind-loader config and the Google-font imports (build-time network fetch, extra risk) in favour of plain config + `@tailwindcss/postcss`. I also dropped starter SVGs/favicon and the generated AGENTS.md (it said `next dev` re-creates it; it will show up untracked after `npm run dev`).
-- Pinned `@types/node` to 22 to match the Node 22 pin (v26 conflicted with vitest peer deps).
-- Prettier ignores `*.md` and `verify.sh` so it does not reformat the pre-approved docs (an early `prettier --write` did; I reverted it before committing).
-- Vitest tests live in `tests/`; `@` alias configured in `vitest.config.mts`.
-- The first CI-fix commit added to the PR beyond the 5 planned commits (6 total + HANDOFF).
-
-## Not done / deferred / blocked
-
-Nothing blocked; no Guardrail touched. Out-of-scope items not done: Caddy/systemd/backups, deploy workflow, DB, anything in phases 1–11.
-
-## Open questions for the supervisor
-
-- `npm install` reports 5 high-severity audit findings in the generated dependency tree; not investigated or "fixed" (would mean changing pinned versions). Worth a look before launch.
-- CI warns actions/checkout@v4 and setup-node@v4 run on deprecated Node 20; bump when convenient.
-- Consider making verify.sh's vitest summary parse colour-proof.
+- None new. Reminder from Phase 1: `APP_URL` must be set correctly in `/opt/compinabox/.env` on the droplet, or redirects fall back to `request.url`.

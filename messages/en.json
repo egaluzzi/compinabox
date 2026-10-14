@@ -1,0 +1,119 @@
+{
+  "brand": {
+    "name": "ComplyStart"
+  },
+  "meta": {
+    "home": {
+      "title": "ComplyStart — Compliance Programs for Government & Supplier Requirements",
+      "description": "Get a documented compliance program — code of conduct, policies, whistleblower channel, training — built in minutes. For companies in Argentina, Brazil, and Mexico."
+    }
+  },
+  "home": {
+    "hero": "Your customer or government buyer wants proof of a compliance program. Here it is.",
+    "sub": "Code of conduct, policies, a whistleblower channel, and employee training — generated, branded, and ready in minutes. No lawyer. No consultant. No waiting.",
+    "cta": "Select your country →",
+    "argentina": "Argentina",
+    "brazil": "Brazil",
+    "mexico": "Mexico",
+    "other": "Other / not listed",
+    "whyTitle": "Why companies need this",
+    "why": "Two things force small and mid-sized companies to prove they have a compliance program: bidding on a <b>government contract</b>, and selling to a <b>large multinational customer</b> who audits its suppliers. Neither cares how big you are. Both want documentation.",
+    "getTitle": "What you get",
+    "item1": "A code of conduct with your company's name on it, grounded in the law that applies to you.",
+    "item2": "Written policies covering bribery, gifts, conflicts of interest, and dealing with public officials.",
+    "item3": "A branded whistleblower reporting line — your employees and partners can report concerns confidentially.",
+    "item4": "Short employee training, with proof everyone completed it.",
+    "item5": "A record of every employee who's read and accepted your policies.",
+    "item6": "A quick screening tool for checking your vendors against sanctions lists.",
+    "item7": "One PDF binder that packages all of the above — hand it to whoever's asking.",
+    "availability": "Full legal-citation support for Argentina, Brazil, and Mexico. Don't see your country?",
+    "joinWaitlist": "Join the waitlist →"
+  },
+  "footer": {
+    "disclaimer": "ComplyStart provides the documented components that regulators, government buyers, and corporate auditors commonly require. It is general information, not legal advice, and does not guarantee compliance with any specific law or audit.",
+    "terms": "Terms of service",
+    "privacy": "Privacy policy",
+    "disclaimerLink": "Disclaimer"
+  },
+  "nav": {
+    "pricing": "Pricing",
+    "legalBasis": "Legal basis"
+  },
+  "common": {
+    "changeCountry": "Change country",
+    "language": "Language"
+  },
+  "legal": {
+    "draft": "DRAFT — pending review"
+  },
+  "consent": {
+    "text": "We use cookies to remember your country, language and cookie choice. With your permission we may also use analytics cookies.",
+    "accept": "Accept",
+    "reject": "Reject"
+  },
+  "waitlist": {
+    "intro": "Leave your email and we'll let you know when we launch in your country.",
+    "emailLabel": "Email",
+    "countryLabel": "Country",
+    "success": "Thanks! You're on the list.",
+    "invalid": "Please enter a valid email address.",
+    "error": "Something went wrong. Please try again."
+  },
+  "landing": {
+    "metaTitle": "Compliance Program for Companies — Law 27.401 | ComplyStart",
+    "metaDescription": "Set up your integrity program in minutes: code of conduct, policies, whistleblower channel and training. Ready for public tenders or audits by multinational customers.",
+    "hero": "Are you being asked for an integrity program to bid for government contracts or to supply a multinational? You can have it ready in minutes.",
+    "sub": "Code of conduct, policies, your own whistleblower channel and training for your team. No law firm, no consultants, no waiting.",
+    "ctaPrimary": "Get started →",
+    "ctaSecondary": "See what's included →",
+    "whyTitle": "Why you need it",
+    "why": "Law 27.401 on Corporate Criminal Liability is not mandatory for every company — but in practice it is if you contract with the national government. And more and more multinational customers (US, Europe) require their local suppliers to have a documented program, even where Argentine law does not ask for it.",
+    "minTitle": "The minimum the law requires",
+    "min": "To contract with the national government, Law 27.401 requires: a code of conduct, specific policies to prevent offenses in dealings with the public administration, and periodic training. It also recommends — and international buyers usually require — risk analysis, a whistleblower channel, an internal investigations protocol and the appointment of a compliance officer.",
+    "minNote": "This is general information, not legal advice.",
+    "pricingCta": "One price, everything included. No fine print.",
+    "pricingLink": "See pricing →",
+    "faq": {
+      "q1": "Does this replace a lawyer?",
+      "a1": "No. It gives you the baseline documentation most buyers and agencies ask for. For specific or high-risk situations, we recommend legal advice.",
+      "q2": "Does it work for any public agency?",
+      "a2": "The content is built on Law 27.401. Some agencies may have additional requirements of their own in the tender documents — always review the bidding terms."
+    }
+  },
+  "howItWorks": {
+    "title": "How it works",
+    "s1t": "Select your country and pay.",
+    "s2t": "Complete your company details.",
+    "s2b": "Name, industry, logo — 2 minutes.",
+    "s3t": "Your program is generated automatically.",
+    "s3b": "Code of conduct, policies, whistleblower channel and training, all ready.",
+    "s4t": "Invite your team.",
+    "s4b": "Upload a CSV with names and emails; everyone gets their own training and acceptance link.",
+    "s5t": "Download your binder.",
+    "s5b": "One PDF with everything, ready to hand over."
+  },
+  "faq": {
+    "title": "FAQ",
+    "q1": "How long does it take?",
+    "a1": "The program is generated instantly after payment. Inviting employees and having them complete the training depends on your team.",
+    "q2": "Can I edit the code of conduct and the policies?",
+    "a2": "Yes, you can regenerate them with adjustments from your dashboard.",
+    "q3": "Is the whistleblower channel anonymous?",
+    "a3": "By default, yes. Reporters can choose to leave their contact details if they prefer.",
+    "q4": "What happens if I change my employee plan?",
+    "a4": "You can add or remove employees at any time from the dashboard.",
+    "q5": "Does this certify that my company complies with the law?",
+    "a5": "No. It gives you the documentation most buyers and agencies ask for. It is not a legal certificate and does not replace professional advice for your specific case."
+  },
+  "pricing": {
+    "planHeader": "One plan, everything included",
+    "includedTitle": "What's included",
+    "trust": "Secure payment. Cancel whenever you want.",
+    "tba": "Pricing will be announced soon."
+  },
+  "checkout": {
+    "button": "Activate my compliance program",
+    "title": "Checkout",
+    "unavailable": "Checkout is not available yet."
+  }
+}

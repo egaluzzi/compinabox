@@ -49,6 +49,8 @@ if npm run -s typecheck >/tmp/verify-tsc.log 2>&1; then note "typecheck" "ok"; e
 
 hr "tests"
 OUT=$(npx vitest run --reporter=default 2>&1); TEST_EXIT=$?
+# strip ANSI colour codes so the summary grep works however vitest decides to colour its output
+OUT=$(printf '%s\n' "$OUT" | sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g')
 echo "$OUT" | tail -8
 note "test exit code" "$TEST_EXIT"
 # vitest summary looks like: "Tests  42 passed | 1 failed | 2 skipped (45)"
@@ -71,7 +73,13 @@ if [ "${SKIP_BUILD:-0}" = "1" ]; then
   note "build" "skipped (SKIP_BUILD=1)"
 elif npm run -s build >/tmp/verify-build.log 2>&1; then
   note "build" "ok"
-  [ -d .next/standalone ] && note "standalone output" "present" || bad "standalone" ".next/standalone missing — check output: 'standalone' in next.config"
+  if [ -d .next/standalone ]; then
+    note "standalone output" "present"
+    hr "smoke"
+    if ./scripts/smoke.sh; then note "smoke" "ok"; else bad "smoke" "see above"; fi
+  else
+    bad "standalone" ".next/standalone missing — check output: 'standalone' in next.config"
+  fi
 else
   tail -30 /tmp/verify-build.log; bad "build" "see above"
 fi
@@ -109,7 +117,9 @@ if ls app lib/documents >/dev/null 2>&1; then
 fi
 
 # 4d. Forbidden claims in copy (CLAUDE.md §8)
-BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cumplimiento|garante (a )?conformidade|ISO ?3730[12]|certif(ied|icado|icada) (by|por) (la )?ley' app messages lib/content 2>/dev/null || true)
+# A *negated* guarantee ("does not guarantee compliance", "no garantiza el cumplimiento", "não garante a conformidade")
+# is the approved footer disclaimer (CONTENT.md §1), not a claim — those lines are exempt.
+BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cumplimiento|garante (a )?conformidade|ISO ?3730[12]|certif(ied|icado|icada) (by|por) (la )?ley' app messages lib/content 2>/dev/null | grep -viE '(^|[^[:alpha:]])(does not|do not|doesn.t|no|não|nao|never|nunca) +(guarantee|garantiza|garante)' || true)
 if [ -n "$BANNED" ]; then echo "$BANNED" | head; bad "forbidden claims" "copy implies guaranteed compliance or ISO certification"; else note "forbidden claims" "none"; fi
 
 # 4e. Second geo mechanism must not exist (CLAUDE.md §4)
