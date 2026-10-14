@@ -169,6 +169,23 @@ else
   note "urls" "no locale codes in paths"
 fi
 
+# 4h. company_id must never come from the request (CLAUDE.md §6, §8): not from formData, search
+# params, route params, a JSON body or a `[companyId]` path segment. The tenant is the session's.
+# Heuristic on purpose (same-line match); tests/dashboard-routes.test.tsx is the behavioural proof.
+if [ -d app ]; then
+  REQCID=$(grep -rnEi --include='*.ts' --include='*.tsx' \
+    -e '(formData|form|searchParams|params|body|query|\.json\(\))[^;]*company_?id' \
+    -e 'company_?id[^;]*(formData|searchParams|params\b|\.json\(\)|\.get\()' \
+    -e '\.get\(["'"'"'`]company_?id["'"'"'`]\)' app 2>/dev/null | grep -vE '^\S+:[0-9]+:\s*//' || true)
+  CIDDIRS=$(find app -type d -iname '*company*id*' 2>/dev/null || true)
+  if [ -n "$REQCID" ] || [ -n "$CIDDIRS" ]; then
+    echo "$REQCID" "$CIDDIRS" | head
+    bad "request company_id" "company_id read from the request under app/ — take it from the session (requireTenant)"
+  else
+    note "request company_id" "never read from the request"
+  fi
+fi
+
 # 4g. KNOWN_ISSUES.md must exist (baseline)
 [ -f KNOWN_ISSUES.md ] && note "KNOWN_ISSUES.md" "present" || bad "KNOWN_ISSUES.md" "missing"
 
