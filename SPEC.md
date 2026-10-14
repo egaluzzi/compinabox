@@ -78,7 +78,7 @@ Four locales: `en` (generic page at `/`), `es-AR` (`/ar`), `pt-BR` (`/br`), `es-
 /{country}/faq
 /{country}/legal-basis → "what the law requires" explainer (per-country legal citations)
 /{country}/blog/...    → SEO content (see §9)
-/checkout              → Stripe/payment flow (country pre-filled from referrer)
+/checkout              → payment flow (Mercado Pago) (country pre-filled from referrer)
 /onboarding            → post-payment setup wizard (company name, industry, logo upload, admin email)
 /dashboard/*           → authenticated customer dashboard (see §6)
 /report/{company-slug} → PUBLIC whistleblower intake page, one per customer, no login required
@@ -167,7 +167,7 @@ Each country page's "legal basis" section should cite the specific law, in plain
 ## 8. Pricing & checkout
 
 - Flat annual (or monthly) price per country tier — exact pricing is a business decision, not specified here; build the system to support country-specific pricing stored as config, not hardcoded.
-- Checkout: company name, tax ID (CUIT/CNPJ/RFC — validate format per country), billing email, card payment (Stripe) + consider local rails (Mercado Pago for AR, Pix for BR, local card processors for MX) since card-only checkout materially hurts conversion in these markets — flag as a v1 vs v1.1 decision.
+- Checkout: company name, tax ID (CUIT/CNPJ/RFC — validate format per country), billing email, payment via Mercado Pago (cards, Pix and other local methods it offers per country; Brazil first). No card data touches our servers.
 - Immediately on successful payment: trigger onboarding wizard, auto-provision all 7 components with defaults, send welcome email with login.
 - No human touches the order. If payment fails or company data is invalid, the flow must handle it entirely in-browser (clear error states, retry).
 
@@ -212,7 +212,7 @@ Each country page's "legal basis" section should cite the specific law, in plain
 - **Hosting:** Esteban's DigitalOcean droplet. Cloudflare proxies DNS in front (CDN, DDoS protection, `CF-IPCountry` for §3.2, origin TLS in Full-strict mode). Caddy on the droplet terminates TLS and reverse-proxies to the Node process, which runs under a systemd unit. Deploys run from GitHub Actions on push to `main`: build → rsync the standalone output over SSH → restart the unit. Migrations against the live database are a deliberate manual step until Esteban approves automating them.
 - **Database:** Postgres self-hosted on the droplet. ORM: Drizzle, with migrations committed in `/lib/db/migrations/`. Nightly `pg_dump` to DigitalOcean Spaces must be in place and restore-tested before phase 2 is accepted — this is whistleblower data, losing it isn't an option.
 - **Auth:** Auth.js v5, magic-link provider via Resend, for customer admins. Employees (§5.4, §5.5) and vendors (§5.6) use signed, single-use tokenized links — no accounts.
-- **Payments:** Stripe behind a `PaymentProvider` interface, with Mercado Pago/Pix as a fast-follow for AR/BR local rails (§15).
+- **Payments:** Mercado Pago (incl. Pix) behind a `PaymentProvider` interface; integrated last, with a guarded `fake` provider used until then.
 - **PDF generation:** `@react-pdf/renderer` for the binder/certificate (§5.7) and individual policy exports. Puppeteer only as a flagged fallback.
 - **Email:** Resend (welcome emails, magic links, employee training invites, report notifications).
 - **Sanctions screening:** OpenSanctions API (yente) behind a `ScreeningProvider` interface so ComplyAdvantage can be swapped in later.
@@ -248,6 +248,5 @@ The authoritative, ordered plan with a definition of done per phase is **`IMPLEM
 - Final product name/brand (this doc uses "ComplyStart" as a placeholder throughout — replace before content is finalized).
 - Pricing per country (Brazil first).
 - Monthly vs annual-only billing.
-- Local payment rails (Mercado Pago/Pix) — v1 or fast-follow.
 
 Settled decisions — database, auth, geo, URLs, standalone whistleblower module, hosting topology, Brazil-first rollout — are logged in CLAUDE.md §9 and are not open. The full list of inputs still needed from Esteban is CLAUDE.md §11.

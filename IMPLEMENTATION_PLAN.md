@@ -67,27 +67,32 @@ Judgment: copy matches CONTENT.md word for word (spot-check 5 strings per locale
 
 ## Phase 2 — Database, auth, checkout, provisioning
 
-SPEC §6 (auth only), §8, §13. **Deep review** — money and auth.
+SPEC §6 (auth only), §8, §13. **Deep review** — money and auth. The payment processor is **Mercado Pago, integrated last (phase 9b)**; this phase builds the whole checkout flow against a guarded `fake` provider, so everything after the processor's "paid" signal is real and tested.
 
-- [ ] Drizzle schema for all SPEC §13 entities (even ones not used yet — the shape is known); `company_id` on every tenant table; initial migration committed
+- [ ] Drizzle schema for all SPEC §13 entities (even ones not used yet — the shape is known); `company_id` on every tenant table; initial migration committed. Plus two pre-tenant tables: `checkout_attempt` (provider, provider_ref, status pending|paid|failed|expired, company name/tax_id/billing_email/country, amount/currency, UTM fields; no `company_id` because the company doesn't exist yet) and `payment_event` (provider + provider event/payment id, unique — idempotency ledger)
 - [ ] `WaitlistLead` table; phase 1 stub now writes to it
-- [ ] Auth.js v5 magic link via Resend; `/dashboard` requires session; session carries `company_id`
-- [ ] `PaymentProvider` interface + Stripe Checkout implementation; webhook handler idempotent on `event.id`
-- [ ] `/checkout`: company name, tax ID (CNPJ validated; CUIT/RFC return `NotYetEnabled`), billing email; refuses countries not in `ENABLED_COUNTRIES`
-- [ ] On `checkout.session.completed`: create `Company`, `User`, `BillingRecord` (with UTM fields), send welcome email with magic link, redirect to `/onboarding`
+- [ ] Auth.js v5 magic link; `/dashboard` requires session; session carries `company_id`. Email goes through an `EmailSender` interface: Resend implementation, plus a dev/CI sink used when `RESEND_API_KEY` is unset (so magic links are testable without a Resend account)
+- [ ] `PaymentProvider` interface (`createCheckout`, `verifyWebhook`, `fetchPayment`) + `fake` provider. Guard: `PAYMENT_PROVIDER` defaults to `none` (checkout shows "unavailable"); `fake` works only with `ALLOW_FAKE_PAYMENTS=true`; otherwise the fake routes 404
+- [ ] `/checkout`: company name, tax ID (CNPJ validated; CUIT/RFC return `NotYetEnabled`), billing email, **pay button**; refuses countries not in `ENABLED_COUNTRIES`. Click → server creates a `checkout_attempt` → provider returns a hosted-checkout URL → browser goes there
+- [ ] Fake processor simulator page (`/checkout/fake/[id]`, guarded) with "Pay" / "Fail" buttons that behave like a real processor: they send a **signed webhook** to the same webhook endpoint the real provider will use; they never touch the DB directly
+- [ ] Webhook endpoint `/api/webhooks/payments`: verify signature → treat the event only as a prompt → `fetchPayment` from the processor → if paid, in **one DB transaction** insert `payment_event` (unique; replay is a no-op), create `Company`, `User`, `BillingRecord` (with UTM), mark attempt paid; send welcome email with magic link
+- [ ] Return page `/checkout/return`: polls attempt status (the webhook may land after the browser) and redirects to `/onboarding` once paid; shows failed/expired/still-pending states with retry
 - [ ] `/onboarding`: company profile, industry dropdown, logo upload (local disk under `/opt/compinabox/uploads`, served by Caddy — no S3 yet)
-- [ ] UTM capture in middleware → cookie → `BillingRecord`
+- [ ] UTM capture in the Phase 1 proxy → cookie → `checkout_attempt` → `BillingRecord`
 - [ ] Tenant-isolation test: two companies seeded, every tenant-scoped query asserted to return only own rows
 - [ ] **Backups:** `scripts/backup.sh` (`pg_dump` → Spaces via `s3cmd`), systemd timer unit file, restore instructions in README. Worker writes the files; **Esteban installs and runs the first restore test**; supervisor does not accept phase 2 until he confirms.
 
 **Definition of done**
 ```
-./verify.sh
-npm run db:migrate              # against a fresh Postgres, exit 0
-npm run test -- tenant          # isolation suite green
-stripe listen --forward-to localhost:3000/api/webhooks/stripe   # + stripe trigger checkout.session.completed → Company row created
+./verify.sh                      # exit 0; now includes a fresh-Postgres migrate + DB-backed tests (CI has a postgres service)
+npm run db:migrate               # against a fresh Postgres, exit 0
+npm run test -- tenant           # isolation suite green
+npm run test -- payments         # replay, bad signature, failed payment, guard tests green
+# live click-through against the standalone build + real Postgres (paste output):
+#   POST checkout -> attempt pending -> simulator "Pay" -> webhook -> Company/User/BillingRecord rows exist
+#   -> return page resolves to paid -> /onboarding reachable with the magic-link session
 ```
-Judgment: webhook replay creates no duplicate `Company`; magic link expires and is single-use (test it); no secret in repo (`git grep -iE "sk_live|sk_test|re_[A-Za-z0-9]{20}"` returns nothing); backup restore confirmed by Esteban.
+Judgment: webhook replay creates no duplicate `Company`; a webhook with a bad signature or a "paid" claim the processor doesn't confirm provisions nothing; browser return alone never provisions; with `ALLOW_FAKE_PAYMENTS` unset the fake routes 404 and checkout is unavailable; magic link expires and is single-use (test it); no secret in repo (`git grep -iE "sk_live|sk_test|APP_USR-|TEST-[0-9a-f]{8}|re_[A-Za-z0-9]{20}"` returns nothing); backup restore confirmed by Esteban. The real Resend send is **not** verified here (no account yet) — it moves to phase 9's definition of done.
 
 ---
 
@@ -118,7 +123,7 @@ SPEC §6.
 - [ ] `/dashboard` layout + nav: Overview, Documents, Employees, Training, Whistleblower, Vendors, Billing, Settings
 - [ ] Overview: completion % (stubbed 0 until phase 6), open cases count (stubbed until phase 5), binder download placeholder
 - [ ] Documents: list, view, regenerate (phase 3 engine), download PDF
-- [ ] Settings: company profile, logo, industry; Billing: Stripe customer portal link
+- [ ] Settings: company profile, logo, industry; Billing: payment history from `BillingRecord` (Mercado Pago has no customer portal — manage/cancel flow decided with Esteban when billing terms are set)
 - [ ] Every page server-side filters by session `company_id`
 
 **Definition of done**
@@ -226,6 +231,30 @@ curl -sI https://<domain>/ | grep -i "cf-ray"       # confirms Cloudflare in fro
 ```
 Judgment: Lighthouse mobile on `/br` ≥ 90 performance; consent banner blocks GTM until accepted (check network tab); backup timer active (`systemctl list-timers`).
 
+**→ Deployed. Brazil launch waits for phase 9b (real payments).**
+
+---
+
+## Phase 9b — Mercado Pago payment provider (blocks Brazil launch)
+
+Built after the deploy because Mercado Pago webhooks need a public HTTPS URL. Replaces the `fake` provider in production; the flow, tables and webhook endpoint from phase 2 are unchanged. **Deep review — money.**
+
+- [ ] `MercadoPagoProvider` implementing `PaymentProvider`: hosted checkout (preference) with Pix enabled for BR; webhook verifies the `x-signature` HMAC, then **re-fetches the payment by id** from the API — status in the webhook body is never trusted; idempotent on payment id + status
+- [ ] Env: `PAYMENT_PROVIDER=mercadopago`; sandbox credentials first, production credentials last; `ALLOW_FAKE_PAYMENTS` unset on the droplet
+- [ ] Handles approved, pending (Pix awaiting payment), rejected, cancelled/expired, and refunded/charged-back (marks `BillingRecord`, does not delete the Company)
+
+**Definition of done**
+```
+./verify.sh
+# against the deployed URL, sandbox credentials, results pasted in HANDOFF.md:
+#   approved test payment -> Company/User/BillingRecord created, welcome email delivered
+#   same webhook delivered twice -> still exactly one Company
+#   rejected payment -> no Company; user can retry
+#   Pix (if sandbox supports it) -> pending then approved path works
+#   forged webhook (bad signature) -> 401, nothing created
+```
+Judgment: mock-only is **not** verified for this phase — every line above needs a real sandbox round-trip; fake routes 404 on the droplet; no credential in repo. Then **one real low-value live payment by Esteban, refunded**, before launch (money — his call).
+
 **→ Brazil launch. Esteban signs off.**
 
 ---
@@ -237,7 +266,7 @@ Judgment: Lighthouse mobile on `/br` ≥ 90 performance; consent banner blocks G
 - [ ] Add `ar` to `ENABLED_COUNTRIES`; remove `noindex`; AR pricing from Esteban
 - [ ] Blog: 5 AR articles seeded
 
-**Definition of done:** phase 1–9 suites green with `ENABLED_COUNTRIES=br,ar`; one real AR checkout in Stripe test mode end to end.
+**Definition of done:** phase 1–9 suites green with `ENABLED_COUNTRIES=br,ar`; one real AR checkout in the payment sandbox end to end.
 
 ---
 
@@ -260,7 +289,6 @@ Log standalone sweeps here — e.g. a bug pattern found twice incidentally — s
 
 ## Backlog / v2 (explicitly deferred)
 
-- Mercado Pago / Pix via `PaymentProvider` (Esteban's call, SPEC §15)
 - Ad-variant landing pages `/{country}/gobierno`, `/{country}/proveedores` (CONTENT.md §7)
 - Multi-admin per company; password login
 - Object storage for uploads (currently local disk behind Caddy)

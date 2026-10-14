@@ -21,7 +21,7 @@ Workers: anything ambiguous that SPEC.md, CONTENT.md and the Decisions in §9 do
 ## 1. Baseline — read this next
 
 - **Source-of-truth branch:** `main`. Deployed to the droplet from `main` only.
-- **Stack:** Next.js (App Router), TypeScript, Tailwind, `next-intl`, Postgres + Drizzle, Auth.js v5, Stripe, Resend, `@react-pdf/renderer`. Details in §3.
+- **Stack:** Next.js (App Router), TypeScript, Tailwind, `next-intl`, Postgres + Drizzle, Auth.js v5, Mercado Pago, Resend, `@react-pdf/renderer`. Details in §3.
 - **Hosting:** Esteban's DigitalOcean droplet behind Cloudflare. Details in §4.
 - **Shell/OS:** workers run in Anthropic cloud sessions (Ubuntu). Deployment target is Ubuntu on the droplet. No Windows paths or PowerShell anywhere in scripts.
 - **Mechanical checks:** `./verify.sh` at repo root — lint, typecheck, tests, build, migration drift. Workers run it before writing `HANDOFF.md` and paste its output. Neither session spends judgment on what it can check.
@@ -48,7 +48,7 @@ What this means for the build, so no phase re-litigates it:
 - **Postgres, self-hosted on the droplet.** Not Supabase, not a managed DB for now: Esteban already pays for the server, whistleblower data staying on infrastructure he controls is a selling point for the privacy policy, and the traffic profile is tiny. Moving to DO Managed Postgres later is a `DATABASE_URL` change. **Backups are therefore the app's problem** — see §4.
 - **Drizzle ORM** (`drizzle-orm` + `drizzle-kit`). Lighter than Prisma, SQL-transparent, no binary engine on the droplet. Migrations live in `/lib/db/migrations/`, are committed, and applied on deploy. Never alter the schema by hand in the database.
 - **Auth.js v5 (next-auth)**, email/magic-link provider via Resend, **for customer admins only**. No passwords in v1 — one less thing to secure and the admin logs in a few times a year. **Employees and vendors never get accounts**: they receive signed, single-use tokenized links (SPEC §5.4, §5.6). This keeps the employee portal usable for a 30-person company with no IT.
-- **Stripe** for payments. Mercado Pago / Pix is a fast-follow (SPEC §15 — Esteban's call), so the checkout layer must be behind a `PaymentProvider` interface from phase 2.
+- **Mercado Pago** for payments (Esteban, 2026-10-14; Pix comes through it). Not Stripe. It is integrated **last** (IMPLEMENTATION_PLAN phase 9b) because its webhooks need a public HTTPS URL. Until then everything is built against a `PaymentProvider` interface with a `fake` provider (§8, §9), so the checkout flow — button → processor says paid → provisioning → onboarding — is complete and tested before the real processor exists.
 - **`@react-pdf/renderer`** for all PDFs (policies, binder/certificate). Puppeteer only as a flagged fallback for a layout react-pdf truly can't do — Chromium on the droplet is memory the app can't spare.
 - **Resend** for transactional email (magic links, employee invites, report notifications).
 - **Sanctions/PEP screening:** OpenSanctions (yente API) behind a `ScreeningProvider` interface so ComplyAdvantage can be swapped in. Never build watchlist ingestion in-house.
@@ -92,11 +92,11 @@ Public URLs use two-letter country prefixes; locale codes are internal and must 
 - `/lib/content/{country}.ts` — structured legal-basis data (SPEC §7). **Never hardcode legal citations in JSX/templates** — they must be correctable without a redeploy.
 - `/lib/documents/` — code of conduct / policy generation engine (merge-field templates)
 - `/lib/db/schema.ts`, `/lib/db/client.ts`, `/lib/db/migrations/`
-- `/lib/payments/` — `PaymentProvider` interface + Stripe implementation
+- `/lib/payments/` — `PaymentProvider` interface, `fake` provider (dev/test only, guarded), Mercado Pago implementation (phase 9b)
 - `/lib/screening/` — `ScreeningProvider` interface + OpenSanctions implementation
 - `/messages/{locale}.json` — next-intl messages, one per locale
 - **Standing checklist item, every phase that adds a tenant-owned table:** it has a `company_id` column, every query filters by `company_id` taken from the authenticated session (never from a request param), and there is a test proving a second tenant can't read it. `verify.sh` greps for tenant tables without `company_id`.
-- Env vars (all in `.env.example`): `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `APP_URL`, `ENABLED_COUNTRIES`, `RESEND_API_KEY`, `EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`, `SCREENING_API_KEY`, `GTM_ID`
+- Env vars (all in `.env.example`): `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `APP_URL`, `ENABLED_COUNTRIES`, `RESEND_API_KEY`, `EMAIL_FROM`, `PAYMENT_PROVIDER` (`none` default | `fake` | `mercadopago`), `ALLOW_FAKE_PAYMENTS`, `FAKE_PAYMENTS_SECRET`, `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_PUBLIC_KEY`, `MERCADOPAGO_WEBHOOK_SECRET`, `SCREENING_API_KEY`, `GTM_ID`
 
 ## 7. Commands
 
@@ -119,6 +119,7 @@ npm run db:migrate   # drizzle-kit migrate — apply migrations
 - **Anonymous reporting:** the default intake path must not log IP or identifying metadata against a report unless the reporter explicitly opts in (SPEC §5.3, §11). Note the asymmetry: employee *acknowledgments* DO log IP (SPEC §5.5) — that's an audit trail the customer wants.
 - **No ISO/certification claims** (ISO 37301/37002) anywhere in UI copy — out of scope for v1 (SPEC §2).
 - **Legal content (`/lib/content/*.ts`)** is edited only in a phase scoped for it, never as a side effect of an unrelated PR.
+- **Fake payment provider enabled outside dev/test** (`ALLOW_FAKE_PAYMENTS` set on the droplet or in CI deploy config) — it provisions accounts without payment.
 - **Migrations against live data, deleting data, changing what gets logged or retained, adding a paid service** — escalation rule 3; supervisor brings these to Esteban.
 
 ## 9. Decisions
@@ -134,7 +135,8 @@ Settled by Esteban or decided by the supervisor and recorded. Don't reopen; if a
 - **Process/proxy/deploy:** systemd + Caddy + GitHub Actions rsync-over-SSH. (2026-10-12) — one tool per job, all boring.
 - **PDF:** react-pdf; Puppeteer only as flagged fallback. (2026-10-12) — droplet memory.
 - **Screening:** OpenSanctions behind `ScreeningProvider`. (2026-10-12) — free tier, swappable.
-- **Payments abstraction:** `PaymentProvider` interface from phase 2 so Mercado Pago/Pix can be added without touching checkout UI. (2026-10-12)
+- **Payments: Mercado Pago, not Stripe** (Esteban, 2026-10-14). `PaymentProvider` interface + `fake` provider from phase 2; the real Mercado Pago provider is phase 9b, before the Brazil launch sign-off. The webhook, never the browser return URL, is what marks a payment paid and provisions the account; a webhook is a *prompt to re-fetch the payment from the processor*, not a source of truth.
+- **Fake payments are guarded** (2026-10-14): `PAYMENT_PROVIDER` defaults to `none` (checkout unavailable); `fake` works only when `ALLOW_FAKE_PAYMENTS=true`, which must never be set on the droplet. Fake-provider routes return 404 otherwise.
 - **Geo/cookie behaviour at `/`** (2026-10-13): cookie `country` ∈ `ar|br|mx|other` beats `CF-IPCountry`; `other` means "show the picker" and is what the "change country" control sets (otherwise a cookie'd visitor could never reach `/`). Redirects are 307 + `no-store`. Generic-page language toggle is EN/ES/PT = locales `en`/`es-MX`/`pt-BR`, cookie `lang`.
 - **`ENABLED_COUNTRIES` is read at request time**, not build time (2026-10-13) — CI builds the artifact, the droplet's `.env` supplies the value.
 - **Gap-filled translations** (2026-10-13): where CONTENT.md has a string in one locale only, the worker translates it faithfully and lists it in `messages/DRAFTS.md`; Esteban reviews that file before launch (§11).
@@ -152,9 +154,9 @@ Considered and declined — don't build unless Esteban asks again:
 - [ ] Final product name/brand (placeholder: ComplyStart — grep/replace once decided)
 - [ ] Pricing for Brazil (BRL); later AR/MX
 - [ ] Monthly vs annual-only billing
-- [ ] Mercado Pago / Pix in v1 or fast-follow
+- [x] Payments: Mercado Pago (decided 2026-10-14); Pix via Mercado Pago to be confirmed in sandbox at phase 9b
 - [ ] Domain name + Cloudflare account access (needed before phase 1 can be verified end-to-end on geo)
-- [ ] Stripe account (test keys for phase 2; live keys before launch)
+- [ ] Mercado Pago account: sandbox (test) credentials for phase 9b; production credentials before launch
 - [ ] Resend account + sending domain
 - [ ] Legal review of `/lib/content/br.ts` citations and the BR privacy policy before launch (SPEC §11)
 - [ ] Review of `messages/DRAFTS.md` (gap-filled translations, incl. footer disclaimer) by a native speaker / legal before launch
