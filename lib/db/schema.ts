@@ -4,6 +4,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -144,16 +145,27 @@ export const employees = pgTable("employees", {
     .defaultNow(),
 });
 
-export const documents = pgTable("documents", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  companyId: companyId(),
-  type: text("type").notNull(), // code_of_conduct | policy:*
-  version: integer("version").notNull().default(1),
-  content: text("content").notNull(),
-  generatedAt: timestamp("generated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+// APPEND-ONLY: a database trigger (migration 0002) rejects UPDATE, DELETE and TRUNCATE.
+// A regeneration inserts the next version; erasure would be a deliberate migration.
+export const documents = pgTable(
+  "documents",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: companyId(),
+    type: text("type").notNull(), // code_of_conduct | policy:*
+    version: integer("version").notNull().default(1),
+    locale: text("locale").notNull().default("pt-BR"),
+    templateVersion: integer("template_version").notNull().default(1),
+    content: text("content").notNull(), // StructuredDocument as JSON (lib/documents/types.ts)
+    generatedByUserId: uuid("generated_by_user_id").references(() => users.id),
+    generatedAt: timestamp("generated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique("documents_company_type_version").on(t.companyId, t.type, t.version),
+  ],
+);
 
 export const acknowledgments = pgTable("acknowledgments", {
   id: uuid("id").defaultRandom().primaryKey(),

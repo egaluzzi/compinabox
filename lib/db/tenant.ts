@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import type { DbOrTx } from "@/lib/documents/store";
 import type { Db } from "./client";
 import {
   acknowledgments,
@@ -48,7 +49,7 @@ export async function getCompany(db: Db, companyId: string) {
 }
 
 export async function updateCompanyProfile(
-  db: Db,
+  db: DbOrTx,
   companyId: string,
   patch: { name: string; industry: string; logoFile?: string },
 ) {
