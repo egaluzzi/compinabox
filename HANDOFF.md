@@ -94,7 +94,7 @@ verify.sh: PASS (HEAD 34b125b)
 Prettier flags the two generated drizzle `meta/*.json` files; `verify.sh` doesn't run prettier, and drizzle regenerates them, so I left them as generated.
 
 ## CI
-PR/CI run id and head SHA: see PR comment/links below (filled after push).
+PR: https://github.com/egaluzzi/compinabox/pull/6, head f2168ee (HANDOFF commit; code tip 34b125b). At push time the GitHub tools listed 0 workflow runs for the branch, so there is no CI run id to report yet.
 
 ## Judgment calls
 - Sign-out calls `requireTenant()` (not `getTenant()`) to get the tenant, because `dashboard-gate.test.ts` forbids `getTenant` in dashboard files. Consequence: an already-anonymous sign-out submit redirects to `/login` without a write (nothing to revoke; the cookie is already void).
