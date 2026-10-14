@@ -36,16 +36,16 @@ Judgment: no feature code yet; nothing from CONTENT.md rendered.
 
 SPEC §3, §4 (marketing routes only), §9. CONTENT.md §1–§5.
 
-- [ ] `next-intl` with four locales; `/messages/{en,es-AR,pt-BR,es-MX}.json` populated from CONTENT.md — **copy verbatim, do not rewrite**
-- [ ] Routes: `/`, `/{country}`, `/{country}/pricing`, `/{country}/how-it-works`, `/{country}/faq`, `/{country}/legal-basis`, `/legal/{terms,privacy,disclaimer}` (legal pages as placeholders marked "DRAFT — pending review")
-- [ ] Middleware: `CF-IPCountry` → redirect from `/` only; cookie `country` beats header; `unknown` → `/`; never redirect deep links (SPEC §3.2)
-- [ ] Country picker on `/`, "change country" control on every localized page, EN/ES/PT language toggle on `/`
-- [ ] `ENABLED_COUNTRIES` flag: disabled countries show waitlist form instead of pricing CTA and emit `noindex`
-- [ ] Waitlist form posts to a stub API route that logs to console (real storage in phase 2)
-- [ ] SEO: per-page `<title>`/description from CONTENT.md, `hreflang` + `x-default`, `sitemap.xml`, `robots.txt` (disallow `/dashboard`, `/employee`, `/checkout`, `/onboarding`), JSON-LD `Organization` + `FAQPage`
-- [ ] Footer disclaimer (CONTENT.md §1) on every page
-- [ ] Cookie-consent banner component (no tracking scripts yet — GTM wiring is phase 9)
-- [ ] Fill in CLAUDE.md §7 with the real commands if anything differs
+- [x] `next-intl` with four locales; `/messages/{en,es-AR,pt-BR,es-MX}.json` populated from CONTENT.md — **copy verbatim, do not rewrite**
+- [x] Routes: `/`, `/{country}`, `/{country}/pricing`, `/{country}/how-it-works`, `/{country}/faq`, `/{country}/legal-basis`, `/legal/{terms,privacy,disclaimer}` (legal pages as placeholders marked "DRAFT — pending review")
+- [x] Middleware: `CF-IPCountry` → redirect from `/` only; cookie `country` beats header; `unknown` → `/`; never redirect deep links (SPEC §3.2)
+- [x] Country picker on `/`, "change country" control on every localized page, EN/ES/PT language toggle on `/`
+- [x] `ENABLED_COUNTRIES` flag: disabled countries show waitlist form instead of pricing CTA and emit `noindex`
+- [x] Waitlist form posts to a stub API route that logs to console (real storage in phase 2)
+- [x] SEO: per-page `<title>`/description from CONTENT.md, `hreflang` + `x-default`, `sitemap.xml`, `robots.txt` (disallow `/dashboard`, `/employee`, `/checkout`, `/onboarding`), JSON-LD `Organization` + `FAQPage`
+- [x] Footer disclaimer (CONTENT.md §1) on every page
+- [x] Cookie-consent banner component (no tracking scripts yet — GTM wiring is phase 9)
+- [x] Fill in CLAUDE.md §7 with the real commands if anything differs
 
 **Definition of done**
 ```
