@@ -1,0 +1,119 @@
+{
+  "brand": {
+    "name": "ComplyStart"
+  },
+  "meta": {
+    "home": {
+      "title": "ComplyStart — Programas de compliance para exigências de governo e de fornecedores",
+      "description": "Tenha um programa de compliance documentado — código de conduta, políticas, canal de denúncias, treinamento — pronto em minutos. Para empresas na Argentina, no Brasil e no México."
+    }
+  },
+  "home": {
+    "hero": "Seu cliente ou comprador governamental quer comprovação de um programa de compliance. Aqui está.",
+    "sub": "Código de conduta, políticas, um canal de denúncias e treinamento para funcionários — gerados, com a sua marca e prontos em minutos. Sem advogado. Sem consultor. Sem espera.",
+    "cta": "Selecione seu país →",
+    "argentina": "Argentina",
+    "brazil": "Brasil",
+    "mexico": "México",
+    "other": "Outro / não listado",
+    "whyTitle": "Por que as empresas precisam disso",
+    "why": "Duas coisas obrigam pequenas e médias empresas a comprovar que têm um programa de compliance: disputar um <b>contrato público</b> e vender para um <b>grande cliente multinacional</b> que audita seus fornecedores. Nenhum dos dois se importa com o seu tamanho. Ambos querem documentação.",
+    "getTitle": "O que você recebe",
+    "item1": "Um código de conduta com o nome da sua empresa, fundamentado na lei que se aplica a você.",
+    "item2": "Políticas escritas sobre suborno, presentes, conflitos de interesse e relacionamento com agentes públicos.",
+    "item3": "Um canal de denúncias com a sua marca — seus funcionários e parceiros podem relatar preocupações de forma confidencial.",
+    "item4": "Treinamento curto para funcionários, com comprovação de que todos o concluíram.",
+    "item5": "Um registro de cada funcionário que leu e aceitou suas políticas.",
+    "item6": "Uma ferramenta de triagem rápida para verificar seus fornecedores em listas de sanções.",
+    "item7": "Um binder em PDF que reúne tudo o que foi mencionado acima — entregue a quem pedir.",
+    "availability": "Suporte completo de citações legais para Argentina, Brasil e México. Não encontrou o seu país?",
+    "joinWaitlist": "Entrar na lista de espera →"
+  },
+  "footer": {
+    "disclaimer": "A ComplyStart fornece os componentes documentados que reguladores, compradores governamentais e auditores corporativos costumam exigir. É informação geral, não aconselhamento jurídico, e não garante a conformidade com nenhuma lei ou auditoria específica.",
+    "terms": "Termos de serviço",
+    "privacy": "Política de privacidade",
+    "disclaimerLink": "Isenção de responsabilidade"
+  },
+  "nav": {
+    "pricing": "Preços",
+    "legalBasis": "Base legal"
+  },
+  "common": {
+    "changeCountry": "Mudar de país",
+    "language": "Idioma"
+  },
+  "legal": {
+    "draft": "RASCUNHO — pendente de revisão"
+  },
+  "consent": {
+    "text": "Usamos cookies para lembrar seu país, seu idioma e sua escolha sobre cookies. Com a sua permissão, também podemos usar cookies de análise.",
+    "accept": "Aceitar",
+    "reject": "Rejeitar"
+  },
+  "waitlist": {
+    "intro": "Deixe seu e-mail e avisaremos quando lançarmos no seu país.",
+    "emailLabel": "E-mail",
+    "countryLabel": "País",
+    "success": "Obrigado! Você está na lista.",
+    "invalid": "Informe um e-mail válido.",
+    "error": "Algo deu errado. Tente novamente."
+  },
+  "landing": {
+    "metaTitle": "Programa de Compliance para Empresas — Lei 12.846 e Lei 14.133 | ComplyStart",
+    "metaDescription": "Monte seu programa de compliance em minutos: código de conduta, políticas, canal de denúncias e treinamento. Pronto para licitações públicas e auditorias de clientes multinacionais.",
+    "hero": "Precisa comprovar um programa de compliance para participar de licitações ou ser fornecedor de uma multinacional? Pronto em minutos.",
+    "sub": "Código de conduta, políticas, canal de denúncias próprio e treinamento para sua equipe. Sem escritório de advocacia, sem consultoria, sem espera.",
+    "ctaPrimary": "Começar agora →",
+    "ctaSecondary": "Ver o que está incluído →",
+    "whyTitle": "Por que você precisa",
+    "why": "A Lei Anticorrupção (Lei 12.846) e a nova Lei de Licitações (Lei 14.133/2021) exigem programas de compliance robustos — incluindo canal de denúncias e comprometimento da alta direção — para empresas que disputam contratos públicos. Clientes multinacionais americanos e europeus também cobram isso de seus fornecedores brasileiros, mesmo fora de licitações.",
+    "minTitle": "O mínimo exigido por lei",
+    "min": "A Lei 14.133/2021 passou a exigir programas de integridade robustos para elegibilidade em licitações públicas, incluindo canal de denúncias e liderança comprometida com a ética. A Lei 12.846 (Lei Anticorrupção) usa a existência de um programa efetivo como atenuante em caso de apuração de responsabilidade.",
+    "minNote": "Isto é informação geral, não aconselhamento jurídico.",
+    "pricingCta": "Um preço, tudo incluído. Sem letras miúdas.",
+    "pricingLink": "Ver preços →",
+    "faq": {
+      "q1": "Isso substitui um advogado?",
+      "a1": "Não. Fornece a documentação de base que a maioria dos compradores e órgãos exige. Para riscos específicos, recomendamos uma consulta jurídica.",
+      "q2": "Atende a LGPD?",
+      "a2": "O canal de denúncias foi desenhado para proteger dados pessoais e permitir denúncias anônimas, alinhado aos princípios da LGPD."
+    }
+  },
+  "howItWorks": {
+    "title": "Como funciona",
+    "s1t": "Escolha seu país e pague.",
+    "s2t": "Preencha os dados da sua empresa.",
+    "s2b": "Nome, setor, logotipo — 2 minutos.",
+    "s3t": "Seu programa é gerado automaticamente.",
+    "s3b": "Código de conduta, políticas, canal de denúncias e treinamento, tudo pronto.",
+    "s4t": "Convide sua equipe.",
+    "s4b": "Envie um CSV com nomes e e-mails; cada pessoa recebe seu link de treinamento e aceite.",
+    "s5t": "Baixe seu binder.",
+    "s5b": "Um PDF com tudo, pronto para entregar."
+  },
+  "faq": {
+    "title": "Perguntas frequentes",
+    "q1": "Quanto tempo leva?",
+    "a1": "O programa é gerado instantaneamente após o pagamento. Convidar os funcionários e fazer com que concluam o treinamento depende da sua equipe.",
+    "q2": "Posso editar o código de conduta e as políticas?",
+    "a2": "Sim, você pode regenerá-los com ajustes a partir do seu painel.",
+    "q3": "O canal de denúncias é anônimo?",
+    "a3": "Por padrão, sim. O denunciante pode optar por deixar seus dados de contato, se preferir.",
+    "q4": "O que acontece se eu mudar o plano de funcionários?",
+    "a4": "Você pode adicionar ou remover funcionários a qualquer momento pelo painel.",
+    "q5": "Isso certifica que minha empresa cumpre a lei?",
+    "a5": "Não. Fornece a documentação que a maioria dos compradores e órgãos exige. Não é um certificado legal nem substitui o aconselhamento profissional para o seu caso específico."
+  },
+  "pricing": {
+    "planHeader": "Tudo incluído, um plano",
+    "includedTitle": "O que está incluído",
+    "trust": "Pagamento seguro. Cancele quando quiser.",
+    "tba": "O preço será anunciado em breve."
+  },
+  "checkout": {
+    "button": "Ativar meu programa de compliance",
+    "title": "Pagamento",
+    "unavailable": "O pagamento ainda não está disponível."
+  }
+}

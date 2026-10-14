@@ -1,0 +1,119 @@
+{
+  "brand": {
+    "name": "ComplyStart"
+  },
+  "meta": {
+    "home": {
+      "title": "ComplyStart — Programas de cumplimiento para requisitos de gobierno y de proveedores",
+      "description": "Obtén un programa de cumplimiento documentado —código de conducta, políticas, línea de denuncias, capacitación— listo en minutos. Para empresas en Argentina, Brasil y México."
+    }
+  },
+  "home": {
+    "hero": "Tu cliente o comprador gubernamental quiere una prueba de un programa de cumplimiento. Aquí la tienes.",
+    "sub": "Código de conducta, políticas, una línea de denuncias y capacitación para empleados — generados, con tu marca y listos en minutos. Sin abogado. Sin consultor. Sin esperas.",
+    "cta": "Selecciona tu país →",
+    "argentina": "Argentina",
+    "brazil": "Brasil",
+    "mexico": "México",
+    "other": "Otro / no figura en la lista",
+    "whyTitle": "Por qué las empresas necesitan esto",
+    "why": "Dos cosas obligan a las pequeñas y medianas empresas a demostrar que tienen un programa de cumplimiento: participar en un <b>contrato de gobierno</b> y venderle a un <b>gran cliente multinacional</b> que audita a sus proveedores. A ninguno le importa qué tan grande eres. Ambos quieren documentación.",
+    "getTitle": "Lo que obtienes",
+    "item1": "Un código de conducta con el nombre de tu empresa, fundamentado en la ley que te aplica.",
+    "item2": "Políticas escritas sobre sobornos, regalos, conflictos de interés y trato con servidores públicos.",
+    "item3": "Una línea de denuncias con tu marca: tus empleados y socios pueden reportar inquietudes de forma confidencial.",
+    "item4": "Capacitación breve para empleados, con constancia de que todos la completaron.",
+    "item5": "Un registro de cada empleado que leyó y aceptó tus políticas.",
+    "item6": "Una herramienta de verificación rápida para controlar a tus proveedores contra listas de sanciones.",
+    "item7": "Un binder en PDF que reúne todo lo anterior: entrégalo a quien te lo pida.",
+    "availability": "Soporte completo de citas legales para Argentina, Brasil y México. ¿No ves tu país?",
+    "joinWaitlist": "Únete a la lista de espera →"
+  },
+  "footer": {
+    "disclaimer": "ComplyStart ofrece los componentes documentados que los reguladores, los compradores gubernamentales y los auditores corporativos suelen exigir. Es información general, no asesoría legal, y no garantiza el cumplimiento de ninguna ley ni auditoría en particular.",
+    "terms": "Términos del servicio",
+    "privacy": "Política de privacidad",
+    "disclaimerLink": "Descargo de responsabilidad"
+  },
+  "nav": {
+    "pricing": "Precios",
+    "legalBasis": "Marco legal"
+  },
+  "common": {
+    "changeCountry": "Cambiar de país",
+    "language": "Idioma"
+  },
+  "legal": {
+    "draft": "BORRADOR — pendiente de revisión"
+  },
+  "consent": {
+    "text": "Usamos cookies para recordar tu país, tu idioma y tu elección sobre cookies. Con tu permiso, también podemos usar cookies de análisis.",
+    "accept": "Aceptar",
+    "reject": "Rechazar"
+  },
+  "waitlist": {
+    "intro": "Déjanos tu correo electrónico y te avisamos cuando lancemos en tu país.",
+    "emailLabel": "Correo electrónico",
+    "countryLabel": "País",
+    "success": "¡Gracias! Ya estás en la lista.",
+    "invalid": "Ingresa un correo electrónico válido.",
+    "error": "Algo salió mal. Inténtalo de nuevo."
+  },
+  "landing": {
+    "metaTitle": "Programa de Cumplimiento para Empresas — Ley General de Responsabilidades Administrativas | ComplyStart",
+    "metaDescription": "Arma tu política de integridad en minutos: código de conducta, políticas, línea de denuncias y capacitación. Listo para licitaciones de gobierno o auditorías de proveedores de corporativos extranjeros.",
+    "hero": "¿Te piden una política de integridad para contratar con gobierno o ser proveedor de una empresa extranjera? Está listo en minutos.",
+    "sub": "Código de conducta, políticas, línea de denuncias propia y capacitación para tu equipo. Sin despacho, sin consultoría, sin espera.",
+    "ctaPrimary": "Empezar ahora →",
+    "ctaSecondary": "Ver qué incluye →",
+    "whyTitle": "Por qué lo necesitas",
+    "why": "El Artículo 25 de la Ley General de Responsabilidades Administrativas (LGRA) define qué es una \"política de integridad adecuada\" — y tenerla puede ser la diferencia entre sanciones severas y una reducción de responsabilidad. Empresas matrices de EE.UU. y Europa exigen lo mismo a sus proveedores mexicanos, estén o no obligados por ley mexicana.",
+    "minTitle": "Lo que exige el Artículo 25",
+    "min": "La LGRA exige: código de conducta publicado y con mecanismos reales de aplicación, líneas claras de denuncia y estructura organizacional definida, sistemas de control y auditoría, un sistema adecuado de denuncias y disciplina, capacitación y comunicación constantes, y políticas de recursos humanos que eviten contratar personal con historial de mala conducta.",
+    "minNote": "Esto es información general, no asesoría legal.",
+    "pricingCta": "Un precio, todo incluido. Sin letras chiquitas.",
+    "pricingLink": "Ver precios →",
+    "faq": {
+      "q1": "¿Esto reemplaza a un despacho legal?",
+      "a1": "No. Te da la documentación base que la mayoría de compradores y autoridades piden. Para casos de alto riesgo, te recomendamos asesoría legal especializada.",
+      "q2": "¿Cumple con la Guía de ANAC sobre denuncias?",
+      "a2": "El canal de denuncias está diseñado siguiendo buenas prácticas de confidencialidad y protección al denunciante, alineadas a los lineamientos vigentes."
+    }
+  },
+  "howItWorks": {
+    "title": "Cómo funciona",
+    "s1t": "Elige tu país y paga.",
+    "s2t": "Completa los datos de tu empresa.",
+    "s2b": "Nombre, industria, logo — 2 minutos.",
+    "s3t": "Tu programa se genera automáticamente.",
+    "s3b": "Código de conducta, políticas, línea de denuncias y capacitación, listos.",
+    "s4t": "Invita a tu equipo.",
+    "s4b": "Suben un CSV con nombres y emails; cada uno recibe su link de capacitación y aceptación.",
+    "s5t": "Descarga tu binder.",
+    "s5b": "Un PDF con todo, listo para entregar."
+  },
+  "faq": {
+    "title": "Preguntas frecuentes",
+    "q1": "¿Cuánto tarda?",
+    "a1": "El programa se genera al instante después del pago. Invitar empleados y que completen la capacitación depende de tu equipo.",
+    "q2": "¿Puedo editar el código de conducta y las políticas?",
+    "a2": "Sí, puedes regenerarlos con ajustes desde tu panel.",
+    "q3": "¿El canal de denuncias es anónimo?",
+    "a3": "Por defecto sí. El denunciante puede optar por dejar sus datos de contacto si lo prefiere.",
+    "q4": "¿Qué pasa si cambio de plan de empleados?",
+    "a4": "Puedes agregar o dar de baja empleados en cualquier momento desde el panel.",
+    "q5": "¿Esto certifica que mi empresa cumple con la ley?",
+    "a5": "No. Te da la documentación que la mayoría de los compradores y organismos piden. No es un certificado legal ni reemplaza asesoría profesional para tu caso específico."
+  },
+  "pricing": {
+    "planHeader": "Un plan, todo incluido",
+    "includedTitle": "Qué incluye",
+    "trust": "Pago seguro. Cancela cuando quieras.",
+    "tba": "El precio se anunciará pronto."
+  },
+  "checkout": {
+    "button": "Activar mi programa de cumplimiento",
+    "title": "Pago",
+    "unavailable": "El pago todavía no está disponible."
+  }
+}
