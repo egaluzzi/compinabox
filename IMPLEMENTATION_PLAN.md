@@ -221,6 +221,11 @@ SPEC §9 (blog), §10, CLAUDE.md §4.
 - [ ] GTM container after consent; events `view_pricing`, `begin_checkout`, `purchase` (value+currency), `lead_generic_country_waitlist`
 - [ ] Blog: `/{country}/blog/[slug]` with MDX; seed the 4 Brazil articles + 3 English generic articles from CONTENT.md §6 (drafts, flagged for review); `Article` JSON-LD
 - [ ] Legal pages: real BR privacy policy and terms **from Esteban's legal review** — if not available, pages stay "DRAFT" and launch is blocked (escalation rule 2)
+- [ ] Cloudflare rate-limit rules for the unauthenticated write endpoints: `/api/checkout`, `/api/auth/*`, `/api/waitlist` (phase 2 left them unlimited; `/api/checkout` also confirms whether an email already has an account)
+- [ ] Droplet `.env` review: `ALLOW_FAKE_PAYMENTS` and `EMAIL_DEV_SINK` unset, `APP_URL`/`AUTH_URL` are the public https origin, `AUTH_SECRET` real
+- [ ] Real Resend send verified from the droplet (welcome email + sign-in link delivered to a real inbox; link works once)
+- [ ] Welcome-link scanner check: open the delivered link via the real mail path; if a prefetch burns it, switch `/api/welcome` to GET → confirm page → POST
+- [ ] Backup bucket is **private**; Esteban confirms a downloaded dump restores with `scripts/restore-test.sh`
 
 **Definition of done**
 ```
@@ -229,7 +234,7 @@ gh run list --workflow deploy.yml --limit 1        # green
 curl -sI https://<domain>/br | grep -E "^HTTP/.* 200"
 curl -sI https://<domain>/ | grep -i "cf-ray"       # confirms Cloudflare in front
 ```
-Judgment: Lighthouse mobile on `/br` ≥ 90 performance; consent banner blocks GTM until accepted (check network tab); backup timer active (`systemctl list-timers`).
+Judgment: first request from a Brazilian IP / VPN to `https://<domain>/` lands on `https://<domain>/br` (the Cloudflare→Caddy→app chain; `APP_URL` correct); Lighthouse mobile on `/br` ≥ 90 performance; consent banner blocks GTM until accepted (check network tab); backup timer active (`systemctl list-timers`).
 
 **→ Deployed. Brazil launch waits for phase 9b (real payments).**
 
@@ -242,6 +247,7 @@ Built after the deploy because Mercado Pago webhooks need a public HTTPS URL. Re
 - [ ] `MercadoPagoProvider` implementing `PaymentProvider`: hosted checkout (preference) with Pix enabled for BR; webhook verifies the `x-signature` HMAC, then **re-fetches the payment by id** from the API — status in the webhook body is never trusted; idempotent on payment id + status
 - [ ] Env: `PAYMENT_PROVIDER=mercadopago`; sandbox credentials first, production credentials last; `ALLOW_FAKE_PAYMENTS` unset on the droplet
 - [ ] Handles approved, pending (Pix awaiting payment), rejected, cancelled/expired, and refunded/charged-back (marks `BillingRecord`, does not delete the Company)
+- [ ] **Paid but not provisioned** (phase 2 marks the attempt `failed` with `email_in_use_after_payment`, logs `PAID BUT NOT PROVISIONED`): policy is manual refund by Esteban in the Mercado Pago dashboard. Add an alert email to an ops address (`OPS_ALERT_EMAIL`) when it happens so it is not only in logs, and a refund helper if the API makes it cheap
 
 **Definition of done**
 ```

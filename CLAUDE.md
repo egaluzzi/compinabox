@@ -119,6 +119,7 @@ npm run db:migrate   # drizzle-kit migrate — apply migrations
 - **Anonymous reporting:** the default intake path must not log IP or identifying metadata against a report unless the reporter explicitly opts in (SPEC §5.3, §11). Note the asymmetry: employee *acknowledgments* DO log IP (SPEC §5.5) — that's an audit trail the customer wants.
 - **No ISO/certification claims** (ISO 37301/37002) anywhere in UI copy — out of scope for v1 (SPEC §2).
 - **Legal content (`/lib/content/*.ts`)** is edited only in a phase scoped for it, never as a side effect of an unrelated PR.
+- **Dev email sink enabled outside dev/test** (`EMAIL_DEV_SINK=true` on the droplet) — it writes sign-in links to disk instead of sending them.
 - **Fake payment provider enabled outside dev/test** (`ALLOW_FAKE_PAYMENTS` set on the droplet or in CI deploy config) — it provisions accounts without payment.
 - **Migrations against live data, deleting data, changing what gets logged or retained, adding a paid service** — escalation rule 3; supervisor brings these to Esteban.
 
