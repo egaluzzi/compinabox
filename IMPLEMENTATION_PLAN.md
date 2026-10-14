@@ -80,7 +80,7 @@ SPEC §6 (auth only), §8, §13. **Deep review** — money and auth. The payment
 - [ ] `/onboarding`: company profile, industry dropdown, logo upload (local disk under `/opt/compinabox/uploads`, served by Caddy — no S3 yet)
 - [ ] UTM capture in the Phase 1 proxy → cookie → `checkout_attempt` → `BillingRecord`
 - [ ] Tenant-isolation test: two companies seeded, every tenant-scoped query asserted to return only own rows
-- [ ] **Backups:** `scripts/backup.sh` (`pg_dump` → Spaces via `s3cmd`), systemd timer unit file, restore instructions in README. Worker writes the files; **Esteban installs and runs the first restore test**; supervisor does not accept phase 2 until he confirms.
+- [ ] **Backups:** `scripts/backup.sh` (`pg_dump` → Spaces via `s3cmd`), systemd timer unit file, restore instructions in README. Worker writes the files and proves a dump → restore round trip locally; **Esteban installs them on the droplet and runs the first restore test before the first real customer** (gated in phase 9 — dev databases hold test data only).
 
 **Definition of done**
 ```
@@ -92,7 +92,7 @@ npm run test -- payments         # replay, bad signature, failed payment, guard 
 #   POST checkout -> attempt pending -> simulator "Pay" -> webhook -> Company/User/BillingRecord rows exist
 #   -> return page resolves to paid -> /onboarding reachable with the magic-link session
 ```
-Judgment: webhook replay creates no duplicate `Company`; a webhook with a bad signature or a "paid" claim the processor doesn't confirm provisions nothing; browser return alone never provisions; with `ALLOW_FAKE_PAYMENTS` unset the fake routes 404 and checkout is unavailable; magic link expires and is single-use (test it); no secret in repo (`git grep -iE "sk_live|sk_test|APP_USR-|TEST-[0-9a-f]{8}|re_[A-Za-z0-9]{20}"` returns nothing); backup restore confirmed by Esteban. The real Resend send is **not** verified here (no account yet) — it moves to phase 9's definition of done.
+Judgment: webhook replay creates no duplicate `Company`; a webhook with a bad signature or a "paid" claim the processor doesn't confirm provisions nothing; browser return alone never provisions; with `ALLOW_FAKE_PAYMENTS` unset the fake routes 404 and checkout is unavailable; magic link expires and is single-use (test it); no secret in repo (`git grep -iE "sk_live|sk_test|APP_USR-|TEST-[0-9a-f]{8}|re_[A-Za-z0-9]{20}"` returns nothing); backup round trip proven in the worker's session (dump → restore into a scratch DB → row counts match). The real Resend send is **not** verified here (no account yet) — it moves to phase 9's definition of done.
 
 ---
 
@@ -217,7 +217,7 @@ Judgment: open the PDF — this is the deliverable the customer hands to an audi
 SPEC §9 (blog), §10, CLAUDE.md §4.
 
 - [ ] `deploy.yml`: on push to `main` → build → rsync standalone to droplet → restart `complystart.service`. **Migration step is manual until Esteban approves automating it.**
-- [ ] Caddyfile, `complystart.service`, backup timer — committed under `/ops/` with install notes
+- [ ] Caddyfile, `complystart.service`, backup timer — committed under `/ops/` with install notes. **Gate: Esteban installs the backup timer and completes a restore test on the droplet before any real customer data** (CLAUDE.md §4)
 - [ ] GTM container after consent; events `view_pricing`, `begin_checkout`, `purchase` (value+currency), `lead_generic_country_waitlist`
 - [ ] Blog: `/{country}/blog/[slug]` with MDX; seed the 4 Brazil articles + 3 English generic articles from CONTENT.md §6 (drafts, flagged for review); `Article` JSON-LD
 - [ ] Legal pages: real BR privacy policy and terms **from Esteban's legal review** — if not available, pages stay "DRAFT" and launch is blocked (escalation rule 2)
