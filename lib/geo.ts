@@ -31,3 +31,23 @@ export function resolveGeoRedirect({
   const header = cfCountry?.trim().toLowerCase();
   return isCountry(header) ? header : null;
 }
+
+/**
+ * Absolute redirect target. Behind Caddy the process sees an internal scheme/host in
+ * `request.url`, so APP_URL (the public origin) wins when it is set and parses;
+ * otherwise fall back to the request's own URL.
+ */
+export function redirectLocation(
+  country: Country,
+  requestUrl: string,
+  appUrl: string | undefined,
+): URL {
+  if (appUrl) {
+    try {
+      return new URL(`/${country}`, new URL(appUrl).origin);
+    } catch {
+      // invalid APP_URL: fall through
+    }
+  }
+  return new URL(`/${country}`, requestUrl);
+}

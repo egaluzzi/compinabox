@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { resolveGeoRedirect } from "@/lib/geo";
+import { redirectLocation, resolveGeoRedirect } from "@/lib/geo";
 
 // Next 16 renamed the `middleware` file convention to `proxy`.
 // Geo redirect from `/` only (SPEC §3.2); the decision lives in lib/geo.ts.
@@ -12,8 +12,9 @@ export function proxy(request: NextRequest) {
   if (!target) return NextResponse.next();
 
   // 307 + no-store: the answer depends on the visitor, and Cloudflare sits in front.
+  // Location is built from APP_URL: behind Caddy request.url carries the internal scheme/host.
   const response = NextResponse.redirect(
-    new URL(`/${target}`, request.url),
+    redirectLocation(target, request.url, process.env.APP_URL),
     307,
   );
   response.headers.set("Cache-Control", "no-store");
