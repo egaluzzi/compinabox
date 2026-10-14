@@ -93,8 +93,8 @@ GTM. If you think you need one, say so under "Open questions".
   request. Seed two companies; test every tenant-scoped query returns only own rows, and that
   `/onboarding` can't write to another company.
 
-**Backups** (written by you, run by Esteban — supervisor can't accept phase 2 without his
-confirmed restore): `scripts/backup.sh` (`pg_dump` → compress → upload with `s3cmd`; destination
+**Backups** (written and round-trip-tested by you; Esteban installs them on the droplet and runs
+the first restore test before the first real customer — a phase 9 gate, not a phase 2 gate): `scripts/backup.sh` (`pg_dump` → compress → upload with `s3cmd`; destination
 configurable, plus `BACKUP_DEST=local:/path` so it can be exercised without Spaces; prune policy
 documented), `ops/backup/complystart-backup.{service,timer}`, README section with install and
 **restore** steps. No credentials in the repo. Exercise it in your session with the local
