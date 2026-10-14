@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getTenant } from "@/lib/auth/tenant";
+import { requireTenantRoute } from "@/lib/auth/require-tenant";
 import { getDb } from "@/lib/db/client";
 import { isDocumentType } from "@/lib/documents/types";
 import { regenerateDocuments } from "@/lib/documents/store";
@@ -14,8 +14,9 @@ function back(request: Request, query: string) {
 // POST /api/documents/regenerate (form: type=<document type> | all). The company is the
 // session's company; nothing about the tenant is read from the request.
 export async function POST(request: Request) {
-  const tenant = await getTenant();
-  if (!tenant) return new Response("Unauthorized", { status: 401 });
+  const gate = await requireTenantRoute();
+  if (!gate.ok) return gate.response;
+  const { tenant } = gate.ctx;
   const form = await request.formData();
   const type = form.get("type");
   if (type !== "all" && !isDocumentType(type))

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import type { DbOrTx } from "@/lib/documents/store";
 import type { Db } from "./client";
 import {
@@ -9,6 +9,7 @@ import {
   documents,
   employees,
   trainingCompletions,
+  users,
   vendors,
   whistleblowerReports,
 } from "./schema";
@@ -70,5 +71,60 @@ export async function getBillingRecords(db: Db, companyId: string) {
   return db
     .select()
     .from(billingRecords)
-    .where(and(eq(billingRecords.companyId, companyId)));
+    .where(and(eq(billingRecords.companyId, companyId)))
+    .orderBy(desc(billingRecords.paidAt));
+}
+
+/**
+ * Settings edit: name, industry and (optionally) logo ONLY. Unlike updateCompanyProfile this
+ * never touches onboarding_completed_at, and the old logo file stays on disk.
+ */
+export async function updateCompanySettings(
+  db: Db,
+  companyId: string,
+  patch: { name: string; industry: string; logoFile?: string },
+) {
+  const [row] = await db
+    .update(companies)
+    .set({
+      name: patch.name,
+      industry: patch.industry,
+      ...(patch.logoFile ? { logoFile: patch.logoFile } : {}),
+    })
+    .where(eq(companies.id, companyId))
+    .returning();
+  return row ?? null;
+}
+
+/** The signed-in admin, looked up within the tenant (id AND company must match). */
+export async function getTenantUser(db: Db, companyId: string, userId: string) {
+  const [row] = await db
+    .select({ id: users.id, email: users.email })
+    .from(users)
+    .where(and(eq(users.id, userId), eq(users.companyId, companyId)));
+  return row ?? null;
+}
+
+/** Statuses that count as an open whistleblower case (phase 5 owns the full lifecycle). */
+export const OPEN_REPORT_STATUSES = ["new", "under_review"] as const;
+
+export async function countEmployees(db: Db, companyId: string) {
+  const [row] = await db
+    .select({ n: count() })
+    .from(employees)
+    .where(eq(employees.companyId, companyId));
+  return row?.n ?? 0;
+}
+
+export async function countOpenReports(db: Db, companyId: string) {
+  const [row] = await db
+    .select({ n: count() })
+    .from(whistleblowerReports)
+    .where(
+      and(
+        eq(whistleblowerReports.companyId, companyId),
+        inArray(whistleblowerReports.status, [...OPEN_REPORT_STATUSES]),
+      ),
+    );
+  return row?.n ?? 0;
 }

@@ -1,6 +1,5 @@
-import { getTenant } from "@/lib/auth/tenant";
+import { requireTenantRoute } from "@/lib/auth/require-tenant";
 import { getDb } from "@/lib/db/client";
-import { getCompany } from "@/lib/db/tenant";
 import { loadLogo, pdfFilename, renderDocumentPdf } from "@/lib/documents/pdf";
 import { getDocument } from "@/lib/documents/store";
 import { isUuid } from "@/lib/http";
@@ -13,14 +12,13 @@ export async function GET(
   _req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const tenant = await getTenant();
-  if (!tenant) return new Response("Unauthorized", { status: 401 });
+  const gate = await requireTenantRoute();
+  if (!gate.ok) return gate.response;
+  const { tenant, company } = gate.ctx;
   const { id } = await ctx.params;
   if (!isUuid(id)) return new Response("Not Found", { status: 404 });
-  const db = getDb();
-  const doc = await getDocument(db, tenant.companyId, id);
-  const company = await getCompany(db, tenant.companyId);
-  if (!doc || !company) return new Response("Not Found", { status: 404 });
+  const doc = await getDocument(getDb(), tenant.companyId, id);
+  if (!doc) return new Response("Not Found", { status: 404 });
 
   const pdf = await renderDocumentPdf(doc.content, {
     version: doc.version,

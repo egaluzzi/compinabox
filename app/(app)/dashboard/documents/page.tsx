@@ -1,12 +1,10 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getTenant } from "@/lib/auth/tenant";
+import { requireTenant } from "@/lib/auth/require-tenant";
+import { formatDate } from "@/lib/dashboard/format";
 import { getDb } from "@/lib/db/client";
-import { getCompany } from "@/lib/db/tenant";
+import { parseDocument } from "@/lib/documents/generate";
 import { DOCUMENT_TYPES, type DocumentType } from "@/lib/documents/types";
 import { listDocuments } from "@/lib/documents/store";
-import { COUNTRY_LOCALE, getT } from "@/lib/i18n";
-import type { Country } from "@/lib/countries";
 
 const TYPE_KEY = {
   code_of_conduct: "codeOfConduct",
@@ -17,32 +15,21 @@ const TYPE_KEY = {
   "policy:whistleblower_protection": "whistleblowerProtection",
 } as const satisfies Record<DocumentType, string>;
 
-// Minimal Phase 3 page; phase 4 builds the dashboard shell around it.
 export default async function DocumentsPage({
   searchParams,
 }: {
   searchParams: Promise<{ regenerated?: string; error?: string }>;
 }) {
-  const tenant = await getTenant();
-  if (!tenant) redirect("/login");
+  const { tenant, locale, t } = await requireTenant();
   const db = getDb();
-  const company = await getCompany(db, tenant.companyId);
-  if (!company) redirect("/login");
-  if (!company.onboardingCompletedAt) redirect("/onboarding");
-  const t = getT(COUNTRY_LOCALE[company.country as Country] ?? "en");
   const { regenerated, error } = await searchParams;
   const rows = await listDocuments(db, tenant.companyId);
-  const date = (d: Date) =>
-    d.toLocaleDateString(COUNTRY_LOCALE[company.country as Country] ?? "en", {
-      timeZone: "America/Sao_Paulo",
-    });
 
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">{t("documents.title")}</h1>
       <p className="text-slate-700">{t("documents.intro")}</p>
       <p className="text-sm text-slate-600">{t("documents.languageNote")}</p>
-      <p className="text-sm font-semibold text-amber-800">{t("legal.draft")}</p>
       {regenerated && (
         <p role="status" className="text-slate-800">
           {regenerated === "created"
@@ -75,9 +62,14 @@ export default async function DocumentsPage({
                           {t("documents.version", { n: v.version })}
                           {i === 0 && ` (${t("documents.current")})`} ·{" "}
                           {t("documents.generatedOn", {
-                            date: date(v.generatedAt),
+                            date: formatDate(v.generatedAt, locale),
                           })}
                         </span>
+                        {parseDocument(v.content).reviewStatus === "draft" && (
+                          <span className="font-semibold text-amber-800">
+                            {t("legal.draft")}
+                          </span>
+                        )}
                         <Link
                           className="underline"
                           href={`/dashboard/documents/${v.id}`}

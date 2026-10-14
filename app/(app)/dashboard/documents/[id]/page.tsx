@@ -1,32 +1,26 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { DocumentView } from "@/components/DocumentView";
-import { getTenant } from "@/lib/auth/tenant";
+import { requireTenant } from "@/lib/auth/require-tenant";
+import { formatDate } from "@/lib/dashboard/format";
 import { getDb } from "@/lib/db/client";
-import { getCompany } from "@/lib/db/tenant";
 import { parseDocument } from "@/lib/documents/generate";
 import { getDocument } from "@/lib/documents/store";
 import { isUuid } from "@/lib/http";
-import { COUNTRY_LOCALE, getT } from "@/lib/i18n";
-import type { Country } from "@/lib/countries";
 
 export default async function DocumentPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const tenant = await getTenant();
-  if (!tenant) redirect("/login");
+  const { tenant, locale, t } = await requireTenant();
   const { id } = await params;
   if (!isUuid(id)) notFound();
   const db = getDb();
-  const company = await getCompany(db, tenant.companyId);
-  if (!company) redirect("/login");
   // Another company's document is indistinguishable from a missing one: 404, not 403.
   const row = await getDocument(db, tenant.companyId, id);
   if (!row) notFound();
   const doc = parseDocument(row.content);
-  const t = getT(COUNTRY_LOCALE[company.country as Country] ?? "en");
   return (
     <div className="space-y-5">
       <Link href="/dashboard/documents" className="text-sm underline">
@@ -36,9 +30,7 @@ export default async function DocumentPage({
         <span>
           {t("documents.version", { n: row.version })} ·{" "}
           {t("documents.generatedOn", {
-            date: row.generatedAt.toLocaleDateString(doc.locale, {
-              timeZone: "America/Sao_Paulo",
-            }),
+            date: formatDate(row.generatedAt, locale),
           })}
         </span>
         <a className="underline" href={`/dashboard/documents/${row.id}/pdf`}>

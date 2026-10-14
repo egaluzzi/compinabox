@@ -176,7 +176,82 @@
   },
   "dashboard": {
     "title": "Panel",
-    "placeholder": "Tu panel estará disponible pronto."
+    "skipToContent": "Ir al contenido",
+    "navLabel": "Navegación principal",
+    "signedInAs": "Sesión iniciada como {email}",
+    "signOut": "Cerrar sesión",
+    "logoAlt": "Logo de {name}",
+    "unavailable": "Todavía no disponible.",
+    "nav": {
+      "overview": "Resumen",
+      "documents": "Documentos",
+      "employees": "Empleados",
+      "training": "Capacitación",
+      "whistleblower": "Canal de denuncias",
+      "vendors": "Proveedores",
+      "billing": "Facturación",
+      "settings": "Configuración"
+    },
+    "overview": {
+      "title": "Resumen",
+      "intro": "Lo que existe hoy en la cuenta.",
+      "documents": "Documentos",
+      "documentsCount": "{count} de {total} documentos generados",
+      "documentsDraft": "{count, plural, one {# documento en borrador, pendiente de revisión} other {# documentos en borrador, pendientes de revisión}}",
+      "employees": "Empleados",
+      "employeesCount": "{count, plural, =0 {Todavía no hay empleados} one {# empleado} other {# empleados}}",
+      "openCases": "Denuncias abiertas",
+      "openCasesCount": "{count, plural, =0 {Ninguna denuncia abierta} one {# denuncia abierta} other {# denuncias abiertas}}",
+      "completion": "Avance",
+      "completionNote": "Se muestra cuando existan registros de empleados.",
+      "binder": "Carpeta",
+      "binderDownload": "Descargar carpeta",
+      "sections": "Secciones"
+    },
+    "employees": {
+      "empty": "Todavía no hay empleados. Cuando se agregue al equipo, el estado de lectura y aceptación de cada persona aparecerá aquí.",
+      "action": "Agregar empleados"
+    },
+    "training": {
+      "empty": "Todavía no hay registros de capacitación. La finalización de cada empleado aparecerá aquí."
+    },
+    "whistleblower": {
+      "empty": "Todavía no se recibieron denuncias. Las denuncias enviadas por el canal aparecerán aquí, con su estado e historial."
+    },
+    "vendors": {
+      "empty": "Todavía no hay proveedores. Los proveedores que se agreguen aparecerán aquí, con el estado del cuestionario y el resultado del screening.",
+      "action": "Agregar proveedor"
+    },
+    "billing": {
+      "subscriptionLabel": "Estado de la suscripción",
+      "subscription": {
+        "active": "Activa"
+      },
+      "history": "Historial de pagos",
+      "empty": "Todavía no hay pagos registrados.",
+      "date": "Fecha",
+      "amount": "Monto",
+      "status": "Estado",
+      "paid": "Pagado"
+    },
+    "settings": {
+      "savedNotice": "Configuración guardada. Los documentos ya generados no se regeneran automáticamente.",
+      "savedLink": "Ir a Documentos",
+      "currentLogo": "Logo actual",
+      "noLogo": "No se subió ningún logo.",
+      "replaceLogo": "Reemplazar logo (opcional)",
+      "save": "Guardar cambios",
+      "account": "Datos de la cuenta",
+      "readOnlyNote": "Estos datos no se pueden cambiar desde aquí.",
+      "taxId": "Identificación fiscal",
+      "country": "País",
+      "adminEmail": "Email del administrador",
+      "countries": {
+        "ar": "Argentina",
+        "br": "Brasil",
+        "mx": "México"
+      }
+    }
   },
   "email": {
     "signinSubject": "Tu enlace de acceso",
