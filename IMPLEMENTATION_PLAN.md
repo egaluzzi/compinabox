@@ -140,6 +140,19 @@ Judgment: empty states exist for every section; renaming a company leaves the ol
 
 ---
 
+## Phase 4b — Server-side session revocation (small; before phase 5)
+
+Found in the phase 4 review: signing out only clears the cookie. Sessions are stateless JWTs (7 days), so a copied cookie keeps working after sign-out (the worker replayed one by hand). Whistleblower data arrives in phase 5, so this closes first.
+
+- [ ] `users.sessions_valid_after` (timestamptz, default now) + migration; every issued session (Auth.js sign-in, welcome link, return-token sign-in) carries its issue time
+- [ ] `getTenant()` rejects a session issued before the user's `sessions_valid_after`
+- [ ] Sign-out sets `sessions_valid_after = now()` (all of that user's sessions end; one admin per company, so this is the intended meaning)
+- [ ] Tests on real Postgres: replaying a pre-sign-out cookie gets 401/redirect on every dashboard section and the PDF route; a session issued after sign-out works; sign-in links and welcome links still single-use
+
+**Definition of done:** `./verify.sh`; smoke replays the old cookie after sign-out and is refused.
+
+---
+
 ## Phase 5 — Whistleblower intake + case log
 
 SPEC §5.3, §11. **Deep review** — anonymity and tenant isolation.
@@ -150,6 +163,8 @@ SPEC §5.3, §11. **Deep review** — anonymity and tenant isolation.
 - [ ] Report `description` and `reporter_contact` encrypted at rest (application-level, key from env)
 - [ ] Dashboard → Whistleblower: list, detail, status (new/under review/closed), notes, resolution date; notes are append-only
 - [ ] Email notification to admin on new report (no report content in the email)
+
+- [ ] **Align report statuses**: the schema default is `received` (phase 2) but the dashboard counts open cases as `new` | `under_review` (`OPEN_REPORT_STATUSES` in `lib/db/tenant.ts`); pick one lifecycle (new / under review / closed per SPEC), change the default via migration, and update the constant and its tests
 
 **Definition of done**
 ```
