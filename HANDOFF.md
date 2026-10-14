@@ -345,4 +345,4 @@ verify.sh: PASS (HEAD cd8e5ea)
 
 ## CI
 
-`ci.yml` (with the new `postgres:16` service) is running on the PR head; result recorded in the PR (see checks). If it is red when you read this, treat that as authoritative over this file.
+`ci.yml` (with the new `postgres:16` service container) on head cd8e5ea: **success** — https://github.com/egaluzzi/compinabox/actions/runs/38556804428 (run 9, job `verify`, i.e. `./verify.sh` green on GitHub's runner against a real Postgres service). I did not read the CI log line by line; the conclusion is from the Actions API. The tip after this file (HANDOFF.md only) triggers one more docs-only run.
