@@ -263,7 +263,7 @@ check "settings: saving regenerated nothing (still 12 documents)" "[ \"\$(SQL \"
 check "settings: old logo file is kept on disk" "[ -f '$UPLOADS/$OLDLOGO' ]"
 check "settings: page shows the new logo and the not-regenerated notice linking to Documents" "H=\$(curl -s -b '$JAR2' '$B/dashboard/settings?saved=1') && echo \"\$H\" | grep -q '/uploads/$NEWLOGO' && echo \"\$H\" | grep -q 'não são regenerados automaticamente' && echo \"\$H\" | grep -q 'href=\"/dashboard/documents\"'"
 check "settings: header shows the new name, tax id and admin email are read-only text" "H=\$(curl -s -b '$JAR2' $B/dashboard/settings) && echo \"\$H\" | grep -q 'Smoke Settings Ltda' && echo \"\$H\" | grep -q '$EMAIL' && ! echo \"\$H\" | grep -q 'name=\"taxId\"' && ! echo \"\$H\" | grep -q 'name=\"email\"'"
-check "audit trail: v1 document view and PDF still carry the name it was generated with" "A=\$(curl -s -b '$JAR2' $B/dashboard/documents/$DOC1 | grep -o '<article.*</article>') && echo \"\$A\" | grep -q 'Smoke Renamed' && ! echo \"\$A\" | grep -q 'Smoke Settings'"
+check "audit trail: v1 document view still carries the name it was generated with (PDF: tests/dashboard-audit)" "A=\$(curl -s -b '$JAR2' $B/dashboard/documents/$DOC1 | grep -o '<article.*</article>') && echo \"\$A\" | grep -q 'Smoke Renamed' && ! echo \"\$A\" | grep -q 'Smoke Settings'"
 
 # Sign-out: the header form is an Auth.js server action; submit it exactly as a browser would
 JAR4=$(mktemp); cp "$JAR2" "$JAR4"
