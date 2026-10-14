@@ -123,7 +123,7 @@ Employee/training/whistleblower/vendor functionality (phases 5-7, sections are e
 
 ## Findings / risks to look at
 - **Sign-out does not invalidate the session server-side.** Sessions are Auth.js JWTs (Phase 2 decision). The sign-out action clears the cookie and the browser is logged out (smoke asserts it), but I verified by hand that replaying the *old* JWT value in a `Cookie` header after sign-out still returns 200 on `/dashboard` until it expires (7 days). Fixing it needs DB sessions or a revocation list — an architectural change I did not make. Relevant for whistleblower data on shared computers/stolen cookies; your call whether to schedule it (Esteban-visible risk: security).
-- One unexplained flake: the very first `./verify.sh` run (before the PDF-header fix, with the new tests) printed `Errors  1 error` in the vitest summary (all 324 tests passed but the run exited 1). I could not reproduce it in 13 further full-suite runs on fresh databases (also under build load) and the final verify is clean. The summary tail did not capture the message. Watch CI.
+- One unexplained flake: the very first `./verify.sh` run (before the PDF-header fix, with the new tests) printed `Errors  1 error` in the vitest summary (all 324 tests passed but the run exited 1). I could not reproduce it in about 16 further full-suite runs on fresh databases (also under build load) and the final verify is clean. The summary tail did not capture the message. Watch CI.
 - Settings → logo: a PNG that decodes badly is still accepted by magic-byte sniff (Phase 3 behaviour, PDF degrades gracefully) — unchanged.
 
 ## Open questions (for Esteban / lawyer)
@@ -132,4 +132,4 @@ Employee/training/whistleblower/vendor functionality (phases 5-7, sections are e
 3. Should the dashboard show the subscription's renewal date / plan name? There is no field for it today (`subscription_status` only).
 
 ## Verification notes for the supervisor
-- CI: see PR (to be recorded below after the run).
+- CI: PR #5 check `verify` (run 38586869716) completed `success` on head fe73828 (same tree as code tip bc64f23 plus this file).
