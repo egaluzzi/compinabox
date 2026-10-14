@@ -198,6 +198,8 @@ R3=$(curl -s -c "$JAR3" -X POST -H 'content-type: application/json' --data "{\"c
 curl -s -o /dev/null -X POST -d 'outcome=pay' "$B/api/fake-payments/$ATT3"
 curl -s -b "$JAR3" -c "$JAR3" "$B/api/checkout/status?attempt=$ATT3" -o /tmp/st3.out
 check "second company is provisioned and signed in" "grep -q '\"signedIn\":true' /tmp/st3.out"
+# the dashboard gate requires completed onboarding; finish it so the 404 checks below test tenant isolation, not the gate
+check "second company completes onboarding" "curl -s -o /dev/null -w '%{redirect_url}' -b '$JAR3' -F companyName='Other Ltda' -F industry=retail $B/api/onboarding | grep -q '/dashboard'"
 check "second company: first company's document view -> 404" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR3' $B/dashboard/documents/$DOC1)\" = 404 ]"
 check "second company: first company's document PDF -> 404" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR3' $B/dashboard/documents/$DOC1/pdf)\" = 404 ]"
 check "second company: malformed document id -> 404" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR3' $B/dashboard/documents/not-a-uuid/pdf)\" = 404 ]"
@@ -219,7 +221,6 @@ check "database: direct DELETE of a document is rejected (append-only trigger)" 
 # Company 1 = "$EMAIL" (JAR2), company 2 = "Other Ltda" (JAR3).
 # ---------------------------------------------------------------------------------------------
 C2=$(SQL "select company_id from users where email='$EMAIL3'")
-SQL "update companies set onboarding_completed_at=now(), industry='retail' where id='$C2'" >/dev/null
 # distinctive payments so a leak between the two companies is unmistakable (R$ 76.543,21 / R$ 12.345,67)
 SQL "insert into billing_records (company_id, amount_cents, currency, paid_at) values ('$CID', 7654321, 'BRL', now()), ('$C2', 1234567, 'BRL', now())" >/dev/null
 NAME1=$(SQL "select name from companies where id='$CID'")
@@ -277,13 +278,14 @@ mapfile -d '' -t SO_ARGS < <(curl -s -b "$JAR4" "$B/dashboard" | node -e '
   })')
 check "sign-out form carries a server action (hidden action fields found)" "[ ${#SO_ARGS[@]} -ge 2 ]"
 check "before sign-out the copied session reaches the dashboard" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR4' $B/dashboard)\" = 200 ]"
-SO_HDR=$(curl -s -D - -o /dev/null -b "$JAR4" -c "$JAR4" "${SO_ARGS[@]}" "$B/dashboard" | tr -d '\r')
-check "sign-out action: redirects to /login" "echo \"\$SO_HDR\" | grep -iqE '^(location: .*/login|x-action-redirect: .*/login)'" 2>/dev/null
+SO_HDR=$(mktemp)
+curl -s -D - -o /dev/null -b "$JAR4" -c "$JAR4" "${SO_ARGS[@]}" "$B/dashboard" | tr -d '\r' >"$SO_HDR"
+check "sign-out action: 303 to /login" "head -1 '$SO_HDR' | grep -q ' 303 ' && grep -iqE '^location: .*/login' '$SO_HDR'"
 check "sign-out action: session cookie is cleared" "! grep -q 'authjs.session-token.*[A-Za-z0-9_-]\\{40,\\}' '$JAR4'"
 check "after sign-out: /dashboard redirects to /login" "curl -s -D - -o /dev/null -b '$JAR4' $B/dashboard | tr -d '\r' | grep -iqE '^location: .*/login'"
 check "after sign-out: a section and the PDF route are refused too" "curl -s -D - -o /dev/null -b '$JAR4' $B/dashboard/billing | tr -d '\r' | grep -iqE '^location: .*/login' && [ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR4' $B/dashboard/documents/$DOC1/pdf)\" = 401 ]"
 check "other browser (company 1's original jar) is a separate cookie and unaffected" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR2' $B/dashboard)\" = 200 ]"
-rm -f "$JAR4"
+rm -f "$JAR4" "$SO_HDR"
 
 rm -f "$JAR3" /tmp/pdf.hdr /tmp/doc1.pdf /tmp/st3.out
 

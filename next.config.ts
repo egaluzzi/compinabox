@@ -12,10 +12,18 @@ const AUTHENTICATED_HEADERS = [
 const nextConfig: NextConfig = {
   output: "standalone",
   async headers() {
-    return ["/dashboard/:path*", "/onboarding", "/login"].map((source) => ({
-      source,
-      headers: AUTHENTICATED_HEADERS,
-    }));
+    return [
+      ...["/dashboard/:path*", "/onboarding", "/login"].map((source) => ({
+        source,
+        headers: AUTHENTICATED_HEADERS,
+      })),
+      // Later rules win per key: the PDF keeps the `Cache-Control: no-store` its route handler
+      // set in phase 3 (tests/documents-routes.test.ts, smoke) — still uncacheable, still private.
+      {
+        source: "/dashboard/documents/:id/pdf",
+        headers: [{ key: "Cache-Control", value: "no-store" }],
+      },
+    ];
   },
 };
 
