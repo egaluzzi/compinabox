@@ -160,5 +160,5 @@ Considered and declined — don't build unless Esteban asks again:
 - [ ] Domain name + Cloudflare account access (needed before phase 1 can be verified end-to-end on geo)
 - [ ] Mercado Pago account: sandbox (test) credentials for phase 9b; production credentials before launch
 - [ ] Resend account + sending domain
-- [ ] Legal review of `/lib/content/br.ts` citations, the pt-BR document templates (`lib/documents/REVIEW.md`) and the BR privacy policy before launch (SPEC §11) — **needs a Brazilian lawyer; allow lead time**
+- [ ] Legal review of `/lib/content/br.ts` citations, the pt-BR document templates (`lib/documents/REVIEW.md`) and the BR privacy policy before launch (SPEC §11) — **needs a Brazilian lawyer; allow lead time.** Ask the lawyer to confirm specifically *what Lei 14.133/2021 requires and for which contracts*: the pre-approved marketing copy ("passou a exigir programas de integridade robustos para elegibilidade em licitações") and the Brazil-first rationale in §2 depend on that scope, and the team cannot verify it. If the requirement is narrower than the copy says, that is a marketing-claim and positioning change for Esteban (rule 1/2), not just a wording fix
 - [ ] Review of `messages/DRAFTS.md` (gap-filled translations, incl. footer disclaimer) by a native speaker / legal before launch

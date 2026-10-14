@@ -297,6 +297,9 @@ Log standalone sweeps here — e.g. a bug pattern found twice incidentally — s
 
 ## Backlog / v2 (explicitly deferred)
 
+- Document polish: the `{{country}}` merge field yields "contexto de Brasil" (needs "do Brasil"); industry label is capitalised mid-sentence ("No setor de Saúde"); per-country grammatical variants belong in the template/locale data, not the engine
+- Customer text editing of generated documents (v1 is regenerate-only)
+- Backup manifest: record per-table counts at dump time so the restore test can also prove the dump matched the database
 - Ad-variant landing pages `/{country}/gobierno`, `/{country}/proveedores` (CONTENT.md §7)
 - Multi-admin per company; password login
 - Object storage for uploads (currently local disk behind Caddy)
