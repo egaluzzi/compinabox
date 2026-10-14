@@ -117,7 +117,9 @@ if ls app lib/documents >/dev/null 2>&1; then
 fi
 
 # 4d. Forbidden claims in copy (CLAUDE.md §8)
-BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cumplimiento|garante (a )?conformidade|ISO ?3730[12]|certif(ied|icado|icada) (by|por) (la )?ley' app messages lib/content 2>/dev/null || true)
+# A *negated* guarantee ("does not guarantee compliance", "no garantiza el cumplimiento", "não garante a conformidade")
+# is the approved footer disclaimer (CONTENT.md §1), not a claim — those lines are exempt.
+BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cumplimiento|garante (a )?conformidade|ISO ?3730[12]|certif(ied|icado|icada) (by|por) (la )?ley' app messages lib/content 2>/dev/null | grep -viE '(does not|do not|doesn.t|no|não|nao|never|nunca) +(guarantee|garantiza|garante)' || true)
 if [ -n "$BANNED" ]; then echo "$BANNED" | head; bad "forbidden claims" "copy implies guaranteed compliance or ISO certification"; else note "forbidden claims" "none"; fi
 
 # 4e. Second geo mechanism must not exist (CLAUDE.md §4)
