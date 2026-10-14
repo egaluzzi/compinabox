@@ -85,7 +85,7 @@ Public URLs use two-letter country prefixes; locale codes are internal and must 
 
 ## 6. Repo conventions
 
-- `/app/page.tsx` — generic `en` page; `/app/[country]/...` — marketing pages, `country ∈ ar|br|mx`
+- `/app/(visitor)/...` — generic `en` page `/`, `/legal/*`, `/checkout` (language from cookies); `/app/[country]/...` — marketing pages, `country ∈ ar|br|mx` (language from the URL). Two root layouts so each page gets its own `<html lang>`; URLs are unaffected
 - `/app/dashboard/...` — customer dashboard (SPEC §6)
 - `/app/employee/...` — tokenized employee portal
 - `/app/report/[slug]` — public whistleblower intake, no auth
