@@ -69,18 +69,18 @@ Judgment: copy matches CONTENT.md word for word (spot-check 5 strings per locale
 
 SPEC §6 (auth only), §8, §13. **Deep review** — money and auth. The payment processor is **Mercado Pago, integrated last (phase 9b)**; this phase builds the whole checkout flow against a guarded `fake` provider, so everything after the processor's "paid" signal is real and tested.
 
-- [ ] Drizzle schema for all SPEC §13 entities (even ones not used yet — the shape is known); `company_id` on every tenant table; initial migration committed. Plus two pre-tenant tables: `checkout_attempt` (provider, provider_ref, status pending|paid|failed|expired, company name/tax_id/billing_email/country, amount/currency, UTM fields; no `company_id` because the company doesn't exist yet) and `payment_event` (provider + provider event/payment id, unique — idempotency ledger)
-- [ ] `WaitlistLead` table; phase 1 stub now writes to it
-- [ ] Auth.js v5 magic link; `/dashboard` requires session; session carries `company_id`. Email goes through an `EmailSender` interface: Resend implementation, plus a dev/CI sink used when `RESEND_API_KEY` is unset (so magic links are testable without a Resend account)
-- [ ] `PaymentProvider` interface (`createCheckout`, `verifyWebhook`, `fetchPayment`) + `fake` provider. Guard: `PAYMENT_PROVIDER` defaults to `none` (checkout shows "unavailable"); `fake` works only with `ALLOW_FAKE_PAYMENTS=true`; otherwise the fake routes 404
-- [ ] `/checkout`: company name, tax ID (CNPJ validated; CUIT/RFC return `NotYetEnabled`), billing email, **pay button**; refuses countries not in `ENABLED_COUNTRIES`. Click → server creates a `checkout_attempt` → provider returns a hosted-checkout URL → browser goes there
-- [ ] Fake processor simulator page (`/checkout/fake/[id]`, guarded) with "Pay" / "Fail" buttons that behave like a real processor: they send a **signed webhook** to the same webhook endpoint the real provider will use; they never touch the DB directly
-- [ ] Webhook endpoint `/api/webhooks/payments`: verify signature → treat the event only as a prompt → `fetchPayment` from the processor → if paid, in **one DB transaction** insert `payment_event` (unique; replay is a no-op), create `Company`, `User`, `BillingRecord` (with UTM), mark attempt paid; send welcome email with magic link
-- [ ] Return page `/checkout/return`: polls attempt status (the webhook may land after the browser) and redirects to `/onboarding` once paid; shows failed/expired/still-pending states with retry
-- [ ] `/onboarding`: company profile, industry dropdown, logo upload (local disk under `/opt/compinabox/uploads`, served by Caddy — no S3 yet)
-- [ ] UTM capture in the Phase 1 proxy → cookie → `checkout_attempt` → `BillingRecord`
-- [ ] Tenant-isolation test: two companies seeded, every tenant-scoped query asserted to return only own rows
-- [ ] **Backups:** `scripts/backup.sh` (`pg_dump` → Spaces via `s3cmd`), systemd timer unit file, restore instructions in README. Worker writes the files and proves a dump → restore round trip locally; **Esteban installs them on the droplet and runs the first restore test before the first real customer** (gated in phase 9 — dev databases hold test data only).
+- [x] Drizzle schema for all SPEC §13 entities (even ones not used yet — the shape is known); `company_id` on every tenant table; initial migration committed. Plus two pre-tenant tables: `checkout_attempt` (provider, provider_ref, status pending|paid|failed|expired, company name/tax_id/billing_email/country, amount/currency, UTM fields; no `company_id` because the company doesn't exist yet) and `payment_event` (provider + provider event/payment id, unique — idempotency ledger)
+- [x] `WaitlistLead` table; phase 1 stub now writes to it
+- [x] Auth.js v5 magic link; `/dashboard` requires session; session carries `company_id`. Email goes through an `EmailSender` interface: Resend implementation, plus a dev/CI sink used when `RESEND_API_KEY` is unset (so magic links are testable without a Resend account)
+- [x] `PaymentProvider` interface (`createCheckout`, `verifyWebhook`, `fetchPayment`) + `fake` provider. Guard: `PAYMENT_PROVIDER` defaults to `none` (checkout shows "unavailable"); `fake` works only with `ALLOW_FAKE_PAYMENTS=true`; otherwise the fake routes 404
+- [x] `/checkout`: company name, tax ID (CNPJ validated; CUIT/RFC return `NotYetEnabled`), billing email, **pay button**; refuses countries not in `ENABLED_COUNTRIES`. Click → server creates a `checkout_attempt` → provider returns a hosted-checkout URL → browser goes there
+- [x] Fake processor simulator page (`/checkout/fake/[id]`, guarded) with "Pay" / "Fail" buttons that behave like a real processor: they send a **signed webhook** to the same webhook endpoint the real provider will use; they never touch the DB directly
+- [x] Webhook endpoint `/api/webhooks/payments`: verify signature → treat the event only as a prompt → `fetchPayment` from the processor → if paid, in **one DB transaction** insert `payment_event` (unique; replay is a no-op), create `Company`, `User`, `BillingRecord` (with UTM), mark attempt paid; send welcome email with magic link
+- [x] Return page `/checkout/return`: polls attempt status (the webhook may land after the browser) and redirects to `/onboarding` once paid; shows failed/expired/still-pending states with retry
+- [x] `/onboarding`: company profile, industry dropdown, logo upload (local disk under `/opt/compinabox/uploads`, served by Caddy — no S3 yet)
+- [x] UTM capture in the Phase 1 proxy → cookie → `checkout_attempt` → `BillingRecord`
+- [x] Tenant-isolation test: two companies seeded, every tenant-scoped query asserted to return only own rows
+- [x] **Backups:** `scripts/backup.sh` (`pg_dump` → Spaces via `s3cmd`), systemd timer unit file, restore instructions in README. Worker writes the files and proves a dump → restore round trip locally; **Esteban installs them on the droplet and runs the first restore test before the first real customer** (gated in phase 9 — dev databases hold test data only).
 
 **Definition of done**
 ```
