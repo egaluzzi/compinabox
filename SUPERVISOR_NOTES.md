@@ -1,4 +1,4 @@
-# Supervisor notes — worker task: Phase 3 (document engine + Brazil legal-content layer)
+# Supervisor notes — worker task: Phase 4 (customer dashboard shell)
 
 Overwrite each time — a relay, not a log. Only one relay at a time. Read this at the start of
 your session before anything else.
@@ -8,136 +8,104 @@ your session before anything else.
 ## If this is a WORKER task
 
 ### Context
-Phases 0-2 are merged. Phase 3 builds the engine that generates the customer's code of conduct
-and five policies, stores them versioned, and renders them as a web view and PDF. These documents
-are the product and they are **legal-adjacent: you are drafting, not giving legal advice, and a
-Brazilian lawyer will review everything before launch.** Design for review and correction, and
-never state or imply that a document makes anyone compliant.
+Phases 0-3 are merged. Phase 4 turns the stub `/dashboard` into a real app shell: navigation,
+the eight sections of SPEC §6, the phase 3 document pages inside it, Settings and Billing. Phases
+5-7 will fill in Whistleblower, Employees/Training and Vendors, so those sections ship now as
+honest empty states. This is mostly UI, but it is an **authenticated, multi-tenant surface**:
+tenant isolation (CLAUDE.md §8) is the thing to get exactly right.
 
-Read first: `CLAUDE.md` (§0, §8 — the guardrails matter a lot this phase — and §9), the **Phase 3**
-section of `IMPLEMENTATION_PLAN.md` (rewritten for this; it is the checklist), `SPEC.md` §5.1, §5.2,
-§7, `CONTENT.md` §3 and the pt-BR `legal-basis` copy in `messages/pt-BR.json`, `KNOWN_ISSUES.md`.
-Branch `phase-3-documents` from current `main`; PR to `main`; don't merge; don't push to `main`.
+Read first: `CLAUDE.md` (§0, §6 — standing tenant checklist — §8, §9), the **Phase 4** section of
+`IMPLEMENTATION_PLAN.md` (rewritten; it is the checklist), `SPEC.md` §6, `KNOWN_ISSUES.md`. Existing
+code to build on: `app/(app)/`, `lib/auth/tenant.ts` (`getTenant`), `lib/db/tenant.ts`,
+`lib/documents/store.ts`, `components/DocumentView.tsx`, `lib/i18n.ts`, `lib/uploads.ts`.
+Branch `phase-4-dashboard` from current `main`; PR to `main`; don't merge; don't push to `main`.
 
-**Out of scope — log under "Not done":** the dashboard shell/nav (phase 4), customer text editing of
-documents (v1 = regenerate only), training/acknowledgment (phase 6), the whistleblower channel URL
-in documents (phase 5 will regenerate), the binder (phase 8), AR/MX content, any citation not
-already in SPEC.md/CONTENT.md.
-
-### Guardrails for this phase (a violation means stop and write "blocked")
-- **No invented law.** `br.ts` content comes only from SPEC §7 and CONTENT.md §3 / the pt-BR
-  messages. Do **not** add article numbers, decree numbers, other statutes or case law even if you
-  know them. Put suggested additions in HANDOFF.md under "For the lawyer".
-- **No compliance claims.** Neither templates nor UI may say or imply that the document or the
-  product makes a company compliant, adequate, certified or "in conformity with" a law, and no ISO
-  37301/37002 mentions. Legal-basis sections cite the laws as *context* ("a legislação aplicável
-  inclui ..."), with the disclaimer "Isto é informação geral, não aconselhamento jurídico."
-- No legal citation string in any template or `.tsx`: references are injected from `br.ts`.
-  `lib/documents/**` contains no statute names/numbers (verify.sh 4c scans it).
+**Out of scope — log under "Not done":** any employee, training, whistleblower or vendor
+functionality (phases 5-7), the binder (phase 8), cancel/manage-subscription flows, multi-admin,
+notifications, editing document text, changing country or tax ID, charts.
 
 ### Decisions already made (record deviations as judgment calls)
-**Content layer**
-- `lib/content/br.ts`: typed `CountryLegalContent` = `{country, locale, laws[{id, shortName,
-  officialName, citation, summary}], requiredElements[], recommendedElements[], explainer,
-  disclaimer, reviewStatus: "draft" | {reviewer, date}}`. `ar.ts`/`mx.ts` export a typed
-  `NotYetEnabled`; the engine returns a typed error for them. A test asserts `br.ts`'s explainer text
-  equals the pt-BR legal-basis copy in `messages/pt-BR.json` (stop the two copies drifting); the
-  marketing page keeps reading the messages.
-- Because `br.ts` changes when the lawyer corrects it, generated documents **snapshot the legal
-  references they used** inside their stored content; a later `br.ts` correction affects only the
-  next regeneration.
+**Gate**
+- `requireTenant()` (in `lib/auth/`): returns `{tenant, company, locale, t}`; redirects to `/login`
+  without a valid session and to `/onboarding` if `onboarding_completed_at` is null. **Every**
+  `page.tsx` and `route.ts` under `app/(app)/dashboard` calls it itself — the layout may also use it
+  for the shell, but Next does not re-run layouts on client navigation, so the layout is not a gate.
+  Add a Vitest test that scans `app/(app)/dashboard/**` and fails if any page/route doesn't call it.
+- The existing phase 3 document pages/routes are brought under the same helper (they currently call
+  `getTenant`); behavior (404 for another tenant's ids, PDF headers) must not change.
+- Language of the dashboard = the company's country locale (`COUNTRY_LOCALE`), not the cookie.
+- **No `company_id` from the request, ever.** Add a verify.sh invariant (4h) that greps `app/` for
+  `company_?id` being read from `formData`/`searchParams`/`params`/request body (heuristic is fine,
+  keep it simple), and show it catching a deliberately bad line, then passing on the clean tree.
 
-**Engine (`lib/documents/`)**
-- Pure, deterministic `generateDocument({type, locale, country, company:{name, industry}}) →
-  StructuredDocument` = `{templateVersion, locale, type, title, sections[{id, heading,
-  paragraphs[]}], legalReferences[], mergeSnapshot}`. No timestamps or randomness in the content (so
-  "unchanged inputs" is detectable by comparing content). Stored as JSON text in `documents.content`.
-- Merge fields: `{{companyName}}`, `{{industry}}` (the pt-BR label), `{{country}}`. Tiny
-  interpolator, no `eval`/template-engine dependency; an unknown or missing field **throws**
-  (test it); output is plain text (the React/PDF renderers escape).
-- Templates are data (`lib/documents/templates/pt-BR/<type>.ts`), keyed by locale so es-AR/es-MX can
-  be added later without touching the engine. Types: `code_of_conduct`, `policy:anti_bribery`,
-  `policy:gifts_hospitality`, `policy:conflicts_of_interest`, `policy:third_party_public_officials`,
-  `policy:whistleblower_protection`.
-- Code of conduct clauses per SPEC §5.1 (anti-bribery, gifts & hospitality, conflicts of interest,
-  dealing with public officials, confidentiality) plus a leadership-commitment statement (SPEC §7
-  Brazil: senior leadership commitment) and a "how to raise a concern" section that refers to the
-  company's reporting channel **generically** (no URL yet). Policies SPEC §5.2. Refer to roles
-  ("o responsável pelo programa de integridade designado pela Administração"), not blank
-  placeholders. Optional per-industry notes for a few industries (e.g. construction, health,
-  finance); the others get none. Plain, direct pt-BR; short paragraphs; no legalese you can't back.
-- `lib/documents/REVIEW.md`: a table of every template and `br.ts` with `status: DRAFT — needs legal
-  review`, so a lawyer has one list to work from.
+**Shell**
+- Nested layout `app/(app)/dashboard/layout.tsx` with: header (company name, logo if any, admin email,
+  sign-out), nav of the 8 sections (Overview, Documents, Employees, Training, Whistleblower, Vendors,
+  Billing, Settings), active item marked with `aria-current="page"`, a skip-to-content link, `<nav>`/
+  `<main>` landmarks. Responsive: works at 360 px (collapsible or stacked nav) and at desktop. Plain
+  Tailwind, no component library, no new dependencies. Sign-out via an Auth.js server action
+  (`signOut`) from a form button — test that the session is gone afterwards.
+- Hardening for authenticated pages (dashboard + `/onboarding` + `/login`): `Cache-Control: private,
+  no-store`, `Content-Security-Policy: frame-ancestors 'none'` (and `X-Frame-Options: DENY`),
+  `Referrer-Policy: same-origin`, via `next.config` `headers()`; assert them in the smoke test. Do not
+  add a full CSP (scripts/styles) in this phase.
 
-**Storage and versioning**
-- Table `documents` exists. Add `locale`, `template_version`, `generated_by_user_id` (nullable), and a
-  **unique `(company_id, type, version)`**; a new migration (commit it; `verify.sh` drift check).
-  Next version = max+1 computed inside a transaction with the company's documents locked (or retry on
-  unique violation); concurrent regenerations must not produce duplicate versions (test).
-- **Append-only in the database:** a trigger in the migration (raw SQL via drizzle-kit custom
-  migration) raises on UPDATE and DELETE of `documents`. Test that both fail and that INSERT works.
-  (Any future erasure is a deliberate migration — escalation rule 3.)
-- Regenerating when the rendered content equals the latest version's content = no-op, returns the
-  latest version, creates nothing.
+**Sections**
+- **Overview:** cards with real tenant-scoped counts where the tables already exist (documents: how many
+  of the 6 exist and their review status; employees; open whistleblower cases = status `new` or
+  `under_review`), completion % rendered as "—" (phase 6 defines it; implement as a function that
+  returns `null` for now), binder card as a disabled placeholder. Plus links to the other sections.
+- **Documents:** the phase 3 list/view/regenerate/PDF inside the shell; show the draft ("RASCUNHO")
+  status next to each document.
+- **Employees / Training / Whistleblower / Vendors:** empty states written for the finished product
+  ("Nenhum colaborador ainda…"), with their primary action absent or visibly disabled. No fake data,
+  no "coming soon" marketing.
+- **Settings:** form for company name, industry (existing `INDUSTRIES`), logo (existing `saveLogo`,
+  PNG/JPEG, same validation). Tax ID, country and admin email displayed read-only. New
+  `updateCompanySettings` in `lib/db/tenant.ts` — do **not** reuse `updateCompanyProfile` (it resets
+  `onboarding_completed_at`). After saving, show a notice that documents are not regenerated
+  automatically, linking to Documents. Keep old logo files on disk (no deletion).
+- **Billing:** table from `getBillingRecords` for the session's company: date (`America/Sao_Paulo`),
+  amount formatted with `Intl.NumberFormat` for the record's currency in the company's locale, status
+  "Pago"; plus `subscription_status`. No invoices, no manage/cancel (billing terms are an open input
+  for Esteban) — list that under open questions.
+- All new UI strings in the four `messages/*.json` files + `messages/DRAFTS.md` rows (parity and
+  provenance tests as before). Nothing may claim or imply compliance, adequacy or certification
+  (CLAUDE.md §8) — including empty-state and overview copy ("seu programa está completo" style text is
+  not allowed; describe what exists, not what it achieves).
 
-**When documents are created**
-- At **onboarding completion**, in the same transaction as the profile update (`/api/onboarding`),
-  idempotent (does nothing if the company already has the six). Not at payment time: industry is
-  unknown then. If generation throws, onboarding must fail loudly and roll back — never leave a
-  completed profile without documents silently.
-- Regenerate (manual): `POST /api/documents/regenerate` for one type or all; uses the company's
-  current name/industry.
-
-**Routes** (minimal; phase 4 adds the shell): `/dashboard/documents` (per type, list versions),
-`/dashboard/documents/[id]` (web view), `/dashboard/documents/[id]/pdf` (download). Tenant from the
-session only; another company's document id → 404 (not 403). UI strings in all four message files
-(parity test + `messages/DRAFTS.md` rows as in earlier phases); the document body itself is pt-BR only.
-
-**PDF**
-- `@react-pdf/renderer` (pin exact version; confirm it works with the repo's React 19 and Next 16
-  standalone build — if it genuinely can't, write "blocked" with the evidence; Puppeteer is a flagged
-  fallback that needs the supervisor's decision). A4; built-in fonts (no network font fetch);
-  header with company logo if present, title, company name; footer with "Página X de Y", version,
-  generation date and the fixed disclaimer ("Isto é informação geral, não aconselhamento jurídico" and
-  the pt-BR footer disclaimer already in the messages — reuse, don't rewrite).
-- **Logos are PNG/JPEG only.** react-pdf cannot embed WebP, so drop WebP from the Phase 2 upload
-  validation (update `lib/uploads.ts`, its tests, any UI string that lists formats). If a stored logo
-  can't be loaded at render time, render without it and log once — a PDF must never fail because of a logo.
-- Route handler streams the PDF with `Content-Type: application/pdf`, `Content-Disposition:
-  attachment` with an ASCII-safe filename, `Cache-Control: no-store`.
+**Audit-trail check:** the PDF already uses `mergeSnapshot.companyName`. Add a test proving that after
+a Settings rename, the v1 document view **and** PDF still show the old name and a regenerated v2 shows
+the new one. If the web view reads the live company name anywhere, fix it.
 
 ### Action items
-Work the Phase 3 checklist top to bottom and tick it. Small logical commits. Then run `./verify.sh`
+Work the Phase 4 checklist top to bottom and tick it. Small logical commits. Then `./verify.sh`
 on the final code commit, push, open the PR, wait for CI, write `HANDOFF.md`.
 
-**`verify.sh` / smoke — permitted edits, only these:**
-1. Forbidden-claims scan: also scan `lib/documents`, and add a pt-BR pattern for
-   `em conformidade com a lei` / `atende (integralmente )?(a|às) exigências` (keep the existing
-   negation-with-word-boundary exemption intact). Show the diff and one flagged-line demo.
-2. `scripts/smoke.sh`: extend the live flow — after onboarding: six documents exist; list and view
-   return 200; PDF download is `%PDF` with the right headers; a second company's session gets 404 for
-   the first company's document id; regenerate with a changed company name creates v2 while v1 stays
-   readable and unchanged; direct SQL `UPDATE`/`DELETE` on `documents` fails.
+**`verify.sh` / smoke — permitted edits, only these:** (1) the 4h invariant above; (2) extend
+`scripts/smoke.sh`: sign in, GET each of the eight sections → 200 and contains the nav; unauthenticated
+GET of each → redirect to `/login`; a second company's session never sees the first company's name,
+documents or billing amounts in any section's HTML; the security headers are present on a dashboard
+page; Settings save changes the name/logo and leaves `onboarding_completed_at` intact; sign-out then
+requesting a dashboard page redirects to `/login`.
 
 ### Definition of done
-As in the Phase 3 section of `IMPLEMENTATION_PLAN.md`. Hand me evidence, not assurance, for:
-snapshot tests per document per industry; the DB trigger and unique-version tests (real Postgres);
-concurrent regeneration test; tenant 404 test; the drift test between `br.ts` and the messages; the
-grep output proving no citation strings outside `br.ts`/messages; the forbidden-claims scan demo.
+As in the Phase 4 section of `IMPLEMENTATION_PLAN.md`. Evidence I will look for: a cross-tenant test
+**per dashboard route** (two seeded companies, assert company B's data — name, document titles/ids,
+billing amounts — never appears in company A's responses, and A's session gets 404 for B's document
+ids); the `requireTenant`-coverage test; the 4h invariant demo; headers asserted live; the rename audit
+test; no new dependencies in `package.json` (or each justified).
 
-**PDF evidence I can look at:** render page 1 and one later page of the code of conduct and of one
-policy with `pdftoppm` (or equivalent), **view them yourself**, and commit the PNGs under
-`docs/phase3-samples/`. In HANDOFF.md state concretely what you saw (logo present/absent, accents
-ç ã é õ rendered, "Página X de Y", footer disclaimer, no overflow/clipped text). Also include text
-extracted from the PDF (a dev-only extraction tool in tests is fine) proving the company name and
-accented text are in it. Test a company with a logo and one without.
+**Screenshots I can look at:** with Chromium from `/opt/pw-browsers` (do not run `playwright install`),
+capture Overview, Documents, Billing and Settings at 1280 px and one section at 360 px, for a
+company with a logo; view them yourself; commit under `docs/phase4-samples/`. State in HANDOFF.md
+what you saw (nav active state, empty states, no overflow at 360 px).
 
 ### Report back
-`HANDOFF.md` per the template. Verification depth: real Postgres (migrated from scratch), real HTTP
-through the standalone build, and PDF checked by extraction + rendered images. Add a section
-**"For the lawyer"** (what you assumed, which statements you were least sure of, suggested
-additional citations you deliberately did not add) and **"Template overview"** (per document: purpose,
-sections, word count). List every judgment call.
+`HANDOFF.md` per the template. Verification depth: real Postgres, real HTTP through the standalone
+build with real session cookies (not mocked auth), and screenshots. Open questions to include: what the
+Billing page should offer for cancel/manage (needs Esteban), and anything in the copy you were unsure
+of. List every judgment call.
 
 ---
 
