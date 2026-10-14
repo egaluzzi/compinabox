@@ -287,6 +287,7 @@ check "after sign-out: /dashboard redirects to /login" "curl -s -D - -o /dev/nul
 check "after sign-out: a section and the PDF route are refused too" "curl -s -D - -o /dev/null -b '$JAR4' $B/dashboard/billing | tr -d '\r' | grep -iqE '^location: .*/login' && [ \"\$(curl -s -o /dev/null -w '%{http_code}' -b '$JAR4' $B/dashboard/documents/$DOC1/pdf)\" = 401 ]"
 # Phase 4b: sign-out is server-side. The cookie copied before sign-out must now be refused everywhere.
 code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+export -f code
 check "REPLAY pre-sign-out cookie: /dashboard -> /login" "curl -s -D - -o /dev/null -b '$JAR_OLD' $B/dashboard | tr -d '\r' | grep -iqE '^location: .*/login'"
 check "REPLAY pre-sign-out cookie: /dashboard/billing -> /login" "curl -s -D - -o /dev/null -b '$JAR_OLD' $B/dashboard/billing | tr -d '\r' | grep -iqE '^location: .*/login'"
 check "REPLAY pre-sign-out cookie: PDF route -> 401" "[ \"\$(code -b '$JAR_OLD' $B/dashboard/documents/$DOC1/pdf)\" = 401 ]"
