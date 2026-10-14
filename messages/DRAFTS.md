@@ -8,7 +8,7 @@ launch (CLAUDE.md §11); the footer disclaimer and the "does this certify…?" F
 Source column: the locale/key the text was translated from, or "new UI string" where CONTENT.md has no source at all
 (the worker wrote the English and translated it faithfully).
 
-Row counts: en=59, es-AR=46, pt-BR=68, es-MX=56
+Row counts: en=119, es-AR=106, pt-BR=128, es-MX=116
 
 | locale | key | translated from |
 | :- | :- | :- |
@@ -241,3 +241,243 @@ Row counts: en=59, es-AR=46, pt-BR=68, es-MX=56
 | es-MX | pricing.tba | new UI string (no CONTENT.md source) |
 | es-MX | checkout.title | new UI string (no CONTENT.md source) |
 | es-MX | checkout.unavailable | new UI string (no CONTENT.md source) |
+| en | checkout.companyName | new UI string (no CONTENT.md source) |
+| en | checkout.taxId | new UI string (no CONTENT.md source) |
+| en | checkout.taxIdBr | new UI string (no CONTENT.md source) |
+| en | checkout.billingEmail | new UI string (no CONTENT.md source) |
+| en | checkout.price | new UI string (no CONTENT.md source) |
+| en | checkout.testPrice | new UI string (no CONTENT.md source) |
+| en | checkout.processing | new UI string (no CONTENT.md source) |
+| en | checkout.errInvalidName | new UI string (no CONTENT.md source) |
+| en | checkout.errInvalidTaxId | new UI string (no CONTENT.md source) |
+| en | checkout.errInvalidEmail | new UI string (no CONTENT.md source) |
+| en | checkout.errEmailInUse | new UI string (no CONTENT.md source) |
+| en | checkout.errCountry | new UI string (no CONTENT.md source) |
+| en | checkout.errGeneric | new UI string (no CONTENT.md source) |
+| en | checkout.signInLink | new UI string (no CONTENT.md source) |
+| en | checkout.returnTitle | new UI string (no CONTENT.md source) |
+| en | checkout.returnPending | new UI string (no CONTENT.md source) |
+| en | checkout.returnFailed | new UI string (no CONTENT.md source) |
+| en | checkout.returnExpired | new UI string (no CONTENT.md source) |
+| en | checkout.returnRetry | new UI string (no CONTENT.md source) |
+| en | checkout.returnPaid | new UI string (no CONTENT.md source) |
+| en | checkout.continue | new UI string (no CONTENT.md source) |
+| en | checkout.fakeTitle | new UI string (no CONTENT.md source) |
+| en | checkout.fakeNote | new UI string (no CONTENT.md source) |
+| en | checkout.fakePay | new UI string (no CONTENT.md source) |
+| en | checkout.fakeFail | new UI string (no CONTENT.md source) |
+| en | login.title | new UI string (no CONTENT.md source) |
+| en | login.emailLabel | new UI string (no CONTENT.md source) |
+| en | login.submit | new UI string (no CONTENT.md source) |
+| en | login.sent | new UI string (no CONTENT.md source) |
+| en | login.invalid | new UI string (no CONTENT.md source) |
+| en | login.error | new UI string (no CONTENT.md source) |
+| en | onboarding.title | new UI string (no CONTENT.md source) |
+| en | onboarding.intro | new UI string (no CONTENT.md source) |
+| en | onboarding.companyName | new UI string (no CONTENT.md source) |
+| en | onboarding.industry | new UI string (no CONTENT.md source) |
+| en | onboarding.industryPlaceholder | new UI string (no CONTENT.md source) |
+| en | onboarding.logo | new UI string (no CONTENT.md source) |
+| en | onboarding.logoHint | new UI string (no CONTENT.md source) |
+| en | onboarding.submit | new UI string (no CONTENT.md source) |
+| en | onboarding.saved | new UI string (no CONTENT.md source) |
+| en | onboarding.errLogo | new UI string (no CONTENT.md source) |
+| en | onboarding.errGeneric | new UI string (no CONTENT.md source) |
+| en | industry.technology | new UI string (no CONTENT.md source) |
+| en | industry.manufacturing | new UI string (no CONTENT.md source) |
+| en | industry.construction | new UI string (no CONTENT.md source) |
+| en | industry.services | new UI string (no CONTENT.md source) |
+| en | industry.retail | new UI string (no CONTENT.md source) |
+| en | industry.health | new UI string (no CONTENT.md source) |
+| en | industry.finance | new UI string (no CONTENT.md source) |
+| en | industry.energy | new UI string (no CONTENT.md source) |
+| en | industry.agribusiness | new UI string (no CONTENT.md source) |
+| en | industry.other | new UI string (no CONTENT.md source) |
+| en | dashboard.title | new UI string (no CONTENT.md source) |
+| en | dashboard.placeholder | new UI string (no CONTENT.md source) |
+| en | email.signinSubject | new UI string (no CONTENT.md source) |
+| en | email.signinBody | new UI string (no CONTENT.md source) |
+| en | email.signinButton | new UI string (no CONTENT.md source) |
+| en | email.welcomeSubject | new UI string (no CONTENT.md source) |
+| en | email.welcomeBody | new UI string (no CONTENT.md source) |
+| en | email.welcomeButton | new UI string (no CONTENT.md source) |
+| es-AR | checkout.companyName | en |
+| es-AR | checkout.taxId | en |
+| es-AR | checkout.taxIdBr | en |
+| es-AR | checkout.billingEmail | en |
+| es-AR | checkout.price | en |
+| es-AR | checkout.testPrice | en |
+| es-AR | checkout.processing | en |
+| es-AR | checkout.errInvalidName | en |
+| es-AR | checkout.errInvalidTaxId | en |
+| es-AR | checkout.errInvalidEmail | en |
+| es-AR | checkout.errEmailInUse | en |
+| es-AR | checkout.errCountry | en |
+| es-AR | checkout.errGeneric | en |
+| es-AR | checkout.signInLink | en |
+| es-AR | checkout.returnTitle | en |
+| es-AR | checkout.returnPending | en |
+| es-AR | checkout.returnFailed | en |
+| es-AR | checkout.returnExpired | en |
+| es-AR | checkout.returnRetry | en |
+| es-AR | checkout.returnPaid | en |
+| es-AR | checkout.continue | en |
+| es-AR | checkout.fakeTitle | en |
+| es-AR | checkout.fakeNote | en |
+| es-AR | checkout.fakePay | en |
+| es-AR | checkout.fakeFail | en |
+| es-AR | login.title | en |
+| es-AR | login.emailLabel | en |
+| es-AR | login.submit | en |
+| es-AR | login.sent | en |
+| es-AR | login.invalid | en |
+| es-AR | login.error | en |
+| es-AR | onboarding.title | en |
+| es-AR | onboarding.intro | en |
+| es-AR | onboarding.companyName | en |
+| es-AR | onboarding.industry | en |
+| es-AR | onboarding.industryPlaceholder | en |
+| es-AR | onboarding.logo | en |
+| es-AR | onboarding.logoHint | en |
+| es-AR | onboarding.submit | en |
+| es-AR | onboarding.saved | en |
+| es-AR | onboarding.errLogo | en |
+| es-AR | onboarding.errGeneric | en |
+| es-AR | industry.technology | en |
+| es-AR | industry.manufacturing | en |
+| es-AR | industry.construction | en |
+| es-AR | industry.services | en |
+| es-AR | industry.retail | en |
+| es-AR | industry.health | en |
+| es-AR | industry.finance | en |
+| es-AR | industry.energy | en |
+| es-AR | industry.agribusiness | en |
+| es-AR | industry.other | en |
+| es-AR | dashboard.title | en |
+| es-AR | dashboard.placeholder | en |
+| es-AR | email.signinSubject | en |
+| es-AR | email.signinBody | en |
+| es-AR | email.signinButton | en |
+| es-AR | email.welcomeSubject | en |
+| es-AR | email.welcomeBody | en |
+| es-AR | email.welcomeButton | en |
+| pt-BR | checkout.companyName | en |
+| pt-BR | checkout.taxId | en |
+| pt-BR | checkout.taxIdBr | en |
+| pt-BR | checkout.billingEmail | en |
+| pt-BR | checkout.price | en |
+| pt-BR | checkout.testPrice | en |
+| pt-BR | checkout.processing | en |
+| pt-BR | checkout.errInvalidName | en |
+| pt-BR | checkout.errInvalidTaxId | en |
+| pt-BR | checkout.errInvalidEmail | en |
+| pt-BR | checkout.errEmailInUse | en |
+| pt-BR | checkout.errCountry | en |
+| pt-BR | checkout.errGeneric | en |
+| pt-BR | checkout.signInLink | en |
+| pt-BR | checkout.returnTitle | en |
+| pt-BR | checkout.returnPending | en |
+| pt-BR | checkout.returnFailed | en |
+| pt-BR | checkout.returnExpired | en |
+| pt-BR | checkout.returnRetry | en |
+| pt-BR | checkout.returnPaid | en |
+| pt-BR | checkout.continue | en |
+| pt-BR | checkout.fakeTitle | en |
+| pt-BR | checkout.fakeNote | en |
+| pt-BR | checkout.fakePay | en |
+| pt-BR | checkout.fakeFail | en |
+| pt-BR | login.title | en |
+| pt-BR | login.emailLabel | en |
+| pt-BR | login.submit | en |
+| pt-BR | login.sent | en |
+| pt-BR | login.invalid | en |
+| pt-BR | login.error | en |
+| pt-BR | onboarding.title | en |
+| pt-BR | onboarding.intro | en |
+| pt-BR | onboarding.companyName | en |
+| pt-BR | onboarding.industry | en |
+| pt-BR | onboarding.industryPlaceholder | en |
+| pt-BR | onboarding.logo | en |
+| pt-BR | onboarding.logoHint | en |
+| pt-BR | onboarding.submit | en |
+| pt-BR | onboarding.saved | en |
+| pt-BR | onboarding.errLogo | en |
+| pt-BR | onboarding.errGeneric | en |
+| pt-BR | industry.technology | en |
+| pt-BR | industry.manufacturing | en |
+| pt-BR | industry.construction | en |
+| pt-BR | industry.services | en |
+| pt-BR | industry.retail | en |
+| pt-BR | industry.health | en |
+| pt-BR | industry.finance | en |
+| pt-BR | industry.energy | en |
+| pt-BR | industry.agribusiness | en |
+| pt-BR | industry.other | en |
+| pt-BR | dashboard.title | en |
+| pt-BR | dashboard.placeholder | en |
+| pt-BR | email.signinSubject | en |
+| pt-BR | email.signinBody | en |
+| pt-BR | email.signinButton | en |
+| pt-BR | email.welcomeSubject | en |
+| pt-BR | email.welcomeBody | en |
+| pt-BR | email.welcomeButton | en |
+| es-MX | checkout.companyName | en |
+| es-MX | checkout.taxId | en |
+| es-MX | checkout.taxIdBr | en |
+| es-MX | checkout.billingEmail | en |
+| es-MX | checkout.price | en |
+| es-MX | checkout.testPrice | en |
+| es-MX | checkout.processing | en |
+| es-MX | checkout.errInvalidName | en |
+| es-MX | checkout.errInvalidTaxId | en |
+| es-MX | checkout.errInvalidEmail | en |
+| es-MX | checkout.errEmailInUse | en |
+| es-MX | checkout.errCountry | en |
+| es-MX | checkout.errGeneric | en |
+| es-MX | checkout.signInLink | en |
+| es-MX | checkout.returnTitle | en |
+| es-MX | checkout.returnPending | en |
+| es-MX | checkout.returnFailed | en |
+| es-MX | checkout.returnExpired | en |
+| es-MX | checkout.returnRetry | en |
+| es-MX | checkout.returnPaid | en |
+| es-MX | checkout.continue | en |
+| es-MX | checkout.fakeTitle | en |
+| es-MX | checkout.fakeNote | en |
+| es-MX | checkout.fakePay | en |
+| es-MX | checkout.fakeFail | en |
+| es-MX | login.title | en |
+| es-MX | login.emailLabel | en |
+| es-MX | login.submit | en |
+| es-MX | login.sent | en |
+| es-MX | login.invalid | en |
+| es-MX | login.error | en |
+| es-MX | onboarding.title | en |
+| es-MX | onboarding.intro | en |
+| es-MX | onboarding.companyName | en |
+| es-MX | onboarding.industry | en |
+| es-MX | onboarding.industryPlaceholder | en |
+| es-MX | onboarding.logo | en |
+| es-MX | onboarding.logoHint | en |
+| es-MX | onboarding.submit | en |
+| es-MX | onboarding.saved | en |
+| es-MX | onboarding.errLogo | en |
+| es-MX | onboarding.errGeneric | en |
+| es-MX | industry.technology | en |
+| es-MX | industry.manufacturing | en |
+| es-MX | industry.construction | en |
+| es-MX | industry.services | en |
+| es-MX | industry.retail | en |
+| es-MX | industry.health | en |
+| es-MX | industry.finance | en |
+| es-MX | industry.energy | en |
+| es-MX | industry.agribusiness | en |
+| es-MX | industry.other | en |
+| es-MX | dashboard.title | en |
+| es-MX | dashboard.placeholder | en |
+| es-MX | email.signinSubject | en |
+| es-MX | email.signinBody | en |
+| es-MX | email.signinButton | en |
+| es-MX | email.welcomeSubject | en |
+| es-MX | email.welcomeBody | en |
+| es-MX | email.welcomeButton | en |

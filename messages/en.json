@@ -114,6 +114,76 @@
   "checkout": {
     "button": "Activate my compliance program",
     "title": "Checkout",
-    "unavailable": "Checkout is not available yet."
+    "unavailable": "Checkout is not available yet.",
+    "companyName": "Company name",
+    "taxId": "Tax ID",
+    "taxIdBr": "CNPJ",
+    "billingEmail": "Billing email",
+    "price": "Price",
+    "testPrice": "TEST PRICE — placeholder, not a real price",
+    "processing": "Redirecting to payment…",
+    "errInvalidName": "Enter your company name.",
+    "errInvalidTaxId": "That tax ID is not valid. Check the number and try again.",
+    "errInvalidEmail": "Enter a valid email address.",
+    "errEmailInUse": "That email already has an account. Sign in instead.",
+    "errCountry": "Checkout is not available for this country yet.",
+    "errGeneric": "Something went wrong. Please try again.",
+    "signInLink": "Sign in",
+    "returnTitle": "Payment",
+    "returnPending": "We are confirming your payment. This usually takes a few seconds.",
+    "returnFailed": "The payment did not go through. You have not been charged.",
+    "returnExpired": "The payment expired. You have not been charged.",
+    "returnRetry": "Try again",
+    "returnPaid": "All set! We emailed you a link to set up your account.",
+    "continue": "Continue",
+    "fakeTitle": "Test payment processor",
+    "fakeNote": "Development simulator — no real payment is made.",
+    "fakePay": "Pay",
+    "fakeFail": "Fail the payment"
+  },
+  "login": {
+    "title": "Sign in",
+    "emailLabel": "Email",
+    "submit": "Email me a sign-in link",
+    "sent": "If that email has an account, we sent a sign-in link. It expires in 15 minutes and works once.",
+    "invalid": "Enter a valid email address.",
+    "error": "That link is invalid or has expired. Request a new one."
+  },
+  "onboarding": {
+    "title": "Set up your company",
+    "intro": "A few details to finish setting up your account.",
+    "companyName": "Company name",
+    "industry": "Industry",
+    "industryPlaceholder": "Select an industry",
+    "logo": "Logo (optional)",
+    "logoHint": "PNG, JPEG or WebP, up to 1 MB.",
+    "submit": "Save and continue",
+    "saved": "Saved.",
+    "errLogo": "The logo must be a PNG, JPEG or WebP image up to 1 MB.",
+    "errGeneric": "We could not save your details. Please try again."
+  },
+  "industry": {
+    "technology": "Technology",
+    "manufacturing": "Manufacturing",
+    "construction": "Construction and engineering",
+    "services": "Professional services",
+    "retail": "Retail and distribution",
+    "health": "Health",
+    "finance": "Financial services",
+    "energy": "Energy and mining",
+    "agribusiness": "Agribusiness",
+    "other": "Other"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "placeholder": "Your dashboard is coming soon."
+  },
+  "email": {
+    "signinSubject": "Your sign-in link",
+    "signinBody": "Use this link to sign in. It expires in 15 minutes and can be used once. If you did not ask for it, ignore this email.",
+    "signinButton": "Sign in",
+    "welcomeSubject": "Set up your account",
+    "welcomeBody": "Your payment was received. Use this link to set up your account. It expires in 24 hours and can be used once; after that you can request a new sign-in link at any time.",
+    "welcomeButton": "Set up my account"
   }
 }

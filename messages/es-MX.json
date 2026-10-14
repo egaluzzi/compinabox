@@ -114,6 +114,76 @@
   "checkout": {
     "button": "Activar mi programa de cumplimiento",
     "title": "Pago",
-    "unavailable": "El pago todavía no está disponible."
+    "unavailable": "El pago todavía no está disponible.",
+    "companyName": "Nombre de la empresa",
+    "taxId": "Identificación fiscal",
+    "taxIdBr": "CNPJ",
+    "billingEmail": "Correo de facturación",
+    "price": "Precio",
+    "testPrice": "PRECIO DE PRUEBA — provisional, no es un precio real",
+    "processing": "Redirigiendo al pago…",
+    "errInvalidName": "Ingresa el nombre de tu empresa.",
+    "errInvalidTaxId": "Esa identificación fiscal no es válida. Revisa el número e inténtalo de nuevo.",
+    "errInvalidEmail": "Ingresa un correo válido.",
+    "errEmailInUse": "Ese correo ya tiene una cuenta. Inicia sesión.",
+    "errCountry": "El checkout aún no está disponible para este país.",
+    "errGeneric": "Algo salió mal. Inténtalo de nuevo.",
+    "signInLink": "Iniciar sesión",
+    "returnTitle": "Pago",
+    "returnPending": "Estamos confirmando tu pago. Normalmente tarda unos segundos.",
+    "returnFailed": "El pago no se pudo completar. No se te cobró.",
+    "returnExpired": "El pago venció. No se te cobró.",
+    "returnRetry": "Intentar de nuevo",
+    "returnPaid": "¡Listo! Te enviamos un email para configurar tu cuenta.",
+    "continue": "Continuar",
+    "fakeTitle": "Procesador de pagos de prueba",
+    "fakeNote": "Simulador de desarrollo — no se realiza ningún pago real.",
+    "fakePay": "Pagar",
+    "fakeFail": "Hacer que el pago falle"
+  },
+  "login": {
+    "title": "Iniciar sesión",
+    "emailLabel": "Correo",
+    "submit": "Enviarme un enlace de acceso",
+    "sent": "Si ese correo tiene una cuenta, te enviamos un enlace de acceso. Vence en 15 minutos y sirve una sola vez.",
+    "invalid": "Ingresa un correo válido.",
+    "error": "El enlace no es válido o venció. Solicita uno nuevo."
+  },
+  "onboarding": {
+    "title": "Configura tu empresa",
+    "intro": "Unos datos más para terminar de configurar tu cuenta.",
+    "companyName": "Nombre de la empresa",
+    "industry": "Giro",
+    "industryPlaceholder": "Elige un giro",
+    "logo": "Logotipo (opcional)",
+    "logoHint": "PNG, JPEG o WebP, hasta 1 MB.",
+    "submit": "Guardar y continuar",
+    "saved": "Guardado.",
+    "errLogo": "El logotipo debe ser una imagen PNG, JPEG o WebP de hasta 1 MB.",
+    "errGeneric": "No pudimos guardar tus datos. Inténtalo de nuevo."
+  },
+  "industry": {
+    "technology": "Tecnología",
+    "manufacturing": "Manufactura",
+    "construction": "Construcción e ingeniería",
+    "services": "Servicios profesionales",
+    "retail": "Comercio y distribución",
+    "health": "Salud",
+    "finance": "Servicios financieros",
+    "energy": "Energía y minería",
+    "agribusiness": "Agroindustria",
+    "other": "Otro"
+  },
+  "dashboard": {
+    "title": "Panel",
+    "placeholder": "Tu panel estará disponible pronto."
+  },
+  "email": {
+    "signinSubject": "Tu enlace de acceso",
+    "signinBody": "Usa este enlace para iniciar sesión. Vence en 15 minutos y sirve una sola vez. Si no lo solicitaste, ignora este correo.",
+    "signinButton": "Iniciar sesión",
+    "welcomeSubject": "Configura tu cuenta",
+    "welcomeBody": "Recibimos tu pago. Usa este enlace para configurar tu cuenta. Vence en 24 horas y sirve una sola vez; después puedes solicitar un nuevo enlace de acceso cuando quieras.",
+    "welcomeButton": "Configurar mi cuenta"
   }
 }

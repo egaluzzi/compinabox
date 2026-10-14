@@ -114,6 +114,76 @@
   "checkout": {
     "button": "Ativar meu programa de compliance",
     "title": "Pagamento",
-    "unavailable": "O pagamento ainda não está disponível."
+    "unavailable": "O pagamento ainda não está disponível.",
+    "companyName": "Nome da empresa",
+    "taxId": "Documento fiscal",
+    "taxIdBr": "CNPJ",
+    "billingEmail": "E-mail de cobrança",
+    "price": "Preço",
+    "testPrice": "PREÇO DE TESTE — provisório, não é um preço real",
+    "processing": "Redirecionando para o pagamento…",
+    "errInvalidName": "Informe o nome da sua empresa.",
+    "errInvalidTaxId": "Esse CNPJ não é válido. Confira o número e tente novamente.",
+    "errInvalidEmail": "Informe um e-mail válido.",
+    "errEmailInUse": "Esse e-mail já tem uma conta. Entre na sua conta.",
+    "errCountry": "O checkout ainda não está disponível para este país.",
+    "errGeneric": "Algo deu errado. Tente novamente.",
+    "signInLink": "Entrar",
+    "returnTitle": "Pagamento",
+    "returnPending": "Estamos confirmando o seu pagamento. Isso costuma levar alguns segundos.",
+    "returnFailed": "O pagamento não foi concluído. Você não foi cobrado.",
+    "returnExpired": "O pagamento expirou. Você não foi cobrado.",
+    "returnRetry": "Tentar novamente",
+    "returnPaid": "Tudo certo! Enviamos um e-mail para você configurar sua conta.",
+    "continue": "Continuar",
+    "fakeTitle": "Processador de pagamentos de teste",
+    "fakeNote": "Simulador de desenvolvimento — nenhum pagamento real é feito.",
+    "fakePay": "Pagar",
+    "fakeFail": "Fazer o pagamento falhar"
+  },
+  "login": {
+    "title": "Entrar",
+    "emailLabel": "E-mail",
+    "submit": "Enviar link de acesso por e-mail",
+    "sent": "Se esse e-mail tiver uma conta, enviamos um link de acesso. Ele expira em 15 minutos e funciona uma única vez.",
+    "invalid": "Informe um e-mail válido.",
+    "error": "O link é inválido ou expirou. Solicite um novo."
+  },
+  "onboarding": {
+    "title": "Configure sua empresa",
+    "intro": "Mais alguns dados para concluir a configuração da sua conta.",
+    "companyName": "Nome da empresa",
+    "industry": "Setor",
+    "industryPlaceholder": "Selecione um setor",
+    "logo": "Logotipo (opcional)",
+    "logoHint": "PNG, JPEG ou WebP, até 1 MB.",
+    "submit": "Salvar e continuar",
+    "saved": "Salvo.",
+    "errLogo": "O logotipo deve ser uma imagem PNG, JPEG ou WebP de até 1 MB.",
+    "errGeneric": "Não foi possível salvar seus dados. Tente novamente."
+  },
+  "industry": {
+    "technology": "Tecnologia",
+    "manufacturing": "Indústria",
+    "construction": "Construção e engenharia",
+    "services": "Serviços profissionais",
+    "retail": "Comércio e distribuição",
+    "health": "Saúde",
+    "finance": "Serviços financeiros",
+    "energy": "Energia e mineração",
+    "agribusiness": "Agronegócio",
+    "other": "Outro"
+  },
+  "dashboard": {
+    "title": "Painel",
+    "placeholder": "Seu painel estará disponível em breve."
+  },
+  "email": {
+    "signinSubject": "Seu link de acesso",
+    "signinBody": "Use este link para entrar. Ele expira em 15 minutos e funciona uma única vez. Se você não solicitou, ignore este e-mail.",
+    "signinButton": "Entrar",
+    "welcomeSubject": "Configure sua conta",
+    "welcomeBody": "Recebemos o seu pagamento. Use este link para configurar sua conta. Ele expira em 24 horas e funciona uma única vez; depois disso, você pode solicitar um novo link de acesso quando quiser.",
+    "welcomeButton": "Configurar minha conta"
   }
 }
