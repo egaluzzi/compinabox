@@ -118,7 +118,7 @@ npm run db:migrate   # drizzle-kit migrate — apply migrations
 - **Multi-tenant isolation:** a customer must never query, view or export another customer's data — whistleblower reports above all. Any cross-tenant code path touching `WhistleblowerReport` is a bug, not an edge case.
 - **Anonymous reporting:** the default intake path must not log IP or identifying metadata against a report unless the reporter explicitly opts in (SPEC §5.3, §11). Note the asymmetry: employee *acknowledgments* DO log IP (SPEC §5.5) — that's an audit trail the customer wants.
 - **No ISO/certification claims** (ISO 37301/37002) anywhere in UI copy — out of scope for v1 (SPEC §2).
-- **Legal content (`/lib/content/*.ts`)** is edited only in a phase scoped for it, never as a side effect of an unrelated PR.
+- **Legal content (`/lib/content/*.ts`, `/lib/documents/templates/**`)** is edited only in a phase scoped for it, never as a side effect of an unrelated PR. A worker never adds a citation (article number, decree, statute) that is not already in SPEC.md or CONTENT.md — suggestions go in HANDOFF.md for the lawyer.
 - **Dev email sink enabled outside dev/test** (`EMAIL_DEV_SINK=true` on the droplet) — it writes sign-in links to disk instead of sending them.
 - **Fake payment provider enabled outside dev/test** (`ALLOW_FAKE_PAYMENTS` set on the droplet or in CI deploy config) — it provisions accounts without payment.
 - **Migrations against live data, deleting data, changing what gets logged or retained, adding a paid service** — escalation rule 3; supervisor brings these to Esteban.
@@ -140,6 +140,7 @@ Settled by Esteban or decided by the supervisor and recorded. Don't reopen; if a
 - **Fake payments are guarded** (2026-10-14): `PAYMENT_PROVIDER` defaults to `none` (checkout unavailable); `fake` works only when `ALLOW_FAKE_PAYMENTS=true`, which must never be set on the droplet. Fake-provider routes return 404 otherwise.
 - **Geo/cookie behaviour at `/`** (2026-10-13): cookie `country` ∈ `ar|br|mx|other` beats `CF-IPCountry`; `other` means "show the picker" and is what the "change country" control sets (otherwise a cookie'd visitor could never reach `/`). Redirects are 307 + `no-store`. Generic-page language toggle is EN/ES/PT = locales `en`/`es-MX`/`pt-BR`, cookie `lang`.
 - **`ENABLED_COUNTRIES` is read at request time**, not build time (2026-10-13) — CI builds the artifact, the droplet's `.env` supplies the value.
+- **Documents are drafts until a lawyer reviews them** (2026-10-14): the pt-BR code of conduct and policy templates and `br.ts` are worker-drafted from SPEC §7/§5; each carries a draft status, and the Brazil launch is blocked until a Brazilian lawyer has reviewed them (§11). Documents are append-only (DB trigger); generated at onboarding completion; logo uploads are PNG/JPEG only so PDFs can embed them.
 - **Gap-filled translations** (2026-10-13): where CONTENT.md has a string in one locale only, the worker translates it faithfully and lists it in `messages/DRAFTS.md`; Esteban reviews that file before launch (§11).
 
 ## 10. Explicitly out of scope / dropped
@@ -159,5 +160,5 @@ Considered and declined — don't build unless Esteban asks again:
 - [ ] Domain name + Cloudflare account access (needed before phase 1 can be verified end-to-end on geo)
 - [ ] Mercado Pago account: sandbox (test) credentials for phase 9b; production credentials before launch
 - [ ] Resend account + sending domain
-- [ ] Legal review of `/lib/content/br.ts` citations and the BR privacy policy before launch (SPEC §11)
+- [ ] Legal review of `/lib/content/br.ts` citations, the pt-BR document templates (`lib/documents/REVIEW.md`) and the BR privacy policy before launch (SPEC §11) — **needs a Brazilian lawyer; allow lead time**
 - [ ] Review of `messages/DRAFTS.md` (gap-filled translations, incl. footer disclaimer) by a native speaker / legal before launch

@@ -98,21 +98,22 @@ Judgment: webhook replay creates no duplicate `Company`; a webhook with a bad si
 
 ## Phase 3 — Document generation engine + Brazil legal-content layer
 
-SPEC §5.1, §5.2, §7 (Brazil only).
+SPEC §5.1, §5.2, §7 (Brazil only). The generated documents *are* the product, and they are legal-adjacent: **the worker drafts them; they are not reviewed law.** Everything here is built so a lawyer can review and correct it, and launch is gated on that review (phase 9).
 
-- [ ] `/lib/content/br.ts`: Lei 12.846, Lei 14.133 citations, required elements, plain-language explainer — from SPEC §7 and CONTENT.md §3; `ar.ts`/`mx.ts` export a typed `NotYetEnabled` placeholder
-- [ ] Template engine in `/lib/documents/`: merge fields (company name, industry, country), country layer injects legal references
-- [ ] Six documents: code of conduct + five policies (SPEC §5.2), pt-BR
-- [ ] Versioning: regenerate creates a new `Document` row; old versions readable, never deleted
-- [ ] Web view + PDF export (react-pdf) with company logo
-- [ ] Auto-provision all six on `Company` creation (hook into phase 2 flow)
+- [ ] `/lib/content/br.ts`: typed `CountryLegalContent` — Lei 12.846 and Lei 14.133 citations, required/recommended elements, plain-language explainer, disclaimer, `reviewStatus: "draft"`. Sourced **only** from SPEC §7 and CONTENT.md §3 — no article numbers, decrees or other statutes added by the worker (suggestions go to the lawyer via HANDOFF). `ar.ts`/`mx.ts` export a typed `NotYetEnabled` placeholder
+- [ ] Template engine in `/lib/documents/`: pure, deterministic `generateDocument()` → structured content (sections + paragraphs); merge fields (company name, industry, country); unknown/missing field throws; country layer injects legal references from `br.ts` at generation time
+- [ ] Six documents, pt-BR: code of conduct (SPEC §5.1 clauses + leadership-commitment statement) and five policies (SPEC §5.2), templates as data under `lib/documents/templates/`, plus `lib/documents/REVIEW.md` (every template, status DRAFT — needs legal review)
+- [ ] Versioning: regenerate inserts a new `documents` row (per company + type, next version, unique); old versions readable; **append-only enforced in the database** (trigger blocks UPDATE/DELETE on `documents`); regenerating with unchanged inputs is a no-op that returns the current version
+- [ ] Web view + PDF export (react-pdf, A4): company logo (PNG/JPEG — logo uploads restricted to those two, WebP dropped), title, version, generated date, page numbers "Página X de Y", disclaimer footer
+- [ ] Documents are generated **when onboarding completes** (industry is only known then), in the same transaction as the profile update; idempotent. (Deviation from "on Company creation": a document generated before the industry is known would put a wrong version 1 into the audit trail.)
+- [ ] Minimal routes under `/dashboard/documents` (list with versions, view, PDF download, regenerate) — phase 4 builds the dashboard shell around them; tenant from the session only, other tenants' ids 404
 
 **Definition of done**
 ```
-./verify.sh
-npm run test -- documents       # snapshot tests per document per industry
+./verify.sh                      # includes smoke: onboarding -> 6 documents -> view -> PDF -> regenerate -> v1 intact
+npm run test -- documents        # snapshot tests per document per industry; engine, versioning, tenant tests
 ```
-Judgment: every citation string lives in `br.ts`, none in templates (`grep -rn "12.846\|14.133" app lib/documents` returns nothing); PDFs open in Preview/Acrobat with logo and page numbers; a regenerated doc leaves the previous version intact. **Legal review of `br.ts` is an open input (CLAUDE.md §11), not a worker task.**
+Judgment: every citation string lives in `br.ts`, none in templates (`grep -rn "12.846\|14.133" app lib/documents` returns nothing); no template or UI string claims compliance/adequacy/legal sufficiency; PDFs checked page by page (logo, accents, page numbers) — sample PNGs committed under `docs/phase3-samples/` for the supervisor to look at; a regenerated doc leaves the previous version intact (DB-level); `br.ts` explainer text equals the pt-BR `legal-basis` page copy (drift test). **Legal review of `br.ts` and of the templates is an open input (CLAUDE.md §11), not a worker task, and gates the Brazil launch.**
 
 ---
 
@@ -221,6 +222,7 @@ SPEC §9 (blog), §10, CLAUDE.md §4.
 - [ ] GTM container after consent; events `view_pricing`, `begin_checkout`, `purchase` (value+currency), `lead_generic_country_waitlist`
 - [ ] Blog: `/{country}/blog/[slug]` with MDX; seed the 4 Brazil articles + 3 English generic articles from CONTENT.md §6 (drafts, flagged for review); `Article` JSON-LD
 - [ ] Legal pages: real BR privacy policy and terms **from Esteban's legal review** — if not available, pages stay "DRAFT" and launch is blocked (escalation rule 2)
+- [ ] **Legal review gate:** `lib/content/br.ts` and the pt-BR document templates (`lib/documents/REVIEW.md`) reviewed by a Brazilian lawyer, corrections applied, `reviewStatus` set to reviewed with reviewer and date — unreviewed templates mean launch is blocked (escalation rule 2: the customer hands these documents to auditors)
 - [ ] Cloudflare rate-limit rules for the unauthenticated write endpoints: `/api/checkout`, `/api/auth/*`, `/api/waitlist` (phase 2 left them unlimited; `/api/checkout` also confirms whether an email already has an account)
 - [ ] Droplet `.env` review: `ALLOW_FAKE_PAYMENTS` and `EMAIL_DEV_SINK` unset, `APP_URL`/`AUTH_URL` are the public https origin, `AUTH_SECRET` real
 - [ ] Real Resend send verified from the droplet (welcome email + sign-in link delivered to a real inbox; link works once)
