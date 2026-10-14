@@ -34,7 +34,7 @@ export default async function Pricing({ params }: CountryParams) {
       {enabled ? (
         <div className="space-y-3">
           <Link
-            href={`/checkout?country=${country}`}
+            href={`/checkout?c=${country}`}
             className="inline-block rounded-lg bg-slate-900 px-5 py-3 font-semibold text-white"
           >
             {t("checkout.button")}

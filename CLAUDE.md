@@ -110,7 +110,7 @@ npm run db:generate  # drizzle-kit generate — new migration from schema change
 npm run db:migrate   # drizzle-kit migrate — apply migrations
 ./verify.sh          # all of the above + invariants; exit 0 required before HANDOFF.md
 ```
-`db:*` are placeholders (print a message, exit 1) until phase 2 (Drizzle).
+`db:*` are real as of phase 2 (drizzle-kit; `DATABASE_URL` required). `./verify.sh` also needs `TEST_DATABASE_URL` (a Postgres it may `CREATE DATABASE` in) — unset fails the run.
 
 ## 8. Guardrails — stop and write "blocked" in HANDOFF.md, never decide these in a worker session
 

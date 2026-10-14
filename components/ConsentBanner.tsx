@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCookie, setCookie } from "@/lib/cookies";
+import { captureUtmFromUrl, getCookie, setCookie } from "@/lib/cookies";
 
 type Props = { text: string; accept: string; reject: string };
 
@@ -19,6 +19,7 @@ export function ConsentBanner({ text, accept, reject }: Props) {
 
   const choose = (value: "accepted" | "rejected") => {
     setCookie("consent", value);
+    if (value === "accepted") captureUtmFromUrl(); // the proxy could not set it before consent
     setVisible(false);
   };
 

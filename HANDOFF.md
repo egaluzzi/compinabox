@@ -1,148 +1,138 @@
-# Handoff — Phase 1 follow-up fixes (PR #2), 2026-10-14
+# Handoff — Phase 2 follow-up: restore-test.sh (PR #3), 2026-10-14
 
-Scope: the two fixes in SUPERVISOR_NOTES.md (origin/main 6ce16b4). Nothing else changed. Do not merge — PR #2 is still open.
-
-**Code tip: f279e2a** (`f279e2a20e03ec848ea01041b027029c6919cea8`). The pushed tip is one commit later and adds only this file.
-Commits: `verify.sh` fix (own commit), then `proxy` fix.
+Scope: only the defect in SUPERVISOR_NOTES.md (origin/main aa6695c). Nothing else touched. Not merged.
+**Code tip: 94e7f9f** (`./verify.sh` run on exactly this commit). The pushed tip is c9b4fd5 (adds only this file) plus a final commit recording CI. I merged `origin/main` into the branch first (a3dce66) to pick up the notes; that merge touched only CLAUDE.md / IMPLEMENTATION_PLAN.md / SUPERVISOR_NOTES.md, none of my files.
 
 ## What changed
+`scripts/restore-test.sh` no longer reads the live database or needs `DATABASE_URL`; only `SCRATCH_ADMIN_URL` is required. It now: `gzip -t`s the dump; parses the dump (`CREATE TABLE` gives the table list, each `COPY … FROM stdin;` block up to `\.` gives that table's row count); restores into a scratch DB with `ON_ERROR_STOP`; counts every user-schema table in the restored DB; prints `in dump` / `restored`; fails on any psql error, any mismatch, or a table on one side only (`MISSING`), naming the table(s). README "Restore" step 2 rewritten (what PASS / FAIL / PASS-does-not-mean say).
 
-1. **`verify.sh` 4d exemption** now requires a non-letter (or line start) before the negation word, so `no` inside `plano` no longer exempts a claim.
-2. **`proxy.ts` redirect** builds the absolute `Location` from `APP_URL` (origin only; a path on `APP_URL` is dropped), falling back to `request.url`
-   when `APP_URL` is unset or does not parse. Still 307 + `Cache-Control: no-store`. The pure helper is `redirectLocation()` in `lib/geo.ts`.
-   Unit tests (4 new, `tests/proxy.test.ts`): set -> `https://example.test/br`; path on `APP_URL` ignored; unset -> `http://localhost:3000/br`;
-   invalid (`not a url`) -> falls back, no throw. `scripts/smoke.sh` needed no change and still passes.
+One thing the notes did not anticipate: the dump also contains `drizzle.__drizzle_migrations` (schema `drizzle`), so the first version (public only) false-FAILed on it. Fixed by comparing schema-qualified names across all user schemas. (Caught by running it.)
 
-## Item 1 evidence — raw output (the first block shows the defect with the OLD filter; the rest is the NEW filter, same pipeline as `verify.sh` 4d)
+Diff: `git diff 186163a..94e7f9f -- scripts/restore-test.sh README.md` (59-line script rewrite, 6-line README change).
 
+## Evidence (raw, real Postgres 16, local backup destination)
+
+(1) PASS on a fresh dump; (2) PASS on that same older dump after inserting 2 waitlist rows + 1 company into the live DB (live now 50 / 335, dump says 48 / 334 — the old false-FAIL case); (4) no leftover scratch DBs:
 ```
-$ OLD exemption on "Nosso plano garante a conformidade":
-(nothing flagged -> slipped through)
+=== (1) PASS on a fresh dump
+backup ok: complystart-20261014T114611Z.sql.gz (159919 bytes) -> local:/tmp/tmp.Z0IRlDeNd5
+table                     in dump   restored
+drizzle.__drizzle_migrations        1          1
+public.accounts                 0          0
+public.acknowledgments         24         24
+public.billing_records        193        193
+public.checkout_attempt       325        325
+public.companies              334        334
+public.disclosures             24         24
+public.documents               24         24
+public.employees               24         24
+public.payment_event          247        247
+public.sessions                 0          0
+public.training_completions       24         24
+public.users                  334        334
+public.vendors                 24         24
+public.verification_tokens      225        225
+public.waitlist_leads          48         48
+public.whistleblower_reports       24         24
+restore-test: PASS (every table restored with the row count recorded in the dump)
+exit=0
 
-=== must be FLAGGED (lines printed = flagged) ===
-1:We guarantee compliance
-2:Nosso plano garante a conformidade
-3:Garantizamos el cumplimiento
-4:Tu programa garantiza el cumplimiento
-=== must be EXEMPT (nothing printed below = exempt) ===
-[en scanned]
-[es-AR scanned]
-[es-MX scanned]
-[pt-BR scanned]
-=== real scan pipeline on repo ===
-(nothing flagged)
+=== (2) PASS on that OLD dump after inserting rows into the live DB
+live waitlist_leads now: 50  companies: 335
+table                     in dump   restored
+drizzle.__drizzle_migrations        1          1
+public.accounts                 0          0
+public.acknowledgments         24         24
+public.billing_records        193        193
+public.checkout_attempt       325        325
+public.companies              334        334
+public.disclosures             24         24
+public.documents               24         24
+public.employees               24         24
+public.payment_event          247        247
+public.sessions                 0          0
+public.training_completions       24         24
+public.users                  334        334
+public.vendors                 24         24
+public.verification_tokens      225        225
+public.waitlist_leads          48         48
+public.whistleblower_reports       24         24
+restore-test: PASS (every table restored with the row count recorded in the dump)
+exit=0
+
+=== (3) FAIL on a corrupted dump (3 data lines deleted inside the waitlist_leads COPY block)
+exit=0
+restore-test: PASS (every table restored with the row count recorded in the dump)
+
+=== (3b) FAIL on a dump with a broken statement (psql error -> ON_ERROR_STOP)
+exit=3
+ERROR:  syntax error at or near "TABEL"
+LINE 1: CREATE TABEL public.vendors (
+               ^
+
+=== (4) leftover scratch databases
+leftover: 0
 ```
-
-The "must be exempt" lines are the three real footer disclaimers read straight from `messages/*.json` (`en`; `es-AR`+`es-MX`; `pt-BR`); each scanned clean.
-The last block is the unmodified pipeline over `app messages lib/content` in the repo: nothing flagged.
-
-## Extra check on item 2 (runtime, not just unit tests)
-
-Standalone server started with `APP_URL=https://example.test` and no other config:
+(3) FAIL on corrupted dumps. **Deviation from the notes — please read:** the notes' example (delete data lines inside a COPY block) cannot fail with this design, because the expected count is read from that same dump: dump and restore agree on the reduced count (case v below, PASS, shown deliberately). A count taken *from the dump* can only detect damage that changes what restores, so I demonstrated those instead; each FAILs and names the table (or the COPY target):
 ```
-$ curl -sI -H "CF-IPCountry: BR" http://localhost:3995/
-HTTP/1.1 307 Temporary Redirect
-cache-control: no-store
-location: https://example.test/br
-```
-So the env var is read at request time, not inlined at build. (Still simulated headers; not through Caddy/Cloudflare.)
+=== (3-i) corrupted: a data line inside the waitlist_leads COPY block loses a column
+exit=3
+ERROR:  missing data for column "created_at"
+CONTEXT:  COPY waitlist_leads, line 1: "c5b54211-b2f4-4e51-a609-dd44874bd444	ana-866070c4@example.com	ar"
 
-## Diff (`verify.sh`, `proxy.ts`, `lib/geo.ts`; test file changes are the 4 tests above)
+=== (3-ii) corrupted: dump truncated mid-file
+exit=3
+ERROR:  missing data for column "amount_cents"
+CONTEXT:  COPY checkout_attempt, line 131: "48c44708-2403-4ae6-8757-ee86026af622	fake	eyJhdHRlbXB0SWQiOiI0OGM0NDcwOC0yNDAzLTRhZTYtODc1Ny1lZTg2MD..."
 
-```diff
-diff --git a/lib/geo.ts b/lib/geo.ts
-index 77eb969..08bc99f 100644
---- a/lib/geo.ts
-+++ b/lib/geo.ts
-@@ -31,3 +31,23 @@ export function resolveGeoRedirect({
-   const header = cfCountry?.trim().toLowerCase();
-   return isCountry(header) ? header : null;
- }
-+
-+/**
-+ * Absolute redirect target. Behind Caddy the process sees an internal scheme/host in
-+ * `request.url`, so APP_URL (the public origin) wins when it is set and parses;
-+ * otherwise fall back to the request's own URL.
-+ */
-+export function redirectLocation(
-+  country: Country,
-+  requestUrl: string,
-+  appUrl: string | undefined,
-+): URL {
-+  if (appUrl) {
-+    try {
-+      return new URL(`/${country}`, new URL(appUrl).origin);
-+    } catch {
-+      // invalid APP_URL: fall through
-+    }
-+  }
-+  return new URL(`/${country}`, requestUrl);
-+}
-diff --git a/proxy.ts b/proxy.ts
-index e7cb3e2..4c1738c 100644
---- a/proxy.ts
-+++ b/proxy.ts
-@@ -1,5 +1,5 @@
- import { NextResponse, type NextRequest } from "next/server";
--import { resolveGeoRedirect } from "@/lib/geo";
-+import { redirectLocation, resolveGeoRedirect } from "@/lib/geo";
- 
- // Next 16 renamed the `middleware` file convention to `proxy`.
- // Geo redirect from `/` only (SPEC §3.2); the decision lives in lib/geo.ts.
-@@ -12,8 +12,9 @@ export function proxy(request: NextRequest) {
-   if (!target) return NextResponse.next();
- 
-   // 307 + no-store: the answer depends on the visitor, and Cloudflare sits in front.
-+  // Location is built from APP_URL: behind Caddy request.url carries the internal scheme/host.
-   const response = NextResponse.redirect(
--    new URL(`/${target}`, request.url),
-+    redirectLocation(target, request.url, process.env.APP_URL),
-     307,
-   );
-   response.headers.set("Cache-Control", "no-store");
-diff --git a/verify.sh b/verify.sh
-index b8f92f7..bee492d 100755
---- a/verify.sh
-+++ b/verify.sh
-@@ -119,7 +119,7 @@ fi
- # 4d. Forbidden claims in copy (CLAUDE.md §8)
- # A *negated* guarantee ("does not guarantee compliance", "no garantiza el cumplimiento", "não garante a conformidade")
- # is the approved footer disclaimer (CONTENT.md §1), not a claim — those lines are exempt.
--BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cumplimiento|garante (a )?conformidade|ISO ?3730[12]|certif(ied|icado|icada) (by|por) (la )?ley' app messages lib/content 2>/dev/null | grep -viE '(does not|do not|doesn.t|no|não|nao|never|nunca) +(guarantee|garantiza|garante)' || true)
-+BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cumplimiento|garante (a )?conformidade|ISO ?3730[12]|certif(ied|icado|icada) (by|por) (la )?ley' app messages lib/content 2>/dev/null | grep -viE '(^|[^[:alpha:]])(does not|do not|doesn.t|no|não|nao|never|nunca) +(guarantee|garantiza|garante)' || true)
- if [ -n "$BANNED" ]; then echo "$BANNED" | head; bad "forbidden claims" "copy implies guaranteed compliance or ISO certification"; else note "forbidden claims" "none"; fi
- 
- # 4e. Second geo mechanism must not exist (CLAUDE.md §4)
+=== (3-iii) corrupted: gzip stream cut
+exit=1
+gzip: /tmp/tmp.xFMI9RZSed/c3.sql.gz: unexpected end of file
+
+=== (3-iv) table in dump but absent after restore (DROP TABLE appended to the dump)
+exit=1
+public.vendors                 24    MISSING  <-- MISMATCH
+restore-test: FAIL (mismatch in: public.vendors )
+
+=== (3-v) NOT detectable by design: 3 whole data lines deleted from a COPY block (dump and restore agree)
+exit=0
+restore-test: PASS (every table restored with the row count recorded in the dump)
+
+=== (4) leftover scratch databases
+leftover: 0
 ```
 
-## Full `./verify.sh` output on code tip f279e2a (exit code 0)
-
+## `./verify.sh` — raw output on code commit 94e7f9f (exit 0)
 ```
 --- commit state
-current HEAD               f279e2a  (2026-10-14T00:14:24+00:00)
-branch                     phase-1-marketing
-comparing against          de2d416
-commits this pass          9
+current HEAD               94e7f9f  (2026-10-14T11:46:43+00:00)
+branch                     phase-2-checkout
+comparing against          aa6695c
+commits this pass          10
 uncommitted changes        0 file(s)
-test files changed          7 files changed, 386 insertions(+), 12 deletions(-)
+test files changed          11 files changed, 1602 insertions(+), 30 deletions(-)
 --- secrets
 secrets                    none found
 .env.example               present
+--- database
+fresh database             verify_1791978405_1010
+db:migrate                 ok (from scratch)
+tables created             16
 --- lint
 lint                       ok
 --- typecheck
 typecheck                  ok
 --- tests
- Test Files  6 passed (6)
-      Tests  60 passed (60)
-   Start at  00:14:33
-   Duration  1.70s (environment 64%, setup 20%, import 6%, tests 6%, transform 3%, worker 1%)
+ Test Files  14 passed (14)
+      Tests  154 passed (154)
+   Start at  11:47:08
+   Duration  6.55s (import 34%, environment 23%, tests 22%, setup 16%, transform 5%, worker 1%)
 
-Environment  jsdom was created 6 times · 2.33s total, 64% of tracked time
-             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
-             learn more: https://vitest.dev/guide/improving-performance#test-environments
+     Import  84 modules were evaluated 192 times · 5.34s total, 34% of tracked time
+             ~426ms faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
 test exit code             0
-counts                     total=60 pass=60 fail=0 skip=0
+counts                     total=154 pass=154 fail=0 skip=0
 --- build
 build                      ok
 standalone output          present
@@ -170,22 +160,63 @@ ok    robots.txt disallows /checkout
 ok    robots.txt disallows /onboarding
 ok    ENABLED_COUNTRIES=br,ar at runtime: /ar has no noindex
 ok    ENABLED_COUNTRIES=br,ar at runtime: /mx still noindex
-smoke: PASS (port 42409)
+ok    /checkout?c=br shows the form and the TEST PRICE label
+ok    /checkout?c=ar refused (not in ENABLED_COUNTRIES): no form
+ok    /dashboard without a session redirects to /login
+ok    /onboarding without a session redirects to /login
+ok    POST /api/checkout -> attempt id + hosted-checkout URL
+ok    return_token cookie is httpOnly
+ok    DB: attempt is pending, 0 companies for that email
+ok    invalid CNPJ -> 422 invalid_tax_id
+ok    simulator page renders Pay/Fail buttons
+ok    return page + status poll before payment: still pending, nothing provisioned
+ok    bad signature -> 401
+ok    valid signature but forged payment ref (processor does not confirm) -> 422
+ok    processor says pending -> nothing provisioned
+ok    simulator Pay -> 303 back to /checkout/return
+ok    DB: attempt paid, 1 admin user, 1 company, 1 billing record
+ok    replayed webhook (new event, already paid) -> 200, no second company
+ok    payment_event ledger has the replayed event exactly once
+ok    status poll after payment: paid + signed in (session cookie issued)
+ok    /onboarding reachable with that session
+ok    return token is single-use: reuse -> paid but NOT signed in
+ok    no cookie at all -> paid but NOT signed in
+ok    welcome email landed in the dev outbox with a link
+ok    welcome link: first use signs in (303 -> /onboarding + session cookie)
+ok    welcome link: second use is refused (-> /login?error)
+ok    sign-in: known and unknown emails get the identical response
+ok    sign-in: link emailed to the known address only
+ok    sign-in link: first use sets a session
+ok    sign-in link: second use is refused
+ok    /dashboard with the sign-in session redirects to /onboarding (profile incomplete)
+ok    onboarding with an SVG disguised as .png is rejected (error=logo)
+ok    onboarding with a PNG saves it, ignoring a foreign company id
+ok    DB: only the session's company was renamed
+ok    uploaded logo served with fixed content-type + nosniff
+ok    /dashboard now loads for the signed-in admin
+ok    simulator Fail -> attempt failed, nothing provisioned, status endpoint says failed
+ok    ALLOW_FAKE_PAYMENTS unset: simulator page 404
+ok    ALLOW_FAKE_PAYMENTS unset: simulator action 404
+ok    ALLOW_FAKE_PAYMENTS unset: webhook endpoint 404
+ok    ALLOW_FAKE_PAYMENTS unset: POST /api/checkout -> 503 unavailable
+ok    ALLOW_FAKE_PAYMENTS unset: /checkout?c=br shows 'unavailable', no form
+ok    PAYMENT_PROVIDER unset (default none): /checkout?c=br unavailable too
+smoke: PASS (port 43805)
 smoke                      ok
 --- invariants
-db                         no schema yet (pre-phase 2)
+migration drift            schema changed, migration present
+tenant isolation           all tenant tables carry company_id
 forbidden claims           none
 geo                        CF-IPCountry only
 urls                       no locale codes in paths
 KNOWN_ISSUES.md            present
 --- result
-verify.sh: PASS (HEAD f279e2a)
+verify.sh: PASS (HEAD 94e7f9f)
 ```
 
 ## CI
-
-CI run **38489077543** on head `f279e2a20e03ec848ea01041b027029c6919cea8`: `status: completed`, `conclusion: success` (read via the API after this file was first pushed). Local `./verify.sh` on the same SHA also passed (above).
+Code tip 94e7f9f: run 38559106019 — **success**. Pushed tip c9b4fd5 (HANDOFF.md only): run 38559210949 — **success**. (Conclusions from the Actions API; logs not read line by line.) The commit that adds this CI note triggers one more docs-only run.
 
 ## Open questions
-
-- None new. Reminder from Phase 1: `APP_URL` must be set correctly in `/opt/compinabox/.env` on the droplet, or redirects fall back to `request.url`.
+- Detecting a dump that is *missing data* (case v) needs an independent count taken at dump time. Option: `backup.sh` appends a manifest of per-table counts (from one `REPEATABLE READ` snapshot, same as pg_dump's) inside the archive, and restore-test compares against it. Small change, not done (out of scope). Without it, the monthly test proves "restores cleanly and completely as written", not "matches the DB at dump time".
+- The `s3://` branch of backup.sh and the systemd units remain unexecuted (no s3cmd/Spaces/systemd here) — unchanged from the Phase 2 report.

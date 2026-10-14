@@ -8,6 +8,20 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
     steps:
       - uses: actions/checkout@v4
         with:
@@ -17,4 +31,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # verify.sh creates a fresh database in this server, migrates it, and runs DB-backed tests + smoke against it.
+      - name: Point tests at the postgres service
+        run: echo "TEST_DATABASE_URL=postgres://postgres:${PGPASSWORD}@localhost:5432/postgres" >> "$GITHUB_ENV"
       - run: ./verify.sh

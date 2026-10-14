@@ -40,6 +40,38 @@ else
 fi
 [ -f .env.example ] && note ".env.example" "present" || bad ".env.example" "missing"
 
+# --- 2b. Database: fresh Postgres, migrated from scratch --------------------
+# Once lib/db/schema.ts exists, DB-backed tests and the live smoke flow need a real Postgres.
+# TEST_DATABASE_URL points at a server that may CREATE DATABASE; a fresh database is created for
+# this run, migrated with `npm run db:migrate`, and dropped on exit. Unset = FAIL (never skip).
+hr "database"
+DB_CLEANUP=""
+if [ -f lib/db/schema.ts ]; then
+  if [ -z "${TEST_DATABASE_URL:-}" ]; then
+    bad "database" "TEST_DATABASE_URL is not set — DB-backed tests must fail, not skip"
+  else
+    ADMIN_URL=${TEST_DATABASE_URL%%\?*}
+    FRESH_DB="verify_$(date +%s)_$$"
+    if psql "$ADMIN_URL" -qv ON_ERROR_STOP=1 -c "CREATE DATABASE \"$FRESH_DB\"" >/tmp/verify-createdb.log 2>&1; then
+      DB_CLEANUP="psql \"$ADMIN_URL\" -qc 'DROP DATABASE IF EXISTS \"$FRESH_DB\" WITH (FORCE)' >/dev/null 2>&1"
+      export TEST_DATABASE_URL="${ADMIN_URL%/*}/$FRESH_DB"
+      export DATABASE_URL="$TEST_DATABASE_URL"
+      note "fresh database" "$FRESH_DB"
+      if npm run -s db:migrate >/tmp/verify-migrate.log 2>&1; then
+        note "db:migrate" "ok (from scratch)"
+        note "tables created" "$(psql "$DATABASE_URL" -Atc "select count(*) from information_schema.tables where table_schema='public'")"
+      else
+        tail -20 /tmp/verify-migrate.log; bad "db:migrate" "failed against a fresh database"
+      fi
+    else
+      cat /tmp/verify-createdb.log; bad "database" "could not create a fresh database via TEST_DATABASE_URL"
+    fi
+  fi
+else
+  note "database" "no schema yet (pre-phase 2)"
+fi
+trap '[ -n "$DB_CLEANUP" ] && eval "$DB_CLEANUP"' EXIT
+
 # --- 3. Lint / typecheck / tests / build -----------------------------------
 hr "lint"
 if npm run -s lint >/tmp/verify-lint.log 2>&1; then note "lint" "ok"; else tail -20 /tmp/verify-lint.log; bad "lint" "see above"; fi
@@ -99,7 +131,7 @@ if [ -f lib/db/schema.ts ]; then
     note "migration drift" "schema unchanged"
   fi
   # 4b. Tenant tables must carry company_id. Any pgTable whose block lacks company_id, except the allowlist.
-  ALLOW='^(company|companies|user|users|waitlist_lead|waitlist_leads|session|sessions|account|accounts|verification_token|verification_tokens)$'
+  ALLOW='^(company|companies|user|users|waitlist_lead|waitlist_leads|session|sessions|account|accounts|verification_token|verification_tokens|checkout_attempt|checkout_attempts|payment_event|payment_events)$'
   MISSING=$(awk '
     /pgTable\(/ { inblk=1; name=$0; sub(/.*pgTable\(["'"'"']/,"",name); sub(/["'"'"'].*/,"",name); has=0; next }
     inblk && /company_id|companyId/ { has=1 }

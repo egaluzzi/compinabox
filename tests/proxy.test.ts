@@ -21,8 +21,8 @@ describe("proxy", () => {
     const res = proxy(req("/", { "cf-ipcountry": "BR", cookie: "country=mx" }));
     expect(res.headers.get("location")).toMatch(/\/mx$/);
   });
-  it("is matched on / only", () => {
-    expect(config.matcher).toBe("/");
+  it("is matched on / (geo) plus the marketing pages and /checkout (UTM)", () => {
+    expect(config.matcher).toContain("/");
   });
   it("does not redirect deep links even if it were invoked for them", () => {
     const res = proxy(req("/ar/pricing", { "cf-ipcountry": "BR" }));

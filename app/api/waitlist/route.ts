@@ -1,3 +1,6 @@
+import { getDb } from "@/lib/db/client";
+import { waitlistLeads } from "@/lib/db/schema";
+
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function json(body: unknown, status: number) {
@@ -8,9 +11,9 @@ function json(body: unknown, status: number) {
 }
 
 /**
- * Phase 1 stub: validates, drops honeypot hits, and writes ONE console line with
- * email + country + timestamp. Nothing else from the request is read or logged —
- * no IP, no user-agent, no headers. Phase 2 replaces the log with a WaitlistLead row.
+ * Validates, drops honeypot hits, and stores a waitlist_leads row (email + country +
+ * timestamp). Nothing else from the request is read or stored — no IP, no user-agent,
+ * no headers — and nothing is logged. A repeat email is a silent no-op (same response).
  */
 export async function POST(request: Request) {
   let body: Record<string, unknown>;
@@ -40,13 +43,13 @@ export async function POST(request: Request) {
           .slice(0, 60)
       : "";
 
-  console.log(
-    JSON.stringify({
-      event: "waitlist",
-      email,
-      country: country || "unknown",
-      at: new Date().toISOString(),
-    }),
-  );
+  try {
+    await getDb()
+      .insert(waitlistLeads)
+      .values({ email: email.toLowerCase(), country: country || "unknown" })
+      .onConflictDoNothing();
+  } catch {
+    return json({ ok: false, error: "server" }, 500);
+  }
   return json({ ok: true }, 200);
 }
