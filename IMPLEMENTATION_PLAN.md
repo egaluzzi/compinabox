@@ -178,21 +178,23 @@ Judgment: the supervisor reads the handler and one real anonymous DB row (raw `p
 
 ## Phase 6 — Employee portal: training + acknowledgment tracking
 
-SPEC §5.4, §5.5.
+SPEC §5.4, §5.5. CLAUDE.md §8 (tenant isolation; employee acknowledgments DO log IP — the only place a client IP is stored). **Deep review** — tokenized access and tenant isolation. Detailed decisions are in `SUPERVISOR_NOTES.md`; summary so they survive the relay.
 
-- [ ] Employees: CSV import (name, email), invite email per CONTENT.md §5, signed single-use token links (`/employee/[token]`), re-issue on expiry
-- [ ] Acknowledgment flow: read + accept code of conduct and each policy; stores timestamp **and IP** (this one does log IP — SPEC §5.5)
-- [ ] Training module: 15–25 min scenario-based content in pt-BR (content drafted by worker from the policy suite, flagged for Esteban's review), end quiz, pass threshold 80%, `TrainingCompletion` row
-- [ ] Annual conflict-of-interest disclosure form → `Disclosure`
-- [ ] Dashboard → Employees/Training: per-employee status grid, company completion %, CSV + PDF export
-- [ ] Overview widgets from phase 4 now real
+- [ ] **Roster:** employees via CSV import (`name,email`; `,` or `;`; BOM-safe; ≤ 500 rows; valid rows imported, bad rows reported by line); unique per company by lower-cased email; **deactivate/reactivate, never delete**; `invited_at`, `invite_expires_at`, `deactivated_at`
+- [ ] **Invites:** admin-triggered (per employee + "send pending", ≤ 50 per click), CONTENT.md §5 template; link `/employee/<token>`, 14-day TTL; re-issue (admin button) kills the previous link; only the hash is stored
+- [ ] **Link → session:** `GET /employee/<token>` never consumes (mail scanners); a "Start" POST consumes the token (single use, atomic) and sets an httpOnly 8-hour portal session (`employee_sessions`, DB-backed, revocable; cookie `Path=/employee`, handlers under `/employee/api`); used/expired/unknown tokens all give the same friendly page
+- [ ] **Acknowledgments:** employee reads each of the six documents (company's current version) and accepts; stores timestamp **and IP** (`cf-connecting-ip`, read in exactly one file); idempotent; append-only in the DB; a regenerated document makes the old acceptance "outdated"
+- [ ] **Training:** pt-BR scenario-based module (6 lessons mirroring the policy suite, 12-question quiz, pass ≥ 80%, graded server-side, retakes allowed, `TrainingCompletion` row with score on pass); content drafted by the worker under `lib/training/` with a `REVIEW.md` (DRAFT, for Esteban); no legal citations, no compliance claims; other locales show an "unavailable" state and are excluded from completion
+- [ ] **Annual conflict-of-interest disclosure:** one per employee per calendar year; content encrypted at rest (same key ring as phase 5; rotation script extended); append-only
+- [ ] **Dashboard:** Employees (import, grid, invite/resend, deactivate), per-employee detail (acks with timestamps + IP, training score/date, disclosure content), Training (module overview + per-employee results), company completion % (defined in notes), CSV + PDF export (no IP, no disclosure content; CSV formula-injection safe); Overview widgets real
+- [ ] Tenant isolation: every new table carries `company_id`; employee session carries company from the DB row; coverage test that every employee-portal file uses `requireEmployee`
 
 **Definition of done**
 ```
-./verify.sh
-npm run test -- employee        # token single-use, expiry, cross-tenant token rejected
+./verify.sh                      # new invariants: client IP read in exactly one file; employee paths never read company_id from the request; smoke covers the full flow
+npm run test -- employee         # token single-use/expiry/re-issue, cross-tenant, append-only, quiz boundary, completion math, CSV import/export
 ```
-Judgment: an expired or reused token shows a friendly page, not a stack trace; export matches the grid.
+Judgment: an expired or reused token shows a friendly page, not a stack trace; export matches the grid; the supervisor reads the token-exchange and acknowledgment handlers and one real `acknowledgments` row; training content read for tone and scope-boundary (no "you are compliant/certified").
 
 ---
 
@@ -250,6 +252,7 @@ SPEC §9 (blog), §10, CLAUDE.md §4.
 - [ ] **Whistleblower anonymity at the edge (phase 5 follow-ups):** Caddy must not write client IPs to its access log for `/report/*` (log filter or no access log for that path) and Cloudflare per-IP rate limits cover `/report/*` and `/api/report/*`; GTM/GA4 and the consent banner must never load on `/report/*` or `/dashboard/*`; the privacy policy must say Cloudflare, as proxy, sees reporter IPs
 - [ ] **`REPORT_ENCRYPTION_KEY` custody:** set on the droplet and stored separately from the database backups (password manager); losing it makes every report unreadable and a backup without it is useless — Esteban confirms (hard to undo); `EVIDENCE_DIR` exists, is outside Caddy's served paths, and is included in backups
 - [ ] Phase 5 carry-overs: Caddy request-body size cap on `/api/report` (the handler buffers the multipart body before validating sizes); set `NEXT_TELEMETRY_DISABLED=1`; decide how `npm run rotate-report-key` runs on the droplet (it needs a checkout + `node_modules`, the deploy ships only the standalone output); `scripts/backup.sh` currently dumps the DB only — extend it (or add a second job) to cover `EVIDENCE_DIR`
+- [ ] Phase 6 carry-overs: origin only reachable from Cloudflare (firewall/Caddy allow-list of Cloudflare ranges) so `cf-connecting-ip` on acknowledgments cannot be spoofed; real-inbox check that invite links survive mail scanners (the GET confirm page should make them safe); Resend daily/second rate limits vs bulk invites (≤ 50 per click)
 - [ ] Backup bucket is **private**; Esteban confirms a downloaded dump restores with `scripts/restore-test.sh`
 
 **Definition of done**
