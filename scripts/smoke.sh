@@ -425,8 +425,10 @@ TOK_A=${LINK_A##*/}; TOK_B1=${LINK_B1##*/}; TOK_C=${LINK_C##*/}
 t "three invitation emails reached the dev sink, each with its own /employee/<43-char token> link" \
   bash -c "echo '$LINK_A' | grep -qE '/employee/[A-Za-z0-9_-]{43}\$' && echo '$LINK_B1' | grep -qE '/employee/[A-Za-z0-9_-]{43}\$' && [ '$TOK_A' != '$TOK_B1' ] && [ '$TOK_A' != '$TOK_C' ]"
 MAIL_A=$(node -e 'const fs=require("fs"),d=process.argv[1];for(const f of fs.readdirSync(d).sort()){const m=JSON.parse(fs.readFileSync(d+"/"+f,"utf8"));if(m.to===process.argv[2]&&/employee\//.test(m.text))console.log(JSON.stringify(m))}' "$OUTBOX" "$ANA_E" | tail -1)
+echo "--- smoke evidence: the invitation email as written to the dev sink"
+echo "$MAIL_A"
 t "invitation: pt-BR, names the employee, offers the two steps, carries no document text" \
-  bash -c "echo '$MAIL_A' | grep -q 'convida você a concluir seu treinamento' && echo '$MAIL_A' | grep -q 'Olá Ana Smoke' && echo '$MAIL_A' | grep -q '15-20 min' && ! echo '$MAIL_A' | grep -qiE 'Código de Conduta|vantagem indevida|Nosso compromisso'"
+  bash -c "echo '$MAIL_A' | grep -q 'convida você a concluir seu treinamento' && echo '$MAIL_A' | grep -q 'Olá Ana Smoke' && echo '$MAIL_A' | grep -q '15-20 min' && ! echo '$MAIL_A' | grep -qiE 'Nosso compromisso|vantagem indevida|Comprometimento da alta'"
 t "DB: invited_at set, 14-day expiry, only the sha256 hash stored (the raw token is nowhere in the row)" \
   bash -c "[ \"\$(psql '$DATABASE_URL' -Atc \"select (invited_at is not null and invite_expires_at - invited_at = interval '14 days' and invite_token_hash = '\$(printf %s '$TOK_A' | openssl dgst -sha256 | awk '{print \$NF}')')::text from employees where id='$ANA'\")\" = true ] && ! psql '$DATABASE_URL' -Atc \"select * from employees where id='$ANA'\" | grep -q '$TOK_A'"
 echo "--- smoke evidence: the invited employee row (psql -x): a hash, not the token"
@@ -451,7 +453,8 @@ curl -s -D "$P6_HDR" -b "$JARE" -o "$P6_HTML" "$B/employee"
 t "portal home: 200, private no-store, checklist shows 0 of 8 steps" bash -c "head -1 '$P6_HDR' | grep -q ' 200' && tr -d '\r' <'$P6_HDR' | grep -iq '^cache-control: private, no-store' && grep -q '0 de 8 etapas concluídas' '$P6_HTML' && grep -q 'Smoke' '$P6_HTML'"
 
 # acknowledge the six documents (with the Cloudflare header), then a double click and a foreign id
-DOCS=$(SQL "select id from documents where company_id='$CID' order by type, version desc")
+# the CURRENT version of each type (earlier smoke steps regenerated the documents)
+DOCS=$(SQL "select distinct on (type) id from documents where company_id='$CID' order by type, version desc")
 N=0; ACKFAIL=0
 for d in $DOCS; do
   N=$((N+1))
@@ -490,7 +493,8 @@ psql "$DATABASE_URL" -x -c "select id, company_id, employee_id, type, period_yea
 
 # the admin sees it: grid, completion (hand-computed 8 of 24 steps = 33%), detail page, exports
 curl -s -b "$JAR5" "$B/dashboard/employees" -o "$P6_HTML"
-t "admin grid: completion 33% (8 of 24 steps), 1 of 3 fully complete; Ana's marks are 'Feito', the others pending" bash -c "grep -q 'Conclusão 33% · 1 de 3 colaboradores com tudo concluído' '$P6_HTML' && [ \"\$(grep -o 'Feito ' '$P6_HTML' | wc -l)\" = 8 ] && [ \"\$(grep -o 'Convidado' '$P6_HTML' | wc -l)\" -ge 2 ]"
+t "admin grid: completion 33% (8 of 24 steps), 1 of 3 fully complete" bash -c "grep -q 'Conclusão 33% · 1 de 3 colaboradores com tudo concluído' '$P6_HTML'"
+t "admin grid: Ana's eight marks are 'Feito' (6 documents, training, disclosure); the other two are invited, nothing done" bash -c "[ \"\$(grep -o '>Feito ' '$P6_HTML' | wc -l)\" = 8 ] && [ \"\$(grep -o '>Convidado<' '$P6_HTML' | wc -l)\" -ge 2 ]"
 t "Overview widgets are real: 33% and '1 de 3 colaboradores com tudo concluído'" bash -c "H=\$(curl -s -b '$JAR5' $B/dashboard) && echo \"\$H\" | grep -q '33%' && echo \"\$H\" | grep -q '3 colaboradores'"
 curl -s -D "$P6_HDR" -b "$JAR5" "$B/dashboard/employees/$ANA" -o "$P6_HTML"
 t "employee detail (admin): the six acceptances with IPs, training 83%, the DECRYPTED disclosure; private no-store" bash -c "grep -q '203.0.113.13' '$P6_HTML' && grep -q 'Pontuação 83%' '$P6_HTML' && grep -q 'Minha prima é sócia da fornecedora Smoke 6e2f' '$P6_HTML' && tr -d '\r' <'$P6_HDR' | grep -iq '^cache-control: private, no-store'"
