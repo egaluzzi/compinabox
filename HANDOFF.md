@@ -278,3 +278,6 @@ No test was weakened or skipped. `tests/documents-store.test.ts` (TRUNCATE docum
 
 ## Code tip vs pushed tip
 Code tip `34e83ad`; the branch tip after pushing this file is a docs-only commit on top (see the PR). PR and CI status: see the next section (added after the push).
+
+## PR and CI
+PR: https://github.com/egaluzzi/compinabox/pull/8 (contains phase 5 commits until #7 merges). CI: no workflow run was visible yet when this was written (just after the push — queued/not started); head SHA at that time = the docs commit on top of code tip `34e83ad`. Check the PR's checks.
