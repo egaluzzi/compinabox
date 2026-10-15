@@ -73,7 +73,7 @@ JQ() { node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{cons
 SQL() { psql "$DATABASE_URL" -Atc "$1"; }
 SECRET=smoke-fake-secret-$(date +%s)-0123456789
 ASEC=smoke-auth-secret-$(date +%s)-0123456789
-OUTBOX=$(mktemp -d); UPLOADS=$(mktemp -d); JAR=$(mktemp); JAR_SAVED=$(mktemp); JAR2=$(mktemp)
+OUTBOX=$(mktemp -d); UPLOADS=$(mktemp -d); EVIDENCE=$(mktemp -d); JAR=$(mktemp); JAR_SAVED=$(mktemp); JAR2=$(mktemp)
 EMAIL="smoke-$(date +%s)-$$@example.test"
 UNKNOWN="ghost-$(date +%s)-$$@example.test"
 
@@ -81,7 +81,7 @@ export AUTH_SECRET=$ASEC
 start_server() { # start_server [VAR=value ...]  (restarts the standalone server with a clean flow env)
   kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null
   env ENABLED_COUNTRIES=br AUTH_URL=$B EMAIL_DEV_SINK=true EMAIL_SINK_DIR=$OUTBOX \
-      UPLOADS_DIR=$UPLOADS "$@" node .next/standalone/server.js >"$LOG" 2>&1 &
+      UPLOADS_DIR=$UPLOADS EVIDENCE_DIR=$EVIDENCE REPORT_ENCRYPTION_KEYS="smoke:$(printf 'smoke-report-key-0123456789abcde' | base64)" "$@" node .next/standalone/server.js >"$LOG" 2>&1 &
   SERVER_PID=$!
   for _ in $(seq 1 60); do curl -s -o /dev/null "$B/" && break; sleep 0.5; done
 }
@@ -99,7 +99,7 @@ wh() {
   curl -s -o /tmp/wh.out -w '%{http_code}' -X POST -H "content-type: application/json" -H "x-fake-signature: $sig" --data "$body" "$B/api/webhooks/payments"
 }
 
-export -f wh SQL
+export -f wh SQL JQ
 export B SECRET
 start_server "${FAKE_ENV[@]}"
 check "/checkout?c=br shows the form and the TEST PRICE label" "curl -s '$B/checkout?c=br' | grep -q 'name=\"companyName\"' && curl -s '$B/checkout?c=br' | grep -q 'PREÇO DE TESTE'"
@@ -302,6 +302,91 @@ check "sign in again after sign-out: link sets a new session" "[ '$SLINK2' != '$
 check "sign in again: new session reaches /dashboard (200) and the PDF" "[ \"\$(code -b '$JAR5' $B/dashboard)\" = 200 ] && [ \"\$(code -b '$JAR5' $B/dashboard/documents/$DOC1/pdf)\" = 200 ]"
 check "sign in again: the pre-sign-out cookie is still refused" "curl -s -D - -o /dev/null -b '$JAR_OLD' $B/dashboard | tr -d '\r' | grep -iqE '^location: .*/login'"
 check "the original jar (same user, another browser) ended too: all of that user's sessions end" "curl -s -D - -o /dev/null -b '$JAR2' $B/dashboard | tr -d '\r' | grep -iqE '^location: .*/login'"
+# ---------------------------------------------------------------------------------------------
+# Phase 5: whistleblower intake + case log — anonymous submit with an EXIF-carrying image, tracking
+# code, public status, admin review (decrypt, evidence, notes, statuses), tenant isolation, the
+# notification email. Real Postgres + real HTTP + real files. Company 1 = JAR5 (admin), company 2 = JAR3.
+# ---------------------------------------------------------------------------------------------
+SLUG1=$(SQL "select slug from companies where id='$CID'")
+COMPANY1=$(SQL "select name from companies where id='$CID'")
+RHDR=$(mktemp)
+check "channel page: 200 in pt-BR, branded with the company name, form fields present" "curl -s -D '$RHDR' $B/report/$SLUG1 -o /tmp/rpt.html; head -1 '$RHDR' | grep -q ' 200' && grep -q '<html lang=\"pt-BR\"' /tmp/rpt.html && grep -q 'Canal de denúncias de $COMPANY1' /tmp/rpt.html && grep -q 'name=\"category\"' /tmp/rpt.html && grep -q 'name=\"evidence\"' /tmp/rpt.html"
+check "channel page headers: no-store, no-referrer, DENY, noindex (header + meta), NO cookie, no banner" "H=\$(tr -d '\r' <'$RHDR') && echo \"\$H\" | grep -iq '^cache-control: no-store' && echo \"\$H\" | grep -iq '^referrer-policy: no-referrer' && echo \"\$H\" | grep -iq '^x-frame-options: DENY' && echo \"\$H\" | grep -iq '^x-robots-tag: noindex' && ! echo \"\$H\" | grep -iq '^set-cookie' && grep -qi 'name=\"robots\" content=\"noindex' /tmp/rpt.html && ! grep -qiE 'consent|googletagmanager' /tmp/rpt.html"
+check "unknown channel slug -> 404; status page renders" "[ \"\$(code $B/report/no-such-company-zz)\" = 404 ] && [ \"\$(code $B/report/$SLUG1/status)\" = 200 ]"
+
+# an image carrying an EXIF/GPS-style marker, and probe headers that must never be stored
+EVJPG=$(mktemp --suffix=.jpg)
+node -e 'const fs=require("fs");const l=fs.readFileSync("tests/fixtures/logo.jpg");const p=Buffer.from("Exif\0\0SMOKE-EXIF-GPS-MARKER","latin1");const n=Buffer.alloc(2);n.writeUInt16BE(p.length+2);fs.writeFileSync(process.argv[1],Buffer.concat([l.subarray(0,2),Buffer.from([0xff,0xe1]),n,p,l.subarray(2)]))' "$EVJPG"
+check "the test image really carries the marker before upload" "grep -aq SMOKE-EXIF-GPS-MARKER '$EVJPG'"
+RSP=$(curl -s -D "$RHDR" -H 'X-Forwarded-For: 203.0.113.55' -H 'CF-Connecting-IP: 198.51.100.55' -H 'User-Agent: SmokeAnon/7.7' -H 'Cookie: probe=SMOKE-COOKIE-MARKER' -H 'Accept-Language: xx-SMOKE-LANG' -H 'Referer: https://smoke-referer.example/MARKER' \
+  -F category=fraud -F 'description=Descrição secreta do smoke 4f1d' -F wantsContact=no -F "evidence=@$EVJPG;type=image/jpeg;filename=my-private-name.jpg" "$B/api/report/$SLUG1")
+RCODE=$(echo "$RSP" | JQ code); RAW=${RCODE//-/}
+check "anonymous submit with probe headers -> 201 + tracking code XXXX-XXXX-XXXX, no cookie set" "head -1 '$RHDR' | grep -q ' 201' && echo '$RCODE' | grep -qE '^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}\$' && ! grep -qi '^set-cookie' '$RHDR'"
+RID=$(SQL "select id from whistleblower_reports where tracking_code='$RAW'")
+check "DB: anonymous row — is_anonymous, NULL contact, status new, ciphertext description (no plaintext)" "[ \"\$(SQL \"select is_anonymous::text || ',' || coalesce(reporter_contact,'NULL') || ',' || status from whistleblower_reports where id='$RID'\")\" = 'true,NULL,new' ] && [ \"\$(SQL \"select left(description,6) from whistleblower_reports where id='$RID'\")\" = 'vsmoke' ] && [ \"\$(SQL \"select count(*) from whistleblower_reports where description like '%secreta%'\")\" = 0 ]"
+echo "--- smoke evidence: the anonymous report row exactly as stored (psql)"
+psql "$DATABASE_URL" -x -c "select id, company_id, tracking_code, category, left(description, 70) as description, is_anonymous, reporter_contact, status, status_changed_at, resolved_at, created_at from whistleblower_reports where id='$RID'"
+# whole-database marker search: every table, every column (pg_dump), with a positive control
+dump() { pg_dump "$DATABASE_URL" --data-only --no-owner 2>/dev/null; }
+MARKERS=(203.0.113.55 198.51.100.55 SmokeAnon/7.7 SMOKE-COOKIE-MARKER xx-SMOKE-LANG smoke-referer.example my-private-name SMOKE-EXIF-GPS-MARKER)
+DUMP=$(mktemp); dump >"$DUMP"
+HITS=0; for m in "${MARKERS[@]}"; do HITS=$((HITS + $(grep -cF -- "$m" "$DUMP"))); done
+check "full-database marker search (headers, cookie, client file name, EXIF marker): 0 hits in a non-trivial dump" "[ '$HITS' = 0 ] && [ \$(wc -l <'$DUMP') -gt 100 ]"
+echo "--- smoke evidence: marker search over the whole database dump ($(wc -l <"$DUMP") lines, ${#MARKERS[@]} markers): $HITS hit(s)"
+SQL "insert into waitlist_leads (email, country) values ('control-203.0.113.55@example.test', 'br')" >/dev/null; dump >"$DUMP"
+echo "--- smoke evidence: positive control — the same search after deliberately inserting a marker row: $(grep -cF -- 203.0.113.55 "$DUMP") hit(s)"
+check "positive control: the same search DOES find a marker that is really there" "[ \$(grep -cF -- 203.0.113.55 '$DUMP') -ge 1 ]"
+SQL "delete from waitlist_leads where email like 'control-%'" >/dev/null; rm -f "$DUMP"
+
+# evidence on disk: encrypted, not an image, outside the uploads dir
+EFILE=$(SQL "select file_name from whistleblower_evidence where report_id='$RID'")
+check "evidence: one row, server-chosen name, sniffed type image/jpeg, stored outside the uploads dir" "[ \"\$(SQL \"select count(*) from whistleblower_evidence where report_id='$RID' and content_type='image/jpeg' and file_name ~ '^[a-f0-9]{32}\\.enc\$'\")\" = 1 ] && [ -f '$EVIDENCE/$EFILE' ] && [ ! -e '$UPLOADS/$EFILE' ]"
+check "evidence on disk is not an image (no JPEG magic) and carries no marker" "[ \"\$(head -c 2 '$EVIDENCE/$EFILE' | od -An -tx1 | tr -d ' ')\" != ffd8 ] && ! grep -aq SMOKE-EXIF-GPS-MARKER '$EVIDENCE/$EFILE'"
+echo "--- smoke evidence: the evidence file on disk (ls -l; first 32 bytes, hex + text)"
+ls -l "$EVIDENCE/$EFILE"; od -A x -t x1z -N 32 "$EVIDENCE/$EFILE"
+check "the public uploads route cannot serve the evidence file" "[ \"\$(code $B/uploads/$EFILE)\" = 404 ] && [ \"\$(code $B/uploads/${EFILE%.enc}.jpg)\" = 404 ]"
+
+# public status: only the label and a date; wrong / malformed / other-company answers are identical
+st() { curl -s -w ' %{http_code}' -X POST -H 'content-type: application/json' --data "{\"code\":\"$2\"}" "$B/api/report/$1/status"; }
+export -f st
+check "public status: right code -> 'Recebida' and nothing about the report" "R=\$(st $SLUG1 $RCODE) && echo \"\$R\" | grep -q '\"label\":\"Recebida\"' && ! echo \"\$R\" | grep -qiE 'fraud|secreta|category|description' && echo \"\$R\" | grep -q ' 200\$'"
+check "public status: wrong, malformed and other-company answers are byte-identical 404s" "A=\$(st $SLUG1 AAAA-AAAA-AAAA) && [ \"\$A\" = \"\$(st $SLUG1 12)\" ] && [ \"\$A\" = \"\$(st no-such-company-zz $RCODE)\" ] && [ \"\$A\" = \"\$(st \$(SQL \"select slug from companies where id='$C2'\") $RCODE)\" ] && echo \"\$A\" | grep -q ' 404\$'"
+
+# the admin reviews: list, decrypted detail, evidence download without metadata
+check "dashboard list: report appears (link, 'Recebida'), channel URL shown, no description text" "H=\$(curl -s -b '$JAR5' $B/dashboard/whistleblower) && echo \"\$H\" | grep -q '/dashboard/whistleblower/$RID' && echo \"\$H\" | grep -q '$B/report/$SLUG1' && echo \"\$H\" | grep -q 'Recebida' && ! echo \"\$H\" | grep -q 'secreta'"
+check "dashboard detail decrypts the description and says 'Anônima'" "H=\$(curl -s -b '$JAR5' $B/dashboard/whistleblower/$RID) && echo \"\$H\" | grep -q 'Descrição secreta do smoke 4f1d' && echo \"\$H\" | grep -q 'Anônima'"
+EVID=$(SQL "select id from whistleblower_evidence where report_id='$RID'")
+curl -s -D "$RHDR" -o /tmp/ev.out -b "$JAR5" "$B/dashboard/whistleblower/$RID/evidence/$EVID"
+check "evidence download: attachment, image/jpeg, nosniff, private no-store; a JPEG with the EXIF marker gone" "H=\$(tr -d '\r' <'$RHDR') && echo \"\$H\" | grep -iq '^content-disposition: attachment' && echo \"\$H\" | grep -iq '^content-type: image/jpeg' && echo \"\$H\" | grep -iq '^x-content-type-options: nosniff' && echo \"\$H\" | grep -iq '^cache-control: private, no-store' && [ \"\$(head -c 2 /tmp/ev.out | od -An -tx1 | tr -d ' ')\" = ffd8 ] && ! grep -aq SMOKE-EXIF-GPS-MARKER /tmp/ev.out && ! grep -aq Exif /tmp/ev.out"
+check "evidence download without a session -> 401" "[ \"\$(code $B/dashboard/whistleblower/$RID/evidence/$EVID)\" = 401 ]"
+
+# case log: note, then under review, then closed; the public status follows
+check "add a note -> 303; it shows decrypted, and is ciphertext in the database" "[ \"\$(code -b '$JAR5' -F 'body=Nota interna do smoke 77aa' $B/dashboard/whistleblower/$RID/note)\" = 303 ] && curl -s -b '$JAR5' $B/dashboard/whistleblower/$RID | grep -q 'Nota interna do smoke 77aa' && [ \"\$(SQL \"select count(*) from whistleblower_notes where report_id='$RID' and kind='note' and body like 'v%' and body not like '%interna%'\")\" = 1 ]"
+check "move to 'under review' -> public status shows 'Em análise'" "[ \"\$(code -b '$JAR5' -F status=under_review $B/dashboard/whistleblower/$RID/status)\" = 303 ] && st $SLUG1 $RCODE | grep -q 'Em análise'"
+check "close it -> resolved_at set, public status shows 'Encerrada'" "[ \"\$(code -b '$JAR5' -F status=closed $B/dashboard/whistleblower/$RID/status)\" = 303 ] && st $SLUG1 $RCODE | grep -q 'Encerrada' && [ \"\$(SQL \"select (resolved_at is not null)::text from whistleblower_reports where id='$RID'\")\" = true ]"
+check "case log: note + two status changes recorded; the overview no longer counts it as open" "[ \"\$(SQL \"select string_agg(kind || coalesce(':' || from_status || '>' || to_status, ''), ',' order by created_at, id) from whistleblower_notes where report_id='$RID'\")\" = 'note,status_change:new>under_review,status_change:under_review>closed' ] && curl -s -b '$JAR5' $B/dashboard | grep -q 'Nenhuma denúncia em aberto'"
+check "reopen clears the resolution date" "[ \"\$(code -b '$JAR5' -F status=new $B/dashboard/whistleblower/$RID/status)\" = 303 ] && [ \"\$(SQL \"select (resolved_at is null)::text from whistleblower_reports where id='$RID'\")\" = true ]"
+SQL "update whistleblower_reports set status='closed' where id='$RID'" >/dev/null # back to closed for the checks below (the report table is not append-only; the log is)
+check "database: the case log is append-only (UPDATE and DELETE rejected)" "OUT=\$(psql '$DATABASE_URL' -qc \"update whistleblower_notes set body='x' where report_id='$RID'\" 2>&1); echo \"\$OUT\" | grep -q 'append-only' && OUT=\$(psql '$DATABASE_URL' -qc \"delete from whistleblower_notes where report_id='$RID'\" 2>&1); echo \"\$OUT\" | grep -q 'append-only'"
+
+# company 2 (JAR3) gets 404 for everything of company 1's
+check "company 2: report detail -> 404, evidence -> 404, status change -> 404, note -> 404" "[ \"\$(code -b '$JAR3' $B/dashboard/whistleblower/$RID)\" = 404 ] && [ \"\$(code -b '$JAR3' $B/dashboard/whistleblower/$RID/evidence/$EVID)\" = 404 ] && [ \"\$(code -b '$JAR3' -F status=closed $B/dashboard/whistleblower/$RID/status)\" = 404 ] && [ \"\$(code -b '$JAR3' -F body=intruder $B/dashboard/whistleblower/$RID/note)\" = 404 ]"
+check "company 2: its list shows nothing of company 1's (no id, no slug, no description)" "H=\$(curl -s -b '$JAR3' $B/dashboard/whistleblower) && ! echo \"\$H\" | grep -q '$RID' && ! echo \"\$H\" | grep -q '$SLUG1' && ! echo \"\$H\" | grep -q secreta"
+check "company 1's report is untouched by company 2's attempts" "[ \"\$(SQL \"select count(*) from whistleblower_notes where report_id='$RID' and kind='note'\")\" = 1 ] && [ \"\$(SQL \"select status from whistleblower_reports where id='$RID'\")\" = closed ]"
+
+# bad input and the honeypot
+check "intake: invalid category / an SVG named .png -> 422, nothing stored" "N0=\$(SQL 'select count(*) from whistleblower_reports'); [ \"\$(code -F category=gossip -F description=x -F wantsContact=no $B/api/report/$SLUG1)\" = 422 ] && [ \"\$(code -F category=fraud -F description=x -F wantsContact=no -F 'evidence=@$SVG;type=image/png' $B/api/report/$SLUG1)\" = 422 ] && [ \"\$(SQL 'select count(*) from whistleblower_reports')\" = \"\$N0\" ]"
+check "intake: a filled honeypot looks like success but stores nothing" "N0=\$(SQL 'select count(*) from whistleblower_reports'); curl -s -F category=fraud -F description=bot -F wantsContact=no -F website=spam $B/api/report/$SLUG1 | grep -q '\"ok\":true' && [ \"\$(SQL 'select count(*) from whistleblower_reports')\" = \"\$N0\" ]"
+check "intake: opt-in contact is stored encrypted, is_anonymous = false" "C=\$(curl -s -F category=other -F description='com contato' -F wantsContact=yes -F 'contact=joana@smoke.example' $B/api/report/$SLUG1 | JQ code) && [ -n \"\$C\" ] && [ \"\$(SQL \"select is_anonymous::text || ',' || (reporter_contact like 'v%')::text || ',' || (reporter_contact like '%joana%')::text from whistleblower_reports where tracking_code='\${C//-/}'\")\" = 'false,true,false' ]"
+
+# the notification email: to the admin, localized, a link to the dashboard, nothing from the report
+MAILS=$(node -e 'const fs=require("fs"),d=process.argv[1];for(const f of fs.readdirSync(d).sort()){const m=JSON.parse(fs.readFileSync(d+"/"+f,"utf8"));if(m.to===process.argv[2]&&m.subject==="Nova denúncia recebida no seu canal")console.log(JSON.stringify(m))}' "$OUTBOX" "$EMAIL")
+check "notification emails reached the admin in the dev sink (one per stored report: 2)" "[ \"\$(echo '$MAILS' | wc -l)\" = 2 ]"
+check "notification email: dashboard link, and none of the report's content, code, category or id" "M=\$(echo '$MAILS' | head -1) && echo \"\$M\" | grep -q '/dashboard/whistleblower' && ! echo \"\$M\" | grep -qiE 'secreta|fraud|fraude|$RAW|$RCODE|$RID'"
+echo "--- smoke evidence: the notification email as written to the dev sink"
+echo "$MAILS" | head -1
+rm -f "$RHDR" "$EVJPG" /tmp/rpt.html /tmp/ev.out
+
 rm -f "$JAR4" "$SO_HDR" "$JAR_OLD" "$JAR5"
 
 rm -f "$JAR3" /tmp/pdf.hdr /tmp/doc1.pdf /tmp/st3.out
@@ -322,7 +407,7 @@ start_server
 check "PAYMENT_PROVIDER unset (default none): /checkout?c=br unavailable too" "curl -s '$B/checkout?c=br' | grep -q 'ainda não está disponível'"
 
 kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null
-rm -rf "$OUTBOX" "$UPLOADS" "$JAR" "$JAR_SAVED" "$JAR2" "$PNG" "$SVG" /tmp/wh.out /tmp/st.out
+rm -rf "$OUTBOX" "$UPLOADS" "$EVIDENCE" "$JAR" "$JAR_SAVED" "$JAR2" "$PNG" "$SVG" /tmp/wh.out /tmp/st.out
 fi
 
 [ "$fail" -eq 0 ] && echo "smoke: PASS (port $PORT)" || echo "smoke: FAIL (port $PORT)"

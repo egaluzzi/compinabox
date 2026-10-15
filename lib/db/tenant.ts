@@ -11,6 +11,8 @@ import {
   trainingCompletions,
   users,
   vendors,
+  whistleblowerEvidence,
+  whistleblowerNotes,
   whistleblowerReports,
 } from "./schema";
 
@@ -26,6 +28,8 @@ export const TENANT_TABLES = {
   trainingCompletions,
   disclosures,
   whistleblowerReports,
+  whistleblowerEvidence,
+  whistleblowerNotes,
   vendors,
   billingRecords,
 } as const;
@@ -105,7 +109,7 @@ export async function getTenantUser(db: Db, companyId: string, userId: string) {
   return row ?? null;
 }
 
-/** Statuses that count as an open whistleblower case (phase 5 owns the full lifecycle). */
+/** Statuses that count as an open whistleblower case (lifecycle: new -> under_review -> closed). */
 export const OPEN_REPORT_STATUSES = ["new", "under_review"] as const;
 
 export async function countEmployees(db: Db, companyId: string) {

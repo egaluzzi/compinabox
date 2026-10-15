@@ -216,7 +216,34 @@
       "empty": "No training records yet. Each employee's training completion will appear here."
     },
     "whistleblower": {
-      "empty": "No reports received yet. Reports submitted through your reporting channel will appear here, with their status and history."
+      "empty": "No reports received yet. Reports submitted through your reporting channel will appear here, with their status and history.",
+      "channelTitle": "Your whistleblower channel",
+      "channelHelp": "Share this link with your team and your vendors. Anyone can submit a report without creating an account.",
+      "channelLabel": "Public channel link",
+      "copy": "Copy",
+      "copied": "Copied",
+      "colReceived": "Received",
+      "colCategory": "Category",
+      "colStatus": "Status",
+      "colAction": "Actions",
+      "view": "View",
+      "back": "Back to reports",
+      "resolvedOn": "Resolution date",
+      "contact": "Contact",
+      "anonymous": "Anonymous",
+      "description": "Description",
+      "changeStatus": "Change status",
+      "apply": "Save",
+      "evidence": "Evidence",
+      "evidenceNone": "No evidence attached.",
+      "download": "Download image {n}",
+      "timeline": "Case log",
+      "noNotes": "No notes or status changes yet.",
+      "noteLabel": "Add a note",
+      "addNote": "Add note",
+      "statusMoved": "Status: {from} → {to}",
+      "cannotDecrypt": "Cannot decrypt: the encryption key is missing or the data was altered.",
+      "error": "Could not save. Check the data and try again."
     },
     "vendors": {
       "empty": "No vendors yet. Vendors you add will appear here, with their questionnaire status and screening result.",
@@ -259,7 +286,9 @@
     "signinButton": "Sign in",
     "welcomeSubject": "Set up your account",
     "welcomeBody": "Your payment was received. Use this link to set up your account. It expires in 24 hours and can be used once; after that you can request a new sign-in link at any time.",
-    "welcomeButton": "Set up my account"
+    "welcomeButton": "Set up my account",
+    "reportSubject": "New report received in your channel",
+    "reportBody": "A new report was submitted to your whistleblower channel. Sign in to review it: {url}"
   },
   "documents": {
     "title": "Documents",
@@ -287,6 +316,62 @@
       "conflictsOfInterest": "Conflicts of interest policy",
       "thirdPartyPublicOfficials": "Third-party and public official dealings policy",
       "whistleblowerProtection": "Whistleblower protection policy"
+    }
+  },
+  "report": {
+    "title": "{company} whistleblower channel",
+    "intro": "This channel is confidential. You can report anonymously or leave your contact details — you decide. {company} is committed to reviewing every report.",
+    "logoAlt": "{company} logo",
+    "categoryLabel": "Report category",
+    "categoryPlaceholder": "Choose a category",
+    "categories": {
+      "corruption_bribery": "Corruption / bribery",
+      "conflict_of_interest": "Conflict of interest",
+      "fraud": "Fraud",
+      "harassment": "Harassment",
+      "other": "Other"
+    },
+    "descriptionLabel": "Description",
+    "descriptionHelp": "Tell us what happened, when, and who was involved. Maximum {max, number} characters.",
+    "evidenceLabel": "Evidence (optional)",
+    "evidenceHelp": "Up to 3 PNG or JPEG images, 5 MB each. Before storing them we remove metadata such as location and camera details.",
+    "contactQuestion": "Do you want to leave your contact details?",
+    "contactYes": "Yes",
+    "contactNo": "No",
+    "contactLabel": "How can we reach you?",
+    "contactHelp": "An email or a phone number. Only the people who manage the channel will see it.",
+    "submit": "Submit report",
+    "submitting": "Sending…",
+    "confirmed": "Your report was received. Save this code to check its status:",
+    "saveCode": "This code is shown only once and cannot be recovered. You will need it to check the status.",
+    "statusLink": "Check the status of a report",
+    "errors": {
+      "category": "Choose a category.",
+      "description": "Write a description of up to 10,000 characters.",
+      "contact": "Enter contact details (up to 254 characters) or choose not to leave any.",
+      "too_many_files": "You can attach up to 3 images.",
+      "file_too_large": "Each image can be up to 5 MB.",
+      "file_type": "Only PNG or JPEG images are accepted.",
+      "file_invalid": "We could not process one of the images. Try another one.",
+      "rate_limited": "We received too many submissions in a short time. Please try again later.",
+      "server_error": "We could not send the report. Please try again in a few minutes.",
+      "network": "We could not connect. Check your connection and try again."
+    },
+    "status": {
+      "title": "Report status",
+      "intro": "Enter the code you received when you submitted the report.",
+      "codeLabel": "Tracking code",
+      "submit": "Check status",
+      "checking": "Checking…",
+      "resultStatus": "Status: {status}",
+      "resultDate": "Last update: {date}",
+      "notFound": "We could not find a report with that code. Check that it is typed correctly.",
+      "back": "Back to the form"
+    },
+    "statuses": {
+      "new": "Received",
+      "under_review": "Under review",
+      "closed": "Closed"
     }
   }
 }
