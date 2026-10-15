@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   integer,
   pgTable,
   text,
@@ -16,6 +18,9 @@ import {
 export const companies = pgTable("companies", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
+  // Public whistleblower URL segment (/report/<slug>). Immutable: printed in documents and
+  // handed to employees. Generated at provisioning (lib/whistleblower/slug.ts).
+  slug: text("slug").notNull().unique(),
   taxId: text("tax_id").notNull(),
   country: text("country").notNull(), // ar | br | mx
   industry: text("industry"),
@@ -212,21 +217,79 @@ export const disclosures = pgTable("disclosures", {
     .defaultNow(),
 });
 
-// NB: description/reporter_contact must be encrypted at rest (SPEC §11) — done in phase 5
-// when the intake exists. No IP / user-agent column on purpose (CLAUDE.md §8).
-export const whistleblowerReports = pgTable("whistleblower_reports", {
+// description and reporter_contact hold AES-256-GCM ciphertext (lib/whistleblower/crypto.ts).
+// No IP / user-agent column on purpose (CLAUDE.md §8).
+export const whistleblowerReports = pgTable(
+  "whistleblower_reports",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: companyId(),
+    trackingCode: text("tracking_code").notNull().unique(),
+    category: text("category").notNull(),
+    description: text("description").notNull(), // ciphertext
+    isAnonymous: boolean("is_anonymous").notNull().default(true),
+    reporterContact: text("reporter_contact"), // ciphertext; NULL unless the reporter opted in
+    status: text("status").notNull().default("new"), // new | under_review | closed
+    statusChangedAt: timestamp("status_changed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }), // set on close, cleared on reopen
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  () => [
+    check(
+      "whistleblower_reports_status_check",
+      sql`status in ('new', 'under_review', 'closed')`,
+    ),
+  ],
+);
+
+// Evidence images: metadata stripped, then stored ENCRYPTED under EVIDENCE_DIR (not UPLOADS_DIR).
+// Nothing from the client's filename or content type is kept.
+export const whistleblowerEvidence = pgTable("whistleblower_evidence", {
   id: uuid("id").defaultRandom().primaryKey(),
   companyId: companyId(),
-  trackingCode: text("tracking_code").notNull().unique(),
-  category: text("category").notNull(),
-  description: text("description").notNull(),
-  isAnonymous: boolean("is_anonymous").notNull().default(true),
-  reporterContact: text("reporter_contact"),
-  status: text("status").notNull().default("received"),
+  reportId: uuid("report_id")
+    .notNull()
+    .references(() => whistleblowerReports.id),
+  fileName: text("file_name").notNull(), // server-chosen random name on disk
+  contentType: text("content_type").notNull(), // sniffed: image/png | image/jpeg
+  sizeBytes: integer("size_bytes").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
 });
+
+// APPEND-ONLY: a database trigger (migration 0004) rejects UPDATE, DELETE and TRUNCATE. The log
+// is itself audit evidence (SPEC §5.3). `body` is ciphertext for notes, NULL for status changes.
+export const whistleblowerNotes = pgTable(
+  "whistleblower_notes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: companyId(),
+    reportId: uuid("report_id")
+      .notNull()
+      .references(() => whistleblowerReports.id),
+    kind: text("kind").notNull(), // note | status_change
+    body: text("body"),
+    fromStatus: text("from_status"),
+    toStatus: text("to_status"),
+    authorUserId: uuid("author_user_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  () => [
+    check(
+      "whistleblower_notes_kind_check",
+      sql`kind in ('note', 'status_change')`,
+    ),
+  ],
+);
 
 export const vendors = pgTable("vendors", {
   id: uuid("id").defaultRandom().primaryKey(),

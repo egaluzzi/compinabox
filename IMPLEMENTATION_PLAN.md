@@ -144,10 +144,10 @@ Judgment: empty states exist for every section; renaming a company leaves the ol
 
 Found in the phase 4 review: signing out only clears the cookie. Sessions are stateless JWTs (7 days), so a copied cookie keeps working after sign-out (the worker replayed one by hand). Whistleblower data arrives in phase 5, so this closes first.
 
-- [ ] `users.sessions_valid_after` (timestamptz, default now) + migration; every issued session (Auth.js sign-in, welcome link, return-token sign-in) carries its issue time
-- [ ] `getTenant()` rejects a session issued before the user's `sessions_valid_after`
-- [ ] Sign-out sets `sessions_valid_after = now()` (all of that user's sessions end; one admin per company, so this is the intended meaning)
-- [ ] Tests on real Postgres: replaying a pre-sign-out cookie gets 401/redirect on every dashboard section and the PDF route; a session issued after sign-out works; sign-in links and welcome links still single-use
+- [x] `users.sessions_valid_after` (timestamptz, default now) + migration; every issued session (Auth.js sign-in, welcome link, return-token sign-in) carries its issue time
+- [x] `getTenant()` rejects a session issued before the user's `sessions_valid_after`
+- [x] Sign-out sets `sessions_valid_after = now()` (all of that user's sessions end; one admin per company, so this is the intended meaning)
+- [x] Tests on real Postgres: replaying a pre-sign-out cookie gets 401/redirect on every dashboard section and the PDF route; a session issued after sign-out works; sign-in links and welcome links still single-use
 
 **Definition of done:** `./verify.sh`; smoke replays the old cookie after sign-out and is refused.
 
@@ -155,23 +155,24 @@ Found in the phase 4 review: signing out only clears the cookie. Sessions are st
 
 ## Phase 5 — Whistleblower intake + case log
 
-SPEC §5.3, §11. **Deep review** — anonymity and tenant isolation.
+SPEC §5.3, §11. CLAUDE.md §8 (anonymous reporting, tenant isolation). **Deep review** — anonymity, encryption, tenant isolation. Scoped in detail in `SUPERVISOR_NOTES.md`; decisions summarised here so they survive the relay.
 
-- [ ] `/report/[slug]` public page, branded, pt-BR (+ other locales from messages), form per CONTENT.md §5
-- [ ] Anonymous by default: request handler must not persist IP, user-agent or any header unless `wants_contact = true`; evidence upload stripped of EXIF
-- [ ] Tracking code (12 chars, unguessable) + `/report/[slug]/status` lookup, rate-limited
-- [ ] Report `description` and `reporter_contact` encrypted at rest (application-level, key from env)
-- [ ] Dashboard → Whistleblower: list, detail, status (new/under review/closed), notes, resolution date; notes are append-only
-- [ ] Email notification to admin on new report (no report content in the email)
-
-- [ ] **Align report statuses**: the schema default is `received` (phase 2) but the dashboard counts open cases as `new` | `under_review` (`OPEN_REPORT_STATUSES` in `lib/db/tenant.ts`); pick one lifecycle (new / under review / closed per SPEC), change the default via migration, and update the constant and its tests
+- [ ] **Company slug:** `companies.slug` (unique, not null, immutable, ASCII-slugified name + collision suffix), set at provisioning, backfilled by the migration; the public URL is `/report/[slug]`
+- [ ] `/report/[slug]` public page, branded (company name + logo), language = company country locale, form per CONTENT.md §5; no cookies, no banner, no tracking, `noindex`, `Referrer-Policy: no-referrer`, frame denial
+- [ ] Anonymous by default: the intake handlers read **no** request metadata (no IP, user-agent, forwarded headers) and log nothing; `is_anonymous = !wants_contact`; contact stored only on opt-in
+- [ ] Evidence: optional, up to 3 images (PNG/JPEG, 5 MB each); metadata stripped (EXIF/XMP/ICC/text chunks); **encrypted at rest in a directory that is never web-served** (not `UPLOADS_DIR`); downloaded only through a tenant-gated route
+- [ ] Tracking code (12 chars, 32-letter unambiguous alphabet, shown grouped) + `/report/[slug]/status` lookup; wrong slug and wrong code are indistinguishable; rate-limited per slug in process memory (no IP is read)
+- [ ] `description`, `reporter_contact`, case notes and evidence encrypted at rest (AES-256-GCM, key from env, key id in the ciphertext, documented rotation + rotation script)
+- [ ] Dashboard → Whistleblower: channel URL, list, detail, status (new / under review / closed), append-only notes (DB trigger), resolution date, evidence download
+- [ ] Email notification to the company admin on a new report (no report content, no category, link to dashboard); a failed send never loses the report
+- [ ] **Align report statuses**: lifecycle `new` → `under_review` → `closed`; default becomes `new` via migration (existing `received` rows → `new`), CHECK constraint, `OPEN_REPORT_STATUSES` and its tests updated
 
 **Definition of done**
 ```
-./verify.sh
-npm run test -- whistleblower   # includes: anonymous submit → DB row has NULL ip/ua/contact; cross-tenant read → 404
+./verify.sh                      # includes new invariant: no request-metadata access in report handlers; smoke covers the whole anonymous flow
+npm run test -- whistleblower    # anonymous submit with marker IP/UA headers -> marker string appears nowhere in any table; cross-tenant read/note/evidence -> 404; encryption round trip, tamper, rotation
 ```
-Judgment: read the handler and the DB row by hand for one anonymous report — nothing identifying; encryption key rotation documented in README; tracking-code lookup can't enumerate.
+Judgment: the supervisor reads the handler and one real anonymous DB row (raw `psql` output in HANDOFF); ciphertext visible in `psql` for description/contact/notes; evidence file on disk is not an image; tracking-code lookup cannot enumerate; encryption key rotation documented in README.
 
 ---
 
@@ -246,6 +247,8 @@ SPEC §9 (blog), §10, CLAUDE.md §4.
 - [ ] Droplet `.env` review: `ALLOW_FAKE_PAYMENTS` and `EMAIL_DEV_SINK` unset, `APP_URL`/`AUTH_URL` are the public https origin, `AUTH_SECRET` real
 - [ ] Real Resend send verified from the droplet (welcome email + sign-in link delivered to a real inbox; link works once)
 - [ ] Welcome-link scanner check: open the delivered link via the real mail path; if a prefetch burns it, switch `/api/welcome` to GET → confirm page → POST
+- [ ] **Whistleblower anonymity at the edge (phase 5 follow-ups):** Caddy must not write client IPs to its access log for `/report/*` (log filter or no access log for that path) and Cloudflare per-IP rate limits cover `/report/*` and `/api/report/*`; GTM/GA4 and the consent banner must never load on `/report/*` or `/dashboard/*`; the privacy policy must say Cloudflare, as proxy, sees reporter IPs
+- [ ] **`REPORT_ENCRYPTION_KEY` custody:** set on the droplet and stored separately from the database backups (password manager); losing it makes every report unreadable and a backup without it is useless — Esteban confirms (hard to undo); `EVIDENCE_DIR` exists, is outside Caddy's served paths, and is included in backups
 - [ ] Backup bucket is **private**; Esteban confirms a downloaded dump restores with `scripts/restore-test.sh`
 
 **Definition of done**

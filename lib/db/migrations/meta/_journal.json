@@ -29,6 +29,13 @@
       "when": 1792016150764,
       "tag": "0003_brief_magus",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792027132436,
+      "tag": "0004_whistleblower",
+      "breakpoints": true
     }
   ]
 }

@@ -216,7 +216,34 @@
       "empty": "Todavía no hay registros de capacitación. La finalización de cada empleado aparecerá aquí."
     },
     "whistleblower": {
-      "empty": "Todavía no se recibieron denuncias. Las denuncias enviadas por el canal aparecerán aquí, con su estado e historial."
+      "empty": "Todavía no se recibieron denuncias. Las denuncias enviadas por el canal aparecerán aquí, con su estado e historial.",
+      "channelTitle": "Tu canal de denuncias",
+      "channelHelp": "Compartí este enlace con tu equipo y tus proveedores. Cualquier persona puede enviar una denuncia sin crear una cuenta.",
+      "channelLabel": "Enlace público del canal",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "colReceived": "Recibida",
+      "colCategory": "Categoría",
+      "colStatus": "Estado",
+      "colAction": "Acciones",
+      "view": "Ver",
+      "back": "Volver a las denuncias",
+      "resolvedOn": "Fecha de resolución",
+      "contact": "Contacto",
+      "anonymous": "Anónima",
+      "description": "Descripción",
+      "changeStatus": "Cambiar estado",
+      "apply": "Guardar",
+      "evidence": "Evidencia",
+      "evidenceNone": "Sin evidencia adjunta.",
+      "download": "Descargar imagen {n}",
+      "timeline": "Historial del caso",
+      "noNotes": "Todavía no hay notas ni cambios de estado.",
+      "noteLabel": "Agregar una nota",
+      "addNote": "Agregar nota",
+      "statusMoved": "Estado: {from} → {to}",
+      "cannotDecrypt": "No se puede descifrar: falta la clave de cifrado o el dato fue alterado.",
+      "error": "No se pudo guardar. Revisá los datos e intentá de nuevo."
     },
     "vendors": {
       "empty": "Todavía no hay proveedores. Los proveedores que se agreguen aparecerán aquí, con el estado del cuestionario y el resultado del screening.",
@@ -259,7 +286,9 @@
     "signinButton": "Iniciar sesión",
     "welcomeSubject": "Configurá tu cuenta",
     "welcomeBody": "Recibimos tu pago. Usá este enlace para configurar tu cuenta. Vence en 24 horas y sirve una sola vez; después podés pedir un nuevo enlace de acceso cuando quieras.",
-    "welcomeButton": "Configurar mi cuenta"
+    "welcomeButton": "Configurar mi cuenta",
+    "reportSubject": "Nueva denuncia recibida en tu canal",
+    "reportBody": "Se envió una nueva denuncia a tu canal de denuncias. Ingresá para revisarla: {url}"
   },
   "documents": {
     "title": "Documentos",
@@ -287,6 +316,62 @@
       "conflictsOfInterest": "Política de conflicto de intereses",
       "thirdPartyPublicOfficials": "Política de relación con terceros y funcionarios públicos",
       "whistleblowerProtection": "Política de protección al denunciante"
+    }
+  },
+  "report": {
+    "title": "Canal de denuncias de {company}",
+    "intro": "Este canal es confidencial. Podés denunciar de forma anónima o dejar tus datos de contacto — vos decidís. {company} se compromete a revisar cada reporte.",
+    "logoAlt": "Logo de {company}",
+    "categoryLabel": "Categoría de la denuncia",
+    "categoryPlaceholder": "Elegí una categoría",
+    "categories": {
+      "corruption_bribery": "Corrupción / soborno",
+      "conflict_of_interest": "Conflicto de interés",
+      "fraud": "Fraude",
+      "harassment": "Acoso",
+      "other": "Otro"
+    },
+    "descriptionLabel": "Descripción",
+    "descriptionHelp": "Contá qué pasó, cuándo y quiénes estuvieron involucrados. Máximo {max, number} caracteres.",
+    "evidenceLabel": "Evidencia (opcional)",
+    "evidenceHelp": "Hasta 3 imágenes PNG o JPEG, de 5 MB cada una. Antes de guardarlas eliminamos metadatos como la ubicación o los datos de la cámara.",
+    "contactQuestion": "¿Querés dejar tus datos de contacto?",
+    "contactYes": "Sí",
+    "contactNo": "No",
+    "contactLabel": "¿Cómo podemos contactarte?",
+    "contactHelp": "Un email o un teléfono. Solo lo verá quien administra el canal.",
+    "submit": "Enviar denuncia",
+    "submitting": "Enviando…",
+    "confirmed": "Tu denuncia fue recibida. Guardá este código para consultar el estado:",
+    "saveCode": "Este código se muestra una sola vez y no se puede recuperar. Lo vas a necesitar para consultar el estado.",
+    "statusLink": "Consultar el estado de una denuncia",
+    "errors": {
+      "category": "Elegí una categoría.",
+      "description": "Escribí una descripción de hasta 10.000 caracteres.",
+      "contact": "Ingresá un dato de contacto (hasta 254 caracteres) o elegí no dejarlo.",
+      "too_many_files": "Podés adjuntar hasta 3 imágenes.",
+      "file_too_large": "Cada imagen puede pesar hasta 5 MB.",
+      "file_type": "Solo se aceptan imágenes PNG o JPEG.",
+      "file_invalid": "No pudimos procesar una de las imágenes. Probá con otra.",
+      "rate_limited": "Recibimos demasiados envíos en poco tiempo. Probá de nuevo más tarde.",
+      "server_error": "No pudimos enviar la denuncia. Probá de nuevo en unos minutos.",
+      "network": "No pudimos conectarnos. Revisá tu conexión y probá de nuevo."
+    },
+    "status": {
+      "title": "Estado de una denuncia",
+      "intro": "Ingresá el código que recibiste al enviar la denuncia.",
+      "codeLabel": "Código de seguimiento",
+      "submit": "Consultar",
+      "checking": "Consultando…",
+      "resultStatus": "Estado: {status}",
+      "resultDate": "Última actualización: {date}",
+      "notFound": "No encontramos una denuncia con ese código. Revisá que esté bien escrito.",
+      "back": "Volver al formulario"
+    },
+    "statuses": {
+      "new": "Recibida",
+      "under_review": "En revisión",
+      "closed": "Cerrada"
     }
   }
 }
