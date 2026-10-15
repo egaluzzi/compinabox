@@ -371,4 +371,4 @@ verify.sh: PASS (HEAD 5c49788)
 </details>
 
 ## Code tip vs pushed tip / CI
-To be filled after the push (PR link, CI run id and head SHA).
+Code tip 5c49788 (verify.sh ran on it); pushed tip 5b9424f (adds only HANDOFF.md). PR: https://github.com/egaluzzi/compinabox/pull/7 (not merged). CI: run 38666519640, head SHA 5b9424f670adbf062c90c8d3ad23f3d087589ee3, status `queued` when last checked — result not yet known; the supervisor should check it.
