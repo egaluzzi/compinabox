@@ -157,15 +157,15 @@ Found in the phase 4 review: signing out only clears the cookie. Sessions are st
 
 SPEC §5.3, §11. CLAUDE.md §8 (anonymous reporting, tenant isolation). **Deep review** — anonymity, encryption, tenant isolation. Scoped in detail in `SUPERVISOR_NOTES.md`; decisions summarised here so they survive the relay.
 
-- [ ] **Company slug:** `companies.slug` (unique, not null, immutable, ASCII-slugified name + collision suffix), set at provisioning, backfilled by the migration; the public URL is `/report/[slug]`
-- [ ] `/report/[slug]` public page, branded (company name + logo), language = company country locale, form per CONTENT.md §5; no cookies, no banner, no tracking, `noindex`, `Referrer-Policy: no-referrer`, frame denial
-- [ ] Anonymous by default: the intake handlers read **no** request metadata (no IP, user-agent, forwarded headers) and log nothing; `is_anonymous = !wants_contact`; contact stored only on opt-in
-- [ ] Evidence: optional, up to 3 images (PNG/JPEG, 5 MB each); metadata stripped (EXIF/XMP/ICC/text chunks); **encrypted at rest in a directory that is never web-served** (not `UPLOADS_DIR`); downloaded only through a tenant-gated route
-- [ ] Tracking code (12 chars, 32-letter unambiguous alphabet, shown grouped) + `/report/[slug]/status` lookup; wrong slug and wrong code are indistinguishable; rate-limited per slug in process memory (no IP is read)
-- [ ] `description`, `reporter_contact`, case notes and evidence encrypted at rest (AES-256-GCM, key from env, key id in the ciphertext, documented rotation + rotation script)
-- [ ] Dashboard → Whistleblower: channel URL, list, detail, status (new / under review / closed), append-only notes (DB trigger), resolution date, evidence download
-- [ ] Email notification to the company admin on a new report (no report content, no category, link to dashboard); a failed send never loses the report
-- [ ] **Align report statuses**: lifecycle `new` → `under_review` → `closed`; default becomes `new` via migration (existing `received` rows → `new`), CHECK constraint, `OPEN_REPORT_STATUSES` and its tests updated
+- [x] **Company slug:** `companies.slug` (unique, not null, immutable, ASCII-slugified name + collision suffix), set at provisioning, backfilled by the migration; the public URL is `/report/[slug]`
+- [x] `/report/[slug]` public page, branded (company name + logo), language = company country locale, form per CONTENT.md §5; no cookies, no banner, no tracking, `noindex`, `Referrer-Policy: no-referrer`, frame denial
+- [x] Anonymous by default: the intake handlers read **no** request metadata (no IP, user-agent, forwarded headers) and log nothing; `is_anonymous = !wants_contact`; contact stored only on opt-in
+- [x] Evidence: optional, up to 3 images (PNG/JPEG, 5 MB each); metadata stripped (EXIF/XMP/ICC/text chunks); **encrypted at rest in a directory that is never web-served** (not `UPLOADS_DIR`); downloaded only through a tenant-gated route
+- [x] Tracking code (12 chars, 32-letter unambiguous alphabet, shown grouped) + `/report/[slug]/status` lookup; wrong slug and wrong code are indistinguishable; rate-limited per slug in process memory (no IP is read)
+- [x] `description`, `reporter_contact`, case notes and evidence encrypted at rest (AES-256-GCM, key from env, key id in the ciphertext, documented rotation + rotation script)
+- [x] Dashboard → Whistleblower: channel URL, list, detail, status (new / under review / closed), append-only notes (DB trigger), resolution date, evidence download
+- [x] Email notification to the company admin on a new report (no report content, no category, link to dashboard); a failed send never loses the report
+- [x] **Align report statuses**: lifecycle `new` → `under_review` → `closed`; default becomes `new` via migration (existing `received` rows → `new`), CHECK constraint, `OPEN_REPORT_STATUSES` and its tests updated
 
 **Definition of done**
 ```
@@ -249,6 +249,7 @@ SPEC §9 (blog), §10, CLAUDE.md §4.
 - [ ] Welcome-link scanner check: open the delivered link via the real mail path; if a prefetch burns it, switch `/api/welcome` to GET → confirm page → POST
 - [ ] **Whistleblower anonymity at the edge (phase 5 follow-ups):** Caddy must not write client IPs to its access log for `/report/*` (log filter or no access log for that path) and Cloudflare per-IP rate limits cover `/report/*` and `/api/report/*`; GTM/GA4 and the consent banner must never load on `/report/*` or `/dashboard/*`; the privacy policy must say Cloudflare, as proxy, sees reporter IPs
 - [ ] **`REPORT_ENCRYPTION_KEY` custody:** set on the droplet and stored separately from the database backups (password manager); losing it makes every report unreadable and a backup without it is useless — Esteban confirms (hard to undo); `EVIDENCE_DIR` exists, is outside Caddy's served paths, and is included in backups
+- [ ] Phase 5 carry-overs: Caddy request-body size cap on `/api/report` (the handler buffers the multipart body before validating sizes); set `NEXT_TELEMETRY_DISABLED=1`; decide how `npm run rotate-report-key` runs on the droplet (it needs a checkout + `node_modules`, the deploy ships only the standalone output); `scripts/backup.sh` currently dumps the DB only — extend it (or add a second job) to cover `EVIDENCE_DIR`
 - [ ] Backup bucket is **private**; Esteban confirms a downloaded dump restores with `scripts/restore-test.sh`
 
 **Definition of done**
@@ -323,7 +324,8 @@ Log standalone sweeps here — e.g. a bug pattern found twice incidentally — s
 - Customer text editing of generated documents (v1 is regenerate-only)
 - Backup manifest: record per-table counts at dump time so the restore test can also prove the dump matched the database
 - Ad-variant landing pages `/{country}/gobierno`, `/{country}/proveedores` (CONTENT.md §7)
-- Multi-admin per company; password login
+- Multi-admin per company; password login (note: with one admin, a report about that admin has no independent recipient)
+- Whistleblower: retention/purge policy and reporter privacy notice (lawyer + Esteban), no-JS submit path, smoke "only the session's company was renamed" check fails if run alone on an empty DB
 - Object storage for uploads (currently local disk behind Caddy)
 - DO Managed Postgres migration (only if backups/upgrades become a burden)
 - Investigation protocol / case workflow beyond status + notes
