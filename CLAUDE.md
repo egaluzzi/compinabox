@@ -96,7 +96,7 @@ Public URLs use two-letter country prefixes; locale codes are internal and must 
 - `/lib/screening/` — `ScreeningProvider` interface + OpenSanctions implementation
 - `/messages/{locale}.json` — next-intl messages, one per locale
 - **Standing checklist item, every phase that adds a tenant-owned table:** it has a `company_id` column, every query filters by `company_id` taken from the authenticated session (never from a request param), and there is a test proving a second tenant can't read it. `verify.sh` greps for tenant tables without `company_id`.
-- Env vars (all in `.env.example`): `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `APP_URL`, `ENABLED_COUNTRIES`, `RESEND_API_KEY`, `EMAIL_FROM`, `PAYMENT_PROVIDER` (`none` default | `fake` | `mercadopago`), `ALLOW_FAKE_PAYMENTS`, `FAKE_PAYMENTS_SECRET`, `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_PUBLIC_KEY`, `MERCADOPAGO_WEBHOOK_SECRET`, `SCREENING_API_KEY`, `GTM_ID`
+- Env vars (all in `.env.example`): `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `APP_URL`, `ENABLED_COUNTRIES`, `RESEND_API_KEY`, `EMAIL_FROM`, `PAYMENT_PROVIDER` (`none` default | `fake` | `mercadopago`), `ALLOW_FAKE_PAYMENTS`, `FAKE_PAYMENTS_SECRET`, `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_PUBLIC_KEY`, `MERCADOPAGO_WEBHOOK_SECRET`, `REPORT_ENCRYPTION_KEYS`, `EVIDENCE_DIR`, `SCREENING_API_KEY`, `GTM_ID`
 
 ## 7. Commands
 
@@ -162,3 +162,5 @@ Considered and declined — don't build unless Esteban asks again:
 - [ ] Resend account + sending domain
 - [ ] Legal review of `/lib/content/br.ts` citations, the pt-BR document templates (`lib/documents/REVIEW.md`) and the BR privacy policy before launch (SPEC §11) — **needs a Brazilian lawyer; allow lead time.** Ask the lawyer to confirm specifically *what Lei 14.133/2021 requires and for which contracts*: the pre-approved marketing copy ("passou a exigir programas de integridade robustos para elegibilidade em licitações") and the Brazil-first rationale in §2 depend on that scope, and the team cannot verify it. If the requirement is narrower than the copy says, that is a marketing-claim and positioning change for Esteban (rule 1/2), not just a wording fix
 - [ ] Review of `messages/DRAFTS.md` (gap-filled translations, incl. footer disclaimer) by a native speaker / legal before launch
+- [ ] Legal/Esteban input on whistleblower data: retention and purge periods for reports/notes/evidence, LGPD legal basis and a reporter-facing privacy notice, what reporters are told about infrastructure logging (Cloudflare sees IPs), conflict when the single admin is the subject of a report (see HANDOFF of phase 5)
+- [ ] Review of the pt-BR training module (`lib/training/REVIEW.md`: lessons, scenarios, quiz, 80% pass mark) — drafted by a worker, tone and accuracy are Esteban's call; legal review if he wants one

@@ -138,7 +138,11 @@ const PAGES: { name: string; mod: string; props?: Record<string, unknown> }[] =
       mod: `${D}/documents/page`,
       props: { searchParams: Promise.resolve({}) },
     },
-    { name: "employees", mod: `${D}/employees/page` },
+    {
+      name: "employees",
+      mod: `${D}/employees/page`,
+      props: { searchParams: Promise.resolve({}) },
+    },
     { name: "training", mod: `${D}/training/page` },
     { name: "whistleblower", mod: `${D}/whistleblower/page` },
     { name: "vendors", mod: `${D}/vendors/page` },
@@ -195,7 +199,7 @@ describe("overview counts are tenant-scoped", () => {
     expect(a).toContain("Nenhuma denúncia em aberto");
     expect(a).toContain("6 de 6 documentos gerados");
     expect(a).toContain("6 documentos em rascunho");
-    expect(a).toContain("—"); // completion is null until phase 6
+    expect(a).toContain("0%"); // 1 active employee, nothing done yet (phase 6 completion)
     as(B);
     const b = await renderRoute(`${D}/page`);
     expect(b).toContain("3 colaboradores");

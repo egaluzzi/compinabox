@@ -38,6 +38,12 @@ async function seedTenantRows(who: "A" | "B", companyId: string) {
     documentId: document.id,
     ipAddress: "192.0.2.1",
   });
+  await db.insert(schema.employeeSessions).values({
+    companyId,
+    employeeId: employee.id,
+    tokenHash: `hash-${label}`,
+    expiresAt: new Date(Date.now() + 3600_000),
+  });
   await db
     .insert(schema.trainingCompletions)
     .values({ companyId, employeeId: employee.id, moduleId: "m1", score: 90 });
@@ -45,13 +51,32 @@ async function seedTenantRows(who: "A" | "B", companyId: string) {
     companyId,
     employeeId: employee.id,
     type: "gift",
+    periodYear: 2026,
     content: `d ${label}`,
   });
-  await db.insert(schema.whistleblowerReports).values({
+  const [report] = await db
+    .insert(schema.whistleblowerReports)
+    .values({
+      companyId,
+      trackingCode: `T-${label}`,
+      category: "fraud",
+      description: `secret ${label}`,
+    })
+    .returning();
+  await db.insert(schema.whistleblowerEvidence).values({
     companyId,
-    trackingCode: `T-${label}`,
-    category: "fraud",
-    description: `secret ${label}`,
+    reportId: report.id,
+    fileName: `${label}.enc`,
+    contentType: "image/png",
+    sizeBytes: 10,
+  });
+  await db.insert(schema.whistleblowerNotes).values({
+    companyId,
+    reportId: report.id,
+    kind: "status_change",
+    fromStatus: "new",
+    toStatus: "under_review",
+    authorUserId: (who === "A" ? A : B).user.id,
   });
   await db
     .insert(schema.vendors)

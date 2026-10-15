@@ -8,7 +8,7 @@ launch (CLAUDE.md §11); the footer disclaimer and the "does this certify…?" F
 Source column: the locale/key the text was translated from, or "new UI string" where CONTENT.md has no source at all
 (the worker wrote the English and translated it faithfully).
 
-Row counts: en=198, es-AR=185, pt-BR=207, es-MX=195
+Row counts: see the table (phase 6 added 141 keys per locale)
 
 | locale | key | translated from |
 | :- | :- | :- |
@@ -797,3 +797,867 @@ Row counts: en=198, es-AR=185, pt-BR=207, es-MX=195
 | es-MX | dashboard.settings.countries.ar | en |
 | es-MX | dashboard.settings.countries.br | en |
 | es-MX | dashboard.settings.countries.mx | en |
+| en | report.title | es-AR (CONTENT.md §5, adapted) |
+| en | report.intro | es-AR (CONTENT.md §5, adapted) |
+| en | report.logoAlt | new UI string (no CONTENT.md source) |
+| en | report.categoryLabel | es-AR (CONTENT.md §5, adapted) |
+| en | report.categoryPlaceholder | new UI string (no CONTENT.md source) |
+| en | report.categories.corruption_bribery | es-AR (CONTENT.md §5, adapted) |
+| en | report.categories.conflict_of_interest | es-AR (CONTENT.md §5, adapted) |
+| en | report.categories.fraud | es-AR (CONTENT.md §5, adapted) |
+| en | report.categories.harassment | es-AR (CONTENT.md §5, adapted) |
+| en | report.categories.other | es-AR (CONTENT.md §5, adapted) |
+| en | report.descriptionLabel | es-AR (CONTENT.md §5, adapted) |
+| en | report.descriptionHelp | new UI string (no CONTENT.md source) |
+| en | report.evidenceLabel | es-AR (CONTENT.md §5, adapted) |
+| en | report.evidenceHelp | new UI string (no CONTENT.md source) |
+| en | report.contactQuestion | es-AR (CONTENT.md §5, adapted) |
+| en | report.contactYes | es-AR (CONTENT.md §5, adapted) |
+| en | report.contactNo | es-AR (CONTENT.md §5, adapted) |
+| en | report.contactLabel | new UI string (no CONTENT.md source) |
+| en | report.contactHelp | new UI string (no CONTENT.md source) |
+| en | report.submit | new UI string (no CONTENT.md source) |
+| en | report.submitting | new UI string (no CONTENT.md source) |
+| en | report.confirmed | es-AR (CONTENT.md §5, adapted) |
+| en | report.saveCode | new UI string (no CONTENT.md source) |
+| en | report.statusLink | new UI string (no CONTENT.md source) |
+| en | report.errors.category | new UI string (no CONTENT.md source) |
+| en | report.errors.description | new UI string (no CONTENT.md source) |
+| en | report.errors.contact | new UI string (no CONTENT.md source) |
+| en | report.errors.too_many_files | new UI string (no CONTENT.md source) |
+| en | report.errors.file_too_large | new UI string (no CONTENT.md source) |
+| en | report.errors.file_type | new UI string (no CONTENT.md source) |
+| en | report.errors.file_invalid | new UI string (no CONTENT.md source) |
+| en | report.errors.rate_limited | new UI string (no CONTENT.md source) |
+| en | report.errors.server_error | new UI string (no CONTENT.md source) |
+| en | report.errors.network | new UI string (no CONTENT.md source) |
+| en | report.status.title | new UI string (no CONTENT.md source) |
+| en | report.status.intro | new UI string (no CONTENT.md source) |
+| en | report.status.codeLabel | new UI string (no CONTENT.md source) |
+| en | report.status.submit | new UI string (no CONTENT.md source) |
+| en | report.status.checking | new UI string (no CONTENT.md source) |
+| en | report.status.resultStatus | new UI string (no CONTENT.md source) |
+| en | report.status.resultDate | new UI string (no CONTENT.md source) |
+| en | report.status.notFound | new UI string (no CONTENT.md source) |
+| en | report.status.back | new UI string (no CONTENT.md source) |
+| en | report.statuses.new | new UI string (no CONTENT.md source) |
+| en | report.statuses.under_review | new UI string (no CONTENT.md source) |
+| en | report.statuses.closed | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.channelTitle | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.channelHelp | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.channelLabel | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.copy | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.copied | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.colReceived | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.colCategory | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.colStatus | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.colAction | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.view | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.back | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.resolvedOn | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.contact | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.anonymous | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.description | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.changeStatus | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.apply | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.evidence | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.evidenceNone | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.download | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.timeline | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.noNotes | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.noteLabel | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.addNote | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.statusMoved | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.cannotDecrypt | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.error | new UI string (no CONTENT.md source) |
+| en | email.reportSubject | new UI string (no CONTENT.md source) |
+| en | email.reportBody | new UI string (no CONTENT.md source) |
+| es-AR | report.title | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.intro | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.logoAlt | en |
+| es-AR | report.categoryLabel | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.categoryPlaceholder | en |
+| es-AR | report.categories.corruption_bribery | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.categories.conflict_of_interest | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.categories.fraud | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.categories.harassment | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.categories.other | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.descriptionLabel | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.descriptionHelp | en |
+| es-AR | report.evidenceLabel | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.evidenceHelp | en |
+| es-AR | report.contactQuestion | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.contactYes | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.contactNo | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.contactLabel | en |
+| es-AR | report.contactHelp | en |
+| es-AR | report.submit | en |
+| es-AR | report.submitting | en |
+| es-AR | report.confirmed | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.saveCode | en |
+| es-AR | report.statusLink | en |
+| es-AR | report.errors.category | en |
+| es-AR | report.errors.description | en |
+| es-AR | report.errors.contact | en |
+| es-AR | report.errors.too_many_files | en |
+| es-AR | report.errors.file_too_large | en |
+| es-AR | report.errors.file_type | en |
+| es-AR | report.errors.file_invalid | en |
+| es-AR | report.errors.rate_limited | en |
+| es-AR | report.errors.server_error | en |
+| es-AR | report.errors.network | en |
+| es-AR | report.status.title | en |
+| es-AR | report.status.intro | en |
+| es-AR | report.status.codeLabel | en |
+| es-AR | report.status.submit | en |
+| es-AR | report.status.checking | en |
+| es-AR | report.status.resultStatus | en |
+| es-AR | report.status.resultDate | en |
+| es-AR | report.status.notFound | en |
+| es-AR | report.status.back | en |
+| es-AR | report.statuses.new | en |
+| es-AR | report.statuses.under_review | en |
+| es-AR | report.statuses.closed | en |
+| es-AR | dashboard.whistleblower.channelTitle | en |
+| es-AR | dashboard.whistleblower.channelHelp | en |
+| es-AR | dashboard.whistleblower.channelLabel | en |
+| es-AR | dashboard.whistleblower.copy | en |
+| es-AR | dashboard.whistleblower.copied | en |
+| es-AR | dashboard.whistleblower.colReceived | en |
+| es-AR | dashboard.whistleblower.colCategory | en |
+| es-AR | dashboard.whistleblower.colStatus | en |
+| es-AR | dashboard.whistleblower.colAction | en |
+| es-AR | dashboard.whistleblower.view | en |
+| es-AR | dashboard.whistleblower.back | en |
+| es-AR | dashboard.whistleblower.resolvedOn | en |
+| es-AR | dashboard.whistleblower.contact | en |
+| es-AR | dashboard.whistleblower.anonymous | en |
+| es-AR | dashboard.whistleblower.description | en |
+| es-AR | dashboard.whistleblower.changeStatus | en |
+| es-AR | dashboard.whistleblower.apply | en |
+| es-AR | dashboard.whistleblower.evidence | en |
+| es-AR | dashboard.whistleblower.evidenceNone | en |
+| es-AR | dashboard.whistleblower.download | en |
+| es-AR | dashboard.whistleblower.timeline | en |
+| es-AR | dashboard.whistleblower.noNotes | en |
+| es-AR | dashboard.whistleblower.noteLabel | en |
+| es-AR | dashboard.whistleblower.addNote | en |
+| es-AR | dashboard.whistleblower.statusMoved | en |
+| es-AR | dashboard.whistleblower.cannotDecrypt | en |
+| es-AR | dashboard.whistleblower.error | en |
+| es-AR | email.reportSubject | en |
+| es-AR | email.reportBody | en |
+| pt-BR | report.title | es-AR (CONTENT.md §5) |
+| pt-BR | report.intro | es-AR (CONTENT.md §5) |
+| pt-BR | report.logoAlt | en |
+| pt-BR | report.categoryLabel | es-AR (CONTENT.md §5) |
+| pt-BR | report.categoryPlaceholder | en |
+| pt-BR | report.categories.corruption_bribery | es-AR (CONTENT.md §5) |
+| pt-BR | report.categories.conflict_of_interest | es-AR (CONTENT.md §5) |
+| pt-BR | report.categories.fraud | es-AR (CONTENT.md §5) |
+| pt-BR | report.categories.harassment | es-AR (CONTENT.md §5) |
+| pt-BR | report.categories.other | es-AR (CONTENT.md §5) |
+| pt-BR | report.descriptionLabel | es-AR (CONTENT.md §5) |
+| pt-BR | report.descriptionHelp | en |
+| pt-BR | report.evidenceLabel | es-AR (CONTENT.md §5) |
+| pt-BR | report.evidenceHelp | en |
+| pt-BR | report.contactQuestion | es-AR (CONTENT.md §5) |
+| pt-BR | report.contactYes | es-AR (CONTENT.md §5) |
+| pt-BR | report.contactNo | es-AR (CONTENT.md §5) |
+| pt-BR | report.contactLabel | en |
+| pt-BR | report.contactHelp | en |
+| pt-BR | report.submit | en |
+| pt-BR | report.submitting | en |
+| pt-BR | report.confirmed | es-AR (CONTENT.md §5) |
+| pt-BR | report.saveCode | en |
+| pt-BR | report.statusLink | en |
+| pt-BR | report.errors.category | en |
+| pt-BR | report.errors.description | en |
+| pt-BR | report.errors.contact | en |
+| pt-BR | report.errors.too_many_files | en |
+| pt-BR | report.errors.file_too_large | en |
+| pt-BR | report.errors.file_type | en |
+| pt-BR | report.errors.file_invalid | en |
+| pt-BR | report.errors.rate_limited | en |
+| pt-BR | report.errors.server_error | en |
+| pt-BR | report.errors.network | en |
+| pt-BR | report.status.title | en |
+| pt-BR | report.status.intro | en |
+| pt-BR | report.status.codeLabel | en |
+| pt-BR | report.status.submit | en |
+| pt-BR | report.status.checking | en |
+| pt-BR | report.status.resultStatus | en |
+| pt-BR | report.status.resultDate | en |
+| pt-BR | report.status.notFound | en |
+| pt-BR | report.status.back | en |
+| pt-BR | report.statuses.new | en |
+| pt-BR | report.statuses.under_review | en |
+| pt-BR | report.statuses.closed | en |
+| pt-BR | dashboard.whistleblower.channelTitle | en |
+| pt-BR | dashboard.whistleblower.channelHelp | en |
+| pt-BR | dashboard.whistleblower.channelLabel | en |
+| pt-BR | dashboard.whistleblower.copy | en |
+| pt-BR | dashboard.whistleblower.copied | en |
+| pt-BR | dashboard.whistleblower.colReceived | en |
+| pt-BR | dashboard.whistleblower.colCategory | en |
+| pt-BR | dashboard.whistleblower.colStatus | en |
+| pt-BR | dashboard.whistleblower.colAction | en |
+| pt-BR | dashboard.whistleblower.view | en |
+| pt-BR | dashboard.whistleblower.back | en |
+| pt-BR | dashboard.whistleblower.resolvedOn | en |
+| pt-BR | dashboard.whistleblower.contact | en |
+| pt-BR | dashboard.whistleblower.anonymous | en |
+| pt-BR | dashboard.whistleblower.description | en |
+| pt-BR | dashboard.whistleblower.changeStatus | en |
+| pt-BR | dashboard.whistleblower.apply | en |
+| pt-BR | dashboard.whistleblower.evidence | en |
+| pt-BR | dashboard.whistleblower.evidenceNone | en |
+| pt-BR | dashboard.whistleblower.download | en |
+| pt-BR | dashboard.whistleblower.timeline | en |
+| pt-BR | dashboard.whistleblower.noNotes | en |
+| pt-BR | dashboard.whistleblower.noteLabel | en |
+| pt-BR | dashboard.whistleblower.addNote | en |
+| pt-BR | dashboard.whistleblower.statusMoved | en |
+| pt-BR | dashboard.whistleblower.cannotDecrypt | en |
+| pt-BR | dashboard.whistleblower.error | en |
+| pt-BR | email.reportSubject | en |
+| pt-BR | email.reportBody | en |
+| es-MX | report.title | es-AR (CONTENT.md §5) |
+| es-MX | report.intro | es-AR (CONTENT.md §5) |
+| es-MX | report.logoAlt | en |
+| es-MX | report.categoryLabel | es-AR (CONTENT.md §5) |
+| es-MX | report.categoryPlaceholder | en |
+| es-MX | report.categories.corruption_bribery | es-AR (CONTENT.md §5) |
+| es-MX | report.categories.conflict_of_interest | es-AR (CONTENT.md §5) |
+| es-MX | report.categories.fraud | es-AR (CONTENT.md §5) |
+| es-MX | report.categories.harassment | es-AR (CONTENT.md §5) |
+| es-MX | report.categories.other | es-AR (CONTENT.md §5) |
+| es-MX | report.descriptionLabel | es-AR (CONTENT.md §5) |
+| es-MX | report.descriptionHelp | en |
+| es-MX | report.evidenceLabel | es-AR (CONTENT.md §5) |
+| es-MX | report.evidenceHelp | en |
+| es-MX | report.contactQuestion | es-AR (CONTENT.md §5) |
+| es-MX | report.contactYes | es-AR (CONTENT.md §5) |
+| es-MX | report.contactNo | es-AR (CONTENT.md §5) |
+| es-MX | report.contactLabel | en |
+| es-MX | report.contactHelp | en |
+| es-MX | report.submit | en |
+| es-MX | report.submitting | en |
+| es-MX | report.confirmed | es-AR (CONTENT.md §5) |
+| es-MX | report.saveCode | en |
+| es-MX | report.statusLink | en |
+| es-MX | report.errors.category | en |
+| es-MX | report.errors.description | en |
+| es-MX | report.errors.contact | en |
+| es-MX | report.errors.too_many_files | en |
+| es-MX | report.errors.file_too_large | en |
+| es-MX | report.errors.file_type | en |
+| es-MX | report.errors.file_invalid | en |
+| es-MX | report.errors.rate_limited | en |
+| es-MX | report.errors.server_error | en |
+| es-MX | report.errors.network | en |
+| es-MX | report.status.title | en |
+| es-MX | report.status.intro | en |
+| es-MX | report.status.codeLabel | en |
+| es-MX | report.status.submit | en |
+| es-MX | report.status.checking | en |
+| es-MX | report.status.resultStatus | en |
+| es-MX | report.status.resultDate | en |
+| es-MX | report.status.notFound | en |
+| es-MX | report.status.back | en |
+| es-MX | report.statuses.new | en |
+| es-MX | report.statuses.under_review | en |
+| es-MX | report.statuses.closed | en |
+| es-MX | dashboard.whistleblower.channelTitle | en |
+| es-MX | dashboard.whistleblower.channelHelp | en |
+| es-MX | dashboard.whistleblower.channelLabel | en |
+| es-MX | dashboard.whistleblower.copy | en |
+| es-MX | dashboard.whistleblower.copied | en |
+| es-MX | dashboard.whistleblower.colReceived | en |
+| es-MX | dashboard.whistleblower.colCategory | en |
+| es-MX | dashboard.whistleblower.colStatus | en |
+| es-MX | dashboard.whistleblower.colAction | en |
+| es-MX | dashboard.whistleblower.view | en |
+| es-MX | dashboard.whistleblower.back | en |
+| es-MX | dashboard.whistleblower.resolvedOn | en |
+| es-MX | dashboard.whistleblower.contact | en |
+| es-MX | dashboard.whistleblower.anonymous | en |
+| es-MX | dashboard.whistleblower.description | en |
+| es-MX | dashboard.whistleblower.changeStatus | en |
+| es-MX | dashboard.whistleblower.apply | en |
+| es-MX | dashboard.whistleblower.evidence | en |
+| es-MX | dashboard.whistleblower.evidenceNone | en |
+| es-MX | dashboard.whistleblower.download | en |
+| es-MX | dashboard.whistleblower.timeline | en |
+| es-MX | dashboard.whistleblower.noNotes | en |
+| es-MX | dashboard.whistleblower.noteLabel | en |
+| es-MX | dashboard.whistleblower.addNote | en |
+| es-MX | dashboard.whistleblower.statusMoved | en |
+| es-MX | dashboard.whistleblower.cannotDecrypt | en |
+| es-MX | dashboard.whistleblower.error | en |
+| es-MX | email.reportSubject | en |
+| es-MX | email.reportBody | en |
+| en | email.inviteSubject | new UI string (no CONTENT.md source) |
+| en | email.inviteBody | new UI string (no CONTENT.md source) |
+| en | email.inviteButton | new UI string (no CONTENT.md source) |
+| en | employee.title | new UI string (no CONTENT.md source) |
+| en | employee.hello | new UI string (no CONTENT.md source) |
+| en | employee.progress | new UI string (no CONTENT.md source) |
+| en | employee.allDone | new UI string (no CONTENT.md source) |
+| en | employee.documentsHeading | new UI string (no CONTENT.md source) |
+| en | employee.docOpen | new UI string (no CONTENT.md source) |
+| en | employee.docAccepted | new UI string (no CONTENT.md source) |
+| en | employee.docOutdated | new UI string (no CONTENT.md source) |
+| en | employee.docPending | new UI string (no CONTENT.md source) |
+| en | employee.trainingHeading | new UI string (no CONTENT.md source) |
+| en | employee.trainingStart | new UI string (no CONTENT.md source) |
+| en | employee.trainingPending | new UI string (no CONTENT.md source) |
+| en | employee.trainingDone | new UI string (no CONTENT.md source) |
+| en | employee.trainingUnavailable | new UI string (no CONTENT.md source) |
+| en | employee.trainingReview | new UI string (no CONTENT.md source) |
+| en | employee.disclosureHeading | new UI string (no CONTENT.md source) |
+| en | employee.disclosureOpen | new UI string (no CONTENT.md source) |
+| en | employee.disclosureDone | new UI string (no CONTENT.md source) |
+| en | employee.signOut | new UI string (no CONTENT.md source) |
+| en | employee.back | new UI string (no CONTENT.md source) |
+| en | employee.invalidTitle | new UI string (no CONTENT.md source) |
+| en | employee.invalidBody | new UI string (no CONTENT.md source) |
+| en | employee.startTitle | new UI string (no CONTENT.md source) |
+| en | employee.startBody | new UI string (no CONTENT.md source) |
+| en | employee.startButton | new UI string (no CONTENT.md source) |
+| en | employee.docAcceptNotice | new UI string (no CONTENT.md source) |
+| en | employee.docAccept | new UI string (no CONTENT.md source) |
+| en | employee.docAlready | new UI string (no CONTENT.md source) |
+| en | employee.docOutdatedTitle | new UI string (no CONTENT.md source) |
+| en | employee.docOutdatedBody | new UI string (no CONTENT.md source) |
+| en | employee.lessonOf | new UI string (no CONTENT.md source) |
+| en | employee.lessonPrev | new UI string (no CONTENT.md source) |
+| en | employee.lessonNext | new UI string (no CONTENT.md source) |
+| en | employee.lessonQuiz | new UI string (no CONTENT.md source) |
+| en | employee.scenario | new UI string (no CONTENT.md source) |
+| en | employee.whatToDo | new UI string (no CONTENT.md source) |
+| en | employee.quizTitle | new UI string (no CONTENT.md source) |
+| en | employee.quizIntro | new UI string (no CONTENT.md source) |
+| en | employee.quizSubmit | new UI string (no CONTENT.md source) |
+| en | employee.quizUnanswered | new UI string (no CONTENT.md source) |
+| en | employee.quizError | new UI string (no CONTENT.md source) |
+| en | employee.quizPassed | new UI string (no CONTENT.md source) |
+| en | employee.quizFailed | new UI string (no CONTENT.md source) |
+| en | employee.quizCorrect | new UI string (no CONTENT.md source) |
+| en | employee.quizIncorrect | new UI string (no CONTENT.md source) |
+| en | employee.quizRetry | new UI string (no CONTENT.md source) |
+| en | employee.disclosureIntro | new UI string (no CONTENT.md source) |
+| en | employee.disclosureNone | new UI string (no CONTENT.md source) |
+| en | employee.disclosureSome | new UI string (no CONTENT.md source) |
+| en | employee.disclosureDetails | new UI string (no CONTENT.md source) |
+| en | employee.disclosureSubmit | new UI string (no CONTENT.md source) |
+| en | employee.disclosureAlready | new UI string (no CONTENT.md source) |
+| en | employee.disclosureThanks | new UI string (no CONTENT.md source) |
+| en | employee.disclosureError | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.importTitle | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.importHelp | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.importFile | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.importButton | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.importResult | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.invalidLine | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.invalidMore | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.reason.columns | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.reason.name_empty | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.reason.name_long | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.reason.email_invalid | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.fileError.too_large | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.fileError.too_many_rows | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.fileError.not_text | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.fileError.empty | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.fileError.bad_header | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.fileError.unterminated_quote | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.fileError.no_file | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.summary | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.summaryNone | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.colName | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.colEmail | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.colInvitation | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.colTraining | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.colDisclosure | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.colActions | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.docShort.codeOfConduct | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.docShort.antiBribery | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.docShort.giftsHospitality | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.docShort.conflictsOfInterest | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.docShort.thirdPartyPublicOfficials | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.docShort.whistleblowerProtection | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.invite.not_invited | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.invite.invited | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.invite.expired | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.invite.started | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.markDone | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.markOutdated | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.markPending | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.markUnavailable | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.sendInvite | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.resendInvite | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.sendPending | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.sendPendingHint | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.batchResult | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.inviteSent | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.inviteFailed | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.deactivate | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.reactivate | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.deactivated | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.showDeactivated | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.hideDeactivated | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.exportCsv | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.exportPdf | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.details | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.back | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.acksHeading | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.colDocument | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.colAccepted | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.colIp | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.noAcks | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.noIp | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.trainingHeading | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.trainingResult | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.trainingNone | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.disclosureHeading | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.disclosureNone | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.disclosureNothing | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.disclosureSomething | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.disclosureEntry | new UI string (no CONTENT.md source) |
+| en | dashboard.employees.emailNotConfigured | new UI string (no CONTENT.md source) |
+| en | dashboard.training.title | new UI string (no CONTENT.md source) |
+| en | dashboard.training.moduleLine | new UI string (no CONTENT.md source) |
+| en | dashboard.training.draft | new UI string (no CONTENT.md source) |
+| en | dashboard.training.lessonsHeading | new UI string (no CONTENT.md source) |
+| en | dashboard.training.rate | new UI string (no CONTENT.md source) |
+| en | dashboard.training.unavailable | new UI string (no CONTENT.md source) |
+| en | dashboard.training.resultsHeading | new UI string (no CONTENT.md source) |
+| en | dashboard.training.notStarted | new UI string (no CONTENT.md source) |
+| en | dashboard.training.passed | new UI string (no CONTENT.md source) |
+| en | dashboard.training.attemptsNote | new UI string (no CONTENT.md source) |
+| en | dashboard.overview.completionDetail | new UI string (no CONTENT.md source) |
+| en | employee.pdf.title | new UI string (no CONTENT.md source) |
+| en | employee.pdf.generatedOn | new UI string (no CONTENT.md source) |
+| es-AR | email.inviteSubject | CONTENT.md §5 'Employee invitation email' (es-AR wording, with {company}/{name} placeholders) |
+| es-AR | email.inviteBody | CONTENT.md §5 'Employee invitation email' (es-AR wording, with {company}/{name} placeholders) |
+| es-AR | email.inviteButton | CONTENT.md §5 'Employee invitation email' (es-AR wording, with {company}/{name} placeholders) |
+| es-AR | employee.title | en |
+| es-AR | employee.hello | en |
+| es-AR | employee.progress | en |
+| es-AR | employee.allDone | en |
+| es-AR | employee.documentsHeading | en |
+| es-AR | employee.docOpen | en |
+| es-AR | employee.docAccepted | en |
+| es-AR | employee.docOutdated | en |
+| es-AR | employee.docPending | en |
+| es-AR | employee.trainingHeading | en |
+| es-AR | employee.trainingStart | en |
+| es-AR | employee.trainingPending | en |
+| es-AR | employee.trainingDone | en |
+| es-AR | employee.trainingUnavailable | en |
+| es-AR | employee.trainingReview | en |
+| es-AR | employee.disclosureHeading | en |
+| es-AR | employee.disclosureOpen | en |
+| es-AR | employee.disclosureDone | en |
+| es-AR | employee.signOut | en |
+| es-AR | employee.back | en |
+| es-AR | employee.invalidTitle | en |
+| es-AR | employee.invalidBody | en |
+| es-AR | employee.startTitle | en |
+| es-AR | employee.startBody | en |
+| es-AR | employee.startButton | en |
+| es-AR | employee.docAcceptNotice | en |
+| es-AR | employee.docAccept | en |
+| es-AR | employee.docAlready | en |
+| es-AR | employee.docOutdatedTitle | en |
+| es-AR | employee.docOutdatedBody | en |
+| es-AR | employee.lessonOf | en |
+| es-AR | employee.lessonPrev | en |
+| es-AR | employee.lessonNext | en |
+| es-AR | employee.lessonQuiz | en |
+| es-AR | employee.scenario | en |
+| es-AR | employee.whatToDo | en |
+| es-AR | employee.quizTitle | en |
+| es-AR | employee.quizIntro | en |
+| es-AR | employee.quizSubmit | en |
+| es-AR | employee.quizUnanswered | en |
+| es-AR | employee.quizError | en |
+| es-AR | employee.quizPassed | en |
+| es-AR | employee.quizFailed | en |
+| es-AR | employee.quizCorrect | en |
+| es-AR | employee.quizIncorrect | en |
+| es-AR | employee.quizRetry | en |
+| es-AR | employee.disclosureIntro | en |
+| es-AR | employee.disclosureNone | en |
+| es-AR | employee.disclosureSome | en |
+| es-AR | employee.disclosureDetails | en |
+| es-AR | employee.disclosureSubmit | en |
+| es-AR | employee.disclosureAlready | en |
+| es-AR | employee.disclosureThanks | en |
+| es-AR | employee.disclosureError | en |
+| es-AR | dashboard.employees.importTitle | en |
+| es-AR | dashboard.employees.importHelp | en |
+| es-AR | dashboard.employees.importFile | en |
+| es-AR | dashboard.employees.importButton | en |
+| es-AR | dashboard.employees.importResult | en |
+| es-AR | dashboard.employees.invalidLine | en |
+| es-AR | dashboard.employees.invalidMore | en |
+| es-AR | dashboard.employees.reason.columns | en |
+| es-AR | dashboard.employees.reason.name_empty | en |
+| es-AR | dashboard.employees.reason.name_long | en |
+| es-AR | dashboard.employees.reason.email_invalid | en |
+| es-AR | dashboard.employees.fileError.too_large | en |
+| es-AR | dashboard.employees.fileError.too_many_rows | en |
+| es-AR | dashboard.employees.fileError.not_text | en |
+| es-AR | dashboard.employees.fileError.empty | en |
+| es-AR | dashboard.employees.fileError.bad_header | en |
+| es-AR | dashboard.employees.fileError.unterminated_quote | en |
+| es-AR | dashboard.employees.fileError.no_file | en |
+| es-AR | dashboard.employees.summary | en |
+| es-AR | dashboard.employees.summaryNone | en |
+| es-AR | dashboard.employees.colName | en |
+| es-AR | dashboard.employees.colEmail | en |
+| es-AR | dashboard.employees.colInvitation | en |
+| es-AR | dashboard.employees.colTraining | en |
+| es-AR | dashboard.employees.colDisclosure | en |
+| es-AR | dashboard.employees.colActions | en |
+| es-AR | dashboard.employees.docShort.codeOfConduct | en |
+| es-AR | dashboard.employees.docShort.antiBribery | en |
+| es-AR | dashboard.employees.docShort.giftsHospitality | en |
+| es-AR | dashboard.employees.docShort.conflictsOfInterest | en |
+| es-AR | dashboard.employees.docShort.thirdPartyPublicOfficials | en |
+| es-AR | dashboard.employees.docShort.whistleblowerProtection | en |
+| es-AR | dashboard.employees.invite.not_invited | en |
+| es-AR | dashboard.employees.invite.invited | en |
+| es-AR | dashboard.employees.invite.expired | en |
+| es-AR | dashboard.employees.invite.started | en |
+| es-AR | dashboard.employees.markDone | en |
+| es-AR | dashboard.employees.markOutdated | en |
+| es-AR | dashboard.employees.markPending | en |
+| es-AR | dashboard.employees.markUnavailable | en |
+| es-AR | dashboard.employees.sendInvite | en |
+| es-AR | dashboard.employees.resendInvite | en |
+| es-AR | dashboard.employees.sendPending | en |
+| es-AR | dashboard.employees.sendPendingHint | en |
+| es-AR | dashboard.employees.batchResult | en |
+| es-AR | dashboard.employees.inviteSent | en |
+| es-AR | dashboard.employees.inviteFailed | en |
+| es-AR | dashboard.employees.deactivate | en |
+| es-AR | dashboard.employees.reactivate | en |
+| es-AR | dashboard.employees.deactivated | en |
+| es-AR | dashboard.employees.showDeactivated | en |
+| es-AR | dashboard.employees.hideDeactivated | en |
+| es-AR | dashboard.employees.exportCsv | en |
+| es-AR | dashboard.employees.exportPdf | en |
+| es-AR | dashboard.employees.details | en |
+| es-AR | dashboard.employees.back | en |
+| es-AR | dashboard.employees.acksHeading | en |
+| es-AR | dashboard.employees.colDocument | en |
+| es-AR | dashboard.employees.colAccepted | en |
+| es-AR | dashboard.employees.colIp | en |
+| es-AR | dashboard.employees.noAcks | en |
+| es-AR | dashboard.employees.noIp | en |
+| es-AR | dashboard.employees.trainingHeading | en |
+| es-AR | dashboard.employees.trainingResult | en |
+| es-AR | dashboard.employees.trainingNone | en |
+| es-AR | dashboard.employees.disclosureHeading | en |
+| es-AR | dashboard.employees.disclosureNone | en |
+| es-AR | dashboard.employees.disclosureNothing | en |
+| es-AR | dashboard.employees.disclosureSomething | en |
+| es-AR | dashboard.employees.disclosureEntry | en |
+| es-AR | dashboard.employees.emailNotConfigured | en |
+| es-AR | dashboard.training.title | en |
+| es-AR | dashboard.training.moduleLine | en |
+| es-AR | dashboard.training.draft | en |
+| es-AR | dashboard.training.lessonsHeading | en |
+| es-AR | dashboard.training.rate | en |
+| es-AR | dashboard.training.unavailable | en |
+| es-AR | dashboard.training.resultsHeading | en |
+| es-AR | dashboard.training.notStarted | en |
+| es-AR | dashboard.training.passed | en |
+| es-AR | dashboard.training.attemptsNote | en |
+| es-AR | dashboard.overview.completionDetail | en |
+| es-AR | employee.pdf.title | en |
+| es-AR | employee.pdf.generatedOn | en |
+| pt-BR | email.inviteSubject | en |
+| pt-BR | email.inviteBody | en |
+| pt-BR | email.inviteButton | en |
+| pt-BR | employee.title | en |
+| pt-BR | employee.hello | en |
+| pt-BR | employee.progress | en |
+| pt-BR | employee.allDone | en |
+| pt-BR | employee.documentsHeading | en |
+| pt-BR | employee.docOpen | en |
+| pt-BR | employee.docAccepted | en |
+| pt-BR | employee.docOutdated | en |
+| pt-BR | employee.docPending | en |
+| pt-BR | employee.trainingHeading | en |
+| pt-BR | employee.trainingStart | en |
+| pt-BR | employee.trainingPending | en |
+| pt-BR | employee.trainingDone | en |
+| pt-BR | employee.trainingUnavailable | en |
+| pt-BR | employee.trainingReview | en |
+| pt-BR | employee.disclosureHeading | en |
+| pt-BR | employee.disclosureOpen | en |
+| pt-BR | employee.disclosureDone | en |
+| pt-BR | employee.signOut | en |
+| pt-BR | employee.back | en |
+| pt-BR | employee.invalidTitle | en |
+| pt-BR | employee.invalidBody | en |
+| pt-BR | employee.startTitle | en |
+| pt-BR | employee.startBody | en |
+| pt-BR | employee.startButton | en |
+| pt-BR | employee.docAcceptNotice | en |
+| pt-BR | employee.docAccept | en |
+| pt-BR | employee.docAlready | en |
+| pt-BR | employee.docOutdatedTitle | en |
+| pt-BR | employee.docOutdatedBody | en |
+| pt-BR | employee.lessonOf | en |
+| pt-BR | employee.lessonPrev | en |
+| pt-BR | employee.lessonNext | en |
+| pt-BR | employee.lessonQuiz | en |
+| pt-BR | employee.scenario | en |
+| pt-BR | employee.whatToDo | en |
+| pt-BR | employee.quizTitle | en |
+| pt-BR | employee.quizIntro | en |
+| pt-BR | employee.quizSubmit | en |
+| pt-BR | employee.quizUnanswered | en |
+| pt-BR | employee.quizError | en |
+| pt-BR | employee.quizPassed | en |
+| pt-BR | employee.quizFailed | en |
+| pt-BR | employee.quizCorrect | en |
+| pt-BR | employee.quizIncorrect | en |
+| pt-BR | employee.quizRetry | en |
+| pt-BR | employee.disclosureIntro | en |
+| pt-BR | employee.disclosureNone | en |
+| pt-BR | employee.disclosureSome | en |
+| pt-BR | employee.disclosureDetails | en |
+| pt-BR | employee.disclosureSubmit | en |
+| pt-BR | employee.disclosureAlready | en |
+| pt-BR | employee.disclosureThanks | en |
+| pt-BR | employee.disclosureError | en |
+| pt-BR | dashboard.employees.importTitle | en |
+| pt-BR | dashboard.employees.importHelp | en |
+| pt-BR | dashboard.employees.importFile | en |
+| pt-BR | dashboard.employees.importButton | en |
+| pt-BR | dashboard.employees.importResult | en |
+| pt-BR | dashboard.employees.invalidLine | en |
+| pt-BR | dashboard.employees.invalidMore | en |
+| pt-BR | dashboard.employees.reason.columns | en |
+| pt-BR | dashboard.employees.reason.name_empty | en |
+| pt-BR | dashboard.employees.reason.name_long | en |
+| pt-BR | dashboard.employees.reason.email_invalid | en |
+| pt-BR | dashboard.employees.fileError.too_large | en |
+| pt-BR | dashboard.employees.fileError.too_many_rows | en |
+| pt-BR | dashboard.employees.fileError.not_text | en |
+| pt-BR | dashboard.employees.fileError.empty | en |
+| pt-BR | dashboard.employees.fileError.bad_header | en |
+| pt-BR | dashboard.employees.fileError.unterminated_quote | en |
+| pt-BR | dashboard.employees.fileError.no_file | en |
+| pt-BR | dashboard.employees.summary | en |
+| pt-BR | dashboard.employees.summaryNone | en |
+| pt-BR | dashboard.employees.colName | en |
+| pt-BR | dashboard.employees.colEmail | en |
+| pt-BR | dashboard.employees.colInvitation | en |
+| pt-BR | dashboard.employees.colTraining | en |
+| pt-BR | dashboard.employees.colDisclosure | en |
+| pt-BR | dashboard.employees.colActions | en |
+| pt-BR | dashboard.employees.docShort.codeOfConduct | en |
+| pt-BR | dashboard.employees.docShort.antiBribery | en |
+| pt-BR | dashboard.employees.docShort.giftsHospitality | en |
+| pt-BR | dashboard.employees.docShort.conflictsOfInterest | en |
+| pt-BR | dashboard.employees.docShort.thirdPartyPublicOfficials | en |
+| pt-BR | dashboard.employees.docShort.whistleblowerProtection | en |
+| pt-BR | dashboard.employees.invite.not_invited | en |
+| pt-BR | dashboard.employees.invite.invited | en |
+| pt-BR | dashboard.employees.invite.expired | en |
+| pt-BR | dashboard.employees.invite.started | en |
+| pt-BR | dashboard.employees.markDone | en |
+| pt-BR | dashboard.employees.markOutdated | en |
+| pt-BR | dashboard.employees.markPending | en |
+| pt-BR | dashboard.employees.markUnavailable | en |
+| pt-BR | dashboard.employees.sendInvite | en |
+| pt-BR | dashboard.employees.resendInvite | en |
+| pt-BR | dashboard.employees.sendPending | en |
+| pt-BR | dashboard.employees.sendPendingHint | en |
+| pt-BR | dashboard.employees.batchResult | en |
+| pt-BR | dashboard.employees.inviteSent | en |
+| pt-BR | dashboard.employees.inviteFailed | en |
+| pt-BR | dashboard.employees.deactivate | en |
+| pt-BR | dashboard.employees.reactivate | en |
+| pt-BR | dashboard.employees.deactivated | en |
+| pt-BR | dashboard.employees.showDeactivated | en |
+| pt-BR | dashboard.employees.hideDeactivated | en |
+| pt-BR | dashboard.employees.exportCsv | en |
+| pt-BR | dashboard.employees.exportPdf | en |
+| pt-BR | dashboard.employees.details | en |
+| pt-BR | dashboard.employees.back | en |
+| pt-BR | dashboard.employees.acksHeading | en |
+| pt-BR | dashboard.employees.colDocument | en |
+| pt-BR | dashboard.employees.colAccepted | en |
+| pt-BR | dashboard.employees.colIp | en |
+| pt-BR | dashboard.employees.noAcks | en |
+| pt-BR | dashboard.employees.noIp | en |
+| pt-BR | dashboard.employees.trainingHeading | en |
+| pt-BR | dashboard.employees.trainingResult | en |
+| pt-BR | dashboard.employees.trainingNone | en |
+| pt-BR | dashboard.employees.disclosureHeading | en |
+| pt-BR | dashboard.employees.disclosureNone | en |
+| pt-BR | dashboard.employees.disclosureNothing | en |
+| pt-BR | dashboard.employees.disclosureSomething | en |
+| pt-BR | dashboard.employees.disclosureEntry | en |
+| pt-BR | dashboard.employees.emailNotConfigured | en |
+| pt-BR | dashboard.training.title | en |
+| pt-BR | dashboard.training.moduleLine | en |
+| pt-BR | dashboard.training.draft | en |
+| pt-BR | dashboard.training.lessonsHeading | en |
+| pt-BR | dashboard.training.rate | en |
+| pt-BR | dashboard.training.unavailable | en |
+| pt-BR | dashboard.training.resultsHeading | en |
+| pt-BR | dashboard.training.notStarted | en |
+| pt-BR | dashboard.training.passed | en |
+| pt-BR | dashboard.training.attemptsNote | en |
+| pt-BR | dashboard.overview.completionDetail | en |
+| pt-BR | employee.pdf.title | en |
+| pt-BR | employee.pdf.generatedOn | en |
+| es-MX | email.inviteSubject | en |
+| es-MX | email.inviteBody | en |
+| es-MX | email.inviteButton | en |
+| es-MX | employee.title | en |
+| es-MX | employee.hello | en |
+| es-MX | employee.progress | en |
+| es-MX | employee.allDone | en |
+| es-MX | employee.documentsHeading | en |
+| es-MX | employee.docOpen | en |
+| es-MX | employee.docAccepted | en |
+| es-MX | employee.docOutdated | en |
+| es-MX | employee.docPending | en |
+| es-MX | employee.trainingHeading | en |
+| es-MX | employee.trainingStart | en |
+| es-MX | employee.trainingPending | en |
+| es-MX | employee.trainingDone | en |
+| es-MX | employee.trainingUnavailable | en |
+| es-MX | employee.trainingReview | en |
+| es-MX | employee.disclosureHeading | en |
+| es-MX | employee.disclosureOpen | en |
+| es-MX | employee.disclosureDone | en |
+| es-MX | employee.signOut | en |
+| es-MX | employee.back | en |
+| es-MX | employee.invalidTitle | en |
+| es-MX | employee.invalidBody | en |
+| es-MX | employee.startTitle | en |
+| es-MX | employee.startBody | en |
+| es-MX | employee.startButton | en |
+| es-MX | employee.docAcceptNotice | en |
+| es-MX | employee.docAccept | en |
+| es-MX | employee.docAlready | en |
+| es-MX | employee.docOutdatedTitle | en |
+| es-MX | employee.docOutdatedBody | en |
+| es-MX | employee.lessonOf | en |
+| es-MX | employee.lessonPrev | en |
+| es-MX | employee.lessonNext | en |
+| es-MX | employee.lessonQuiz | en |
+| es-MX | employee.scenario | en |
+| es-MX | employee.whatToDo | en |
+| es-MX | employee.quizTitle | en |
+| es-MX | employee.quizIntro | en |
+| es-MX | employee.quizSubmit | en |
+| es-MX | employee.quizUnanswered | en |
+| es-MX | employee.quizError | en |
+| es-MX | employee.quizPassed | en |
+| es-MX | employee.quizFailed | en |
+| es-MX | employee.quizCorrect | en |
+| es-MX | employee.quizIncorrect | en |
+| es-MX | employee.quizRetry | en |
+| es-MX | employee.disclosureIntro | en |
+| es-MX | employee.disclosureNone | en |
+| es-MX | employee.disclosureSome | en |
+| es-MX | employee.disclosureDetails | en |
+| es-MX | employee.disclosureSubmit | en |
+| es-MX | employee.disclosureAlready | en |
+| es-MX | employee.disclosureThanks | en |
+| es-MX | employee.disclosureError | en |
+| es-MX | dashboard.employees.importTitle | en |
+| es-MX | dashboard.employees.importHelp | en |
+| es-MX | dashboard.employees.importFile | en |
+| es-MX | dashboard.employees.importButton | en |
+| es-MX | dashboard.employees.importResult | en |
+| es-MX | dashboard.employees.invalidLine | en |
+| es-MX | dashboard.employees.invalidMore | en |
+| es-MX | dashboard.employees.reason.columns | en |
+| es-MX | dashboard.employees.reason.name_empty | en |
+| es-MX | dashboard.employees.reason.name_long | en |
+| es-MX | dashboard.employees.reason.email_invalid | en |
+| es-MX | dashboard.employees.fileError.too_large | en |
+| es-MX | dashboard.employees.fileError.too_many_rows | en |
+| es-MX | dashboard.employees.fileError.not_text | en |
+| es-MX | dashboard.employees.fileError.empty | en |
+| es-MX | dashboard.employees.fileError.bad_header | en |
+| es-MX | dashboard.employees.fileError.unterminated_quote | en |
+| es-MX | dashboard.employees.fileError.no_file | en |
+| es-MX | dashboard.employees.summary | en |
+| es-MX | dashboard.employees.summaryNone | en |
+| es-MX | dashboard.employees.colName | en |
+| es-MX | dashboard.employees.colEmail | en |
+| es-MX | dashboard.employees.colInvitation | en |
+| es-MX | dashboard.employees.colTraining | en |
+| es-MX | dashboard.employees.colDisclosure | en |
+| es-MX | dashboard.employees.colActions | en |
+| es-MX | dashboard.employees.docShort.codeOfConduct | en |
+| es-MX | dashboard.employees.docShort.antiBribery | en |
+| es-MX | dashboard.employees.docShort.giftsHospitality | en |
+| es-MX | dashboard.employees.docShort.conflictsOfInterest | en |
+| es-MX | dashboard.employees.docShort.thirdPartyPublicOfficials | en |
+| es-MX | dashboard.employees.docShort.whistleblowerProtection | en |
+| es-MX | dashboard.employees.invite.not_invited | en |
+| es-MX | dashboard.employees.invite.invited | en |
+| es-MX | dashboard.employees.invite.expired | en |
+| es-MX | dashboard.employees.invite.started | en |
+| es-MX | dashboard.employees.markDone | en |
+| es-MX | dashboard.employees.markOutdated | en |
+| es-MX | dashboard.employees.markPending | en |
+| es-MX | dashboard.employees.markUnavailable | en |
+| es-MX | dashboard.employees.sendInvite | en |
+| es-MX | dashboard.employees.resendInvite | en |
+| es-MX | dashboard.employees.sendPending | en |
+| es-MX | dashboard.employees.sendPendingHint | en |
+| es-MX | dashboard.employees.batchResult | en |
+| es-MX | dashboard.employees.inviteSent | en |
+| es-MX | dashboard.employees.inviteFailed | en |
+| es-MX | dashboard.employees.deactivate | en |
+| es-MX | dashboard.employees.reactivate | en |
+| es-MX | dashboard.employees.deactivated | en |
+| es-MX | dashboard.employees.showDeactivated | en |
+| es-MX | dashboard.employees.hideDeactivated | en |
+| es-MX | dashboard.employees.exportCsv | en |
+| es-MX | dashboard.employees.exportPdf | en |
+| es-MX | dashboard.employees.details | en |
+| es-MX | dashboard.employees.back | en |
+| es-MX | dashboard.employees.acksHeading | en |
+| es-MX | dashboard.employees.colDocument | en |
+| es-MX | dashboard.employees.colAccepted | en |
+| es-MX | dashboard.employees.colIp | en |
+| es-MX | dashboard.employees.noAcks | en |
+| es-MX | dashboard.employees.noIp | en |
+| es-MX | dashboard.employees.trainingHeading | en |
+| es-MX | dashboard.employees.trainingResult | en |
+| es-MX | dashboard.employees.trainingNone | en |
+| es-MX | dashboard.employees.disclosureHeading | en |
+| es-MX | dashboard.employees.disclosureNone | en |
+| es-MX | dashboard.employees.disclosureNothing | en |
+| es-MX | dashboard.employees.disclosureSomething | en |
+| es-MX | dashboard.employees.disclosureEntry | en |
+| es-MX | dashboard.employees.emailNotConfigured | en |
+| es-MX | dashboard.training.title | en |
+| es-MX | dashboard.training.moduleLine | en |
+| es-MX | dashboard.training.draft | en |
+| es-MX | dashboard.training.lessonsHeading | en |
+| es-MX | dashboard.training.rate | en |
+| es-MX | dashboard.training.unavailable | en |
+| es-MX | dashboard.training.resultsHeading | en |
+| es-MX | dashboard.training.notStarted | en |
+| es-MX | dashboard.training.passed | en |
+| es-MX | dashboard.training.attemptsNote | en |
+| es-MX | dashboard.overview.completionDetail | en |
+| es-MX | employee.pdf.title | en |
+| es-MX | employee.pdf.generatedOn | en |

@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   integer,
   pgTable,
   text,
@@ -16,6 +18,9 @@ import {
 export const companies = pgTable("companies", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
+  // Public whistleblower URL segment (/report/<slug>). Immutable: printed in documents and
+  // handed to employees. Generated at provisioning (lib/whistleblower/slug.ts).
+  slug: text("slug").notNull().unique(),
   taxId: text("tax_id").notNull(),
   country: text("country").notNull(), // ar | br | mx
   industry: text("industry"),
@@ -138,12 +143,36 @@ const companyId = () =>
     .notNull()
     .references(() => companies.id);
 
-export const employees = pgTable("employees", {
+// Roster (phase 6). Emails are stored lower-cased; deactivation is an action, never a delete.
+// `invite_token_hash` is sha256 of the emailed token; it is NULLed when the link is used (the
+// Start button) and replaced on every re-issue, which kills the previous link.
+export const employees = pgTable(
+  "employees",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: companyId(),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    inviteTokenHash: text("invite_token_hash"),
+    invitedAt: timestamp("invited_at", { withTimezone: true }),
+    inviteExpiresAt: timestamp("invite_expires_at", { withTimezone: true }),
+    deactivatedAt: timestamp("deactivated_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [unique("employees_company_email").on(t.companyId, t.email)],
+);
+
+// Portal sessions (phase 6): DB-backed and revocable; only the hash of the cookie value is stored.
+export const employeeSessions = pgTable("employee_sessions", {
   id: uuid("id").defaultRandom().primaryKey(),
   companyId: companyId(),
-  name: text("name").notNull(),
-  email: text("email").notNull(),
-  inviteTokenHash: text("invite_token_hash"),
+  employeeId: uuid("employee_id")
+    .notNull()
+    .references(() => employees.id),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -171,62 +200,147 @@ export const documents = pgTable(
   ],
 );
 
-export const acknowledgments = pgTable("acknowledgments", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  companyId: companyId(),
-  employeeId: uuid("employee_id")
-    .notNull()
-    .references(() => employees.id),
-  documentId: uuid("document_id")
-    .notNull()
-    .references(() => documents.id),
-  acceptedAt: timestamp("accepted_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  ipAddress: text("ip_address"), // audit trail (SPEC §5.5) — NOT for whistleblower reports
-});
+// APPEND-ONLY (migration 0005 trigger). One acceptance per employee per document version.
+export const acknowledgments = pgTable(
+  "acknowledgments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: companyId(),
+    employeeId: uuid("employee_id")
+      .notNull()
+      .references(() => employees.id),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => documents.id),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    ipAddress: text("ip_address"), // audit trail (SPEC §5.5) — NOT for whistleblower reports
+  },
+  (t) => [
+    unique("acknowledgments_employee_document").on(t.employeeId, t.documentId),
+  ],
+);
 
-export const trainingCompletions = pgTable("training_completions", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  companyId: companyId(),
-  employeeId: uuid("employee_id")
-    .notNull()
-    .references(() => employees.id),
-  moduleId: text("module_id").notNull(),
-  completedAt: timestamp("completed_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  score: integer("score"),
-});
+// APPEND-ONLY (migration 0005 trigger). Rows exist only for passes.
+export const trainingCompletions = pgTable(
+  "training_completions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: companyId(),
+    employeeId: uuid("employee_id")
+      .notNull()
+      .references(() => employees.id),
+    moduleId: text("module_id").notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    score: integer("score"), // integer percent
+  },
+  (t) => [
+    unique("training_completions_employee_module").on(t.employeeId, t.moduleId),
+  ],
+);
 
-export const disclosures = pgTable("disclosures", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  companyId: companyId(),
-  employeeId: uuid("employee_id")
-    .notNull()
-    .references(() => employees.id),
-  type: text("type").notNull(),
-  content: text("content").notNull(),
-  submittedAt: timestamp("submitted_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+// APPEND-ONLY (migration 0005 trigger). `content` is ciphertext (lib/whistleblower/crypto.ts,
+// AAD disclosures:<company_id>:content). One per employee, type and calendar (UTC) year.
+export const disclosures = pgTable(
+  "disclosures",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: companyId(),
+    employeeId: uuid("employee_id")
+      .notNull()
+      .references(() => employees.id),
+    type: text("type").notNull(),
+    periodYear: integer("period_year").notNull(),
+    content: text("content").notNull(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique("disclosures_employee_type_year").on(
+      t.employeeId,
+      t.type,
+      t.periodYear,
+    ),
+  ],
+);
 
-// NB: description/reporter_contact must be encrypted at rest (SPEC §11) — done in phase 5
-// when the intake exists. No IP / user-agent column on purpose (CLAUDE.md §8).
-export const whistleblowerReports = pgTable("whistleblower_reports", {
+// description and reporter_contact hold AES-256-GCM ciphertext (lib/whistleblower/crypto.ts).
+// No IP / user-agent column on purpose (CLAUDE.md §8).
+export const whistleblowerReports = pgTable(
+  "whistleblower_reports",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: companyId(),
+    trackingCode: text("tracking_code").notNull().unique(),
+    category: text("category").notNull(),
+    description: text("description").notNull(), // ciphertext
+    isAnonymous: boolean("is_anonymous").notNull().default(true),
+    reporterContact: text("reporter_contact"), // ciphertext; NULL unless the reporter opted in
+    status: text("status").notNull().default("new"), // new | under_review | closed
+    statusChangedAt: timestamp("status_changed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }), // set on close, cleared on reopen
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  () => [
+    check(
+      "whistleblower_reports_status_check",
+      sql`status in ('new', 'under_review', 'closed')`,
+    ),
+  ],
+);
+
+// Evidence images: metadata stripped, then stored ENCRYPTED under EVIDENCE_DIR (not UPLOADS_DIR).
+// Nothing from the client's filename or content type is kept.
+export const whistleblowerEvidence = pgTable("whistleblower_evidence", {
   id: uuid("id").defaultRandom().primaryKey(),
   companyId: companyId(),
-  trackingCode: text("tracking_code").notNull().unique(),
-  category: text("category").notNull(),
-  description: text("description").notNull(),
-  isAnonymous: boolean("is_anonymous").notNull().default(true),
-  reporterContact: text("reporter_contact"),
-  status: text("status").notNull().default("received"),
+  reportId: uuid("report_id")
+    .notNull()
+    .references(() => whistleblowerReports.id),
+  fileName: text("file_name").notNull(), // server-chosen random name on disk
+  contentType: text("content_type").notNull(), // sniffed: image/png | image/jpeg
+  sizeBytes: integer("size_bytes").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
 });
+
+// APPEND-ONLY: a database trigger (migration 0004) rejects UPDATE, DELETE and TRUNCATE. The log
+// is itself audit evidence (SPEC §5.3). `body` is ciphertext for notes, NULL for status changes.
+export const whistleblowerNotes = pgTable(
+  "whistleblower_notes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: companyId(),
+    reportId: uuid("report_id")
+      .notNull()
+      .references(() => whistleblowerReports.id),
+    kind: text("kind").notNull(), // note | status_change
+    body: text("body"),
+    fromStatus: text("from_status"),
+    toStatus: text("to_status"),
+    authorUserId: uuid("author_user_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  () => [
+    check(
+      "whistleblower_notes_kind_check",
+      sql`kind in ('note', 'status_change')`,
+    ),
+  ],
+);
 
 export const vendors = pgTable("vendors", {
   id: uuid("id").defaultRandom().primaryKey(),
