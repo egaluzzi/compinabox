@@ -45,3 +45,28 @@ Whistleblower data lives in this database; backups must exist and a restore must
 3. Real recovery: stop the app (`sudo systemctl stop complystart`), create an empty database, `gunzip -c complystart-<stamp>.sql.gz | psql <new database url>`, point `DATABASE_URL` at it, start the app. Note: a dump holds everything up to its timestamp; anything written since is lost.
 
 To exercise the scripts without Spaces: `BACKUP_DEST=local:/some/dir scripts/backup.sh`.
+
+## Whistleblower channel (phase 5)
+
+Public intake at `/report/<company slug>` (pages `/report/<slug>` and `/report/<slug>/status`; handlers `POST /api/report/<slug>` and `/api/report/<slug>/status`). Reviewed by the company admin under Dashboard → Canal de denúncias. Decisions and guardrails: `CLAUDE.md` §8, `SPEC.md` §5.3 and §11.
+
+### What the intake does and does not log
+
+- The intake handlers and pages read **only** the submitted form (or JSON body) and the slug in the URL. They do not read or store the visitor's IP address, `X-Forwarded-For`, `CF-Connecting-IP`, the browser identifier, the referrer, language headers or cookies, and they set **no cookie**. `is_anonymous = !wants_contact`; the contact is stored (encrypted) only if the reporter opts in. The `whistleblower_reports` table has no IP/user-agent column.
+- `scripts/check-anonymity.sh` (run by `./verify.sh`) fails the build if anything under `app/report`, `app/api/report` or `lib/whistleblower` mentions request headers, forwarded/client addresses, the browser identifier, cookies or `console.*`. Error paths log nothing there; the notification email (outside that tree) logs one fixed string on failure.
+- `created_at` is a full timestamp (it is audit evidence). Evidence images are stripped of EXIF/XMP/ICC/text metadata before they are encrypted.
+- **Outside the app's control:** Caddy, Cloudflare, the OS and Next.js itself can still log request metadata (access logs, platform telemetry). Configure those for the channel's paths in phase 9; do not describe the channel to reporters as untraceable.
+- Rate limiting is in-process and per company slug (status lookups 10/minute, submissions 20/hour; HTTP 429) because no client address is read. A per-IP limit is a Cloudflare rule (phase 9). The 12-character tracking code (~59 bits) is what prevents enumeration.
+
+### Report encryption key: generate, rotate, back up
+
+`description`, `reporter_contact`, case-note bodies and evidence files are encrypted with AES-256-GCM (`lib/whistleblower/crypto.ts`). Each ciphertext carries its key id (`v<id>:…`) and is bound (as AAD) to its table, company and column, so a value copied to another tenant or field fails to decrypt.
+
+- **Generate:** `openssl rand -base64 32`. Put it in `/opt/compinabox/.env` as `REPORT_ENCRYPTION_KEYS=k1:<base64>` (`id:base64key`, ids are `[A-Za-z0-9_-]`, up to 16 characters). The first key encrypts; every listed key decrypts. There is no default key: unset or malformed makes the whistleblower pages fail loudly instead of storing plaintext.
+- **Back up the key separately from the database and the evidence directory** (password manager / offline copy held by Esteban). A database or evidence backup without the key is unreadable ciphertext — and anyone holding both can read every report. The dashboard shows "cannot decrypt — key missing" for a report whose key is not configured; it never crashes the list.
+- **Rotate:** (1) generate a new key and *prepend* it: `REPORT_ENCRYPTION_KEYS=k2:<new>,k1:<old>`; restart the app. New data uses `k2`; old data still decrypts. (2) From a checkout with `npm ci`, with the same `.env` loaded (`DATABASE_URL`, `EVIDENCE_DIR`, `REPORT_ENCRYPTION_KEYS`): `npm run rotate-report-key` is a **dry run** that prints counts only; `npm run rotate-report-key -- --apply` re-encrypts every encrypted column and evidence file under `k2` (idempotent; safe to re-run; prints counts only, never content; exit code 2 if some value could not be decrypted — it is left untouched). Take a database backup first. (3) Only after a clean `--apply` (0 failures) and a fresh backup, drop `k1` from the list.
+- The case log (`whistleblower_notes`) is append-only at the database level. The rotation script switches the update trigger off for the length of its own transaction only (DDL is transactional, so a failure rolls the trigger back on) and changes nothing but the ciphertext of note bodies.
+
+### Evidence directory
+
+Evidence images are stored **encrypted** under `EVIDENCE_DIR` (default `./evidence`; `/opt/compinabox/evidence` on the droplet, mode 700, owned by the service user). It must be a different directory from `UPLOADS_DIR` and must never be served by Caddy or any public route — the app refuses to write if the two overlap. Files are named at random on disk; nothing from the uploader's file name or content type is stored. They leave the server only through the signed-in dashboard (`/dashboard/whistleblower/<id>/evidence/<evidence id>`, decrypted, as an attachment). **Back this directory up together with the database** (`scripts/backup.sh` covers the database only).

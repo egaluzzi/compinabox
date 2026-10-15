@@ -186,6 +186,12 @@ if [ -d app ]; then
   fi
 fi
 
+# 4i. Anonymous reporting (CLAUDE.md §8): the whistleblower intake paths read no request metadata
+# (headers, forwarded/client address, browser identifier, cookies) and log nothing.
+if [ -d app/report ]; then
+  if ANON_OUT=$(./scripts/check-anonymity.sh 2>&1); then note "anonymous intake" "no request metadata, no logging"; else echo "$ANON_OUT" | head -20; bad "anonymous intake" "request metadata or console output in app/report, app/api/report or lib/whistleblower"; fi
+fi
+
 # 4g. KNOWN_ISSUES.md must exist (baseline)
 [ -f KNOWN_ISSUES.md ] && note "KNOWN_ISSUES.md" "present" || bad "KNOWN_ISSUES.md" "missing"
 
