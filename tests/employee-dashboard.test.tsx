@@ -500,7 +500,7 @@ describe("employee detail page", () => {
       companyId: A.company.id,
       employeeId: e.id,
       documentId: doc.id,
-      ipAddress: "203.0.113.77",
+      ipAddress: "203.0.113.210",
     });
     await recordPass(db, me, 92);
     await submitDisclosure(db, me, {
@@ -509,7 +509,7 @@ describe("employee detail page", () => {
     });
     const html = await detail(e.id);
     expect(html).toContain("Detalhe");
-    expect(html).toContain("203.0.113.77");
+    expect(html).toContain("203.0.113.210");
     expect(html).toContain("Pontuação 92%");
     expect(html).toContain("Tem algo a declarar");
     expect(html).toContain("Minha prima é dona da fornecedora XPTO");

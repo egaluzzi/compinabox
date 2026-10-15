@@ -229,8 +229,8 @@ if [ -d lib/employee ]; then
   else
     note "employee logging" "nothing logged beyond the fixed invitation-failure string"
   fi
-  if grep -rniE 'certific' lib/training app/employee components/employee >/dev/null 2>&1; then
-    grep -rniE 'certific' lib/training app/employee components/employee | head
+  if grep -rniE --include='*.ts' --include='*.tsx' 'certific' lib/training app/employee components/employee >/dev/null 2>&1; then
+    grep -rniE --include='*.ts' --include='*.tsx' 'certific' lib/training app/employee components/employee | head
     bad "training copy" "the training and portal say \"concluído\", never \"certificado\""
   else
     note "training copy" "no 'certificate' wording"

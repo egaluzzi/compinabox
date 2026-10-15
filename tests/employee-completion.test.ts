@@ -34,7 +34,7 @@ const currentDocs = DOCUMENT_TYPES.map((type, i) => ({
   version: 1,
 }));
 function row(
-  over: Partial<RosterRow> & {
+  over: Omit<Partial<RosterRow>, "docs"> & {
     docs?: Partial<Record<DocumentType, Step>>;
   } = {},
 ): RosterRow {
@@ -113,7 +113,7 @@ describe("company completion (pure math)", () => {
     const five = row({
       docs: Object.fromEntries(
         DOCUMENT_TYPES.slice(0, 5).map((t) => [t, done]),
-      ),
+      ) as Partial<Record<DocumentType, Step>>,
     });
     expect(computeCompletion(roster([five])).percent).toBe(62);
   });
@@ -152,7 +152,7 @@ describe("company completion (pure math)", () => {
       training: "unavailable",
       docs: Object.fromEntries(
         DOCUMENT_TYPES.slice(0, 3).map((t) => [t, done]),
-      ),
+      ) as Partial<Record<DocumentType, Step>>,
     });
     expect(computeCompletion(roster([half], false))).toMatchObject({
       doneSteps: 3,
