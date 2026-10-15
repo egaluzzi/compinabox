@@ -151,7 +151,7 @@ fi
 # 4d. Forbidden claims in copy (CLAUDE.md §8)
 # A *negated* guarantee ("does not guarantee compliance", "no garantiza el cumplimiento", "não garante a conformidade")
 # is the approved footer disclaimer (CONTENT.md §1), not a claim — those lines are exempt.
-BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cumplimiento|garante (a )?conformidade|ISO ?3730[12]|certif(ied|icado|icada) (by|por) (la )?ley|em conformidade com a lei|atende (integralmente )?(a|às) exigências' app messages lib/content lib/documents 2>/dev/null | grep -viE '(^|[^[:alpha:]])(does not|do not|doesn.t|no|não|nao|never|nunca) +(guarantee|garantiza|garante)' || true)
+BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cumplimiento|garante (a )?conformidade|ISO ?3730[12]|certif(ied|icado|icada) (by|por) (la )?ley|em conformidade com a lei|atende (integralmente )?(a|às) exigências' app messages lib/content lib/documents lib/training lib/employee components 2>/dev/null | grep -viE '(^|[^[:alpha:]])(does not|do not|doesn.t|no|não|nao|never|nunca) +(guarantee|garantiza|garante)' || true)
 if [ -n "$BANNED" ]; then echo "$BANNED" | head; bad "forbidden claims" "copy implies guaranteed compliance or ISO certification"; else note "forbidden claims" "none"; fi
 
 # 4e. Second geo mechanism must not exist (CLAUDE.md §4)
@@ -190,6 +190,51 @@ fi
 # (headers, forwarded/client address, browser identifier, cookies) and log nothing.
 if [ -d app/report ]; then
   if ANON_OUT=$(./scripts/check-anonymity.sh 2>&1); then note "anonymous intake" "no request metadata, no logging"; else echo "$ANON_OUT" | head -20; bad "anonymous intake" "request metadata or console output in app/report, app/api/report or lib/whistleblower"; fi
+fi
+
+# 4j. Employee portal (phase 6). The ONE place a client IP is read is lib/employee/client-ip.ts:
+#   - `cf-connecting` appears in exactly one non-test file under app/ and lib/ outside the
+#     anonymous whistleblower trees (those must contain none: check-anonymity.sh, 4i);
+#   - it is called (clientIp()) only by the acknowledge handler, and the ip_address column is
+#     touched only by the acknowledgment writer, the admin detail reader and the schema;
+#   - no user-agent and no x-forwarded-* is read anywhere in app/ or lib/ (outside whistleblower,
+#     which has its own check) and the portal never logs.
+# Training copy never says "certificate". `IP_SCAN_DIRS` lets the check be shown failing on a planted file.
+if [ -d lib/employee ]; then
+  IPDIRS=${IP_SCAN_DIRS:-"app lib components proxy.ts"}
+  CF_FILES=$(grep -rlIiE 'cf-connecting' $IPDIRS --include='*.ts' --include='*.tsx' 2>/dev/null | grep -vE '^(lib/whistleblower|app/report|app/api/report)/' | grep -vE '\.test\.' | sort || true)
+  if [ "$CF_FILES" = "lib/employee/client-ip.ts" ]; then
+    note "client ip" "cf-connecting-ip read only in lib/employee/client-ip.ts"
+  else
+    echo "$CF_FILES"; bad "client ip" "cf-connecting-ip must be read in exactly one file (lib/employee/client-ip.ts)"
+  fi
+  CALLERS=$(grep -rlIE 'clientIp\(' $IPDIRS --include='*.ts' --include='*.tsx' 2>/dev/null | grep -v '^lib/employee/client-ip.ts$' | sort || true)
+  if [ "$CALLERS" = "app/employee/api/acknowledge/route.ts" ]; then
+    note "client ip callers" "only the acknowledge handler"
+  else
+    echo "$CALLERS"; bad "client ip callers" "clientIp() may only be called by app/employee/api/acknowledge/route.ts"
+  fi
+  IPCOLS=$(grep -rlIE 'ipAddress|ip_address' app lib components --include='*.ts' --include='*.tsx' 2>/dev/null | grep -v '^lib/db/migrations/' | LC_ALL=C sort || true)
+  IPALLOW=$(printf '%s\n' 'app/(app)/dashboard/employees/[id]/page.tsx' lib/db/schema.ts lib/employee/acknowledge.ts lib/employee/detail.ts | LC_ALL=C sort)
+  if [ "$IPCOLS" = "$IPALLOW" ]; then
+    note "ip column" "only schema, acknowledgment writer, admin detail reader and its page"
+  else
+    echo "$IPCOLS"; bad "ip column" "ip_address touched outside schema / acknowledge.ts / detail.ts / employee detail page"
+  fi
+  OTHERHDR=$(grep -rnIiE "get\([\"'\`](x-forwarded[a-z-]*|user-agent|x-real-ip)[\"'\`]\)" $IPDIRS --include='*.ts' --include='*.tsx' 2>/dev/null | grep -vE '^(lib/whistleblower|app/report|app/api/report)/' | grep -vE '\.test\.' || true)
+  if [ -n "$OTHERHDR" ]; then echo "$OTHERHDR" | head; bad "request headers" "x-forwarded / user-agent / x-real-ip read outside the anonymous paths"; else note "request headers" "no other client-identifying header read"; fi
+  if grep -rniE 'console\.' lib/employee app/employee components/employee lib/training 2>/dev/null | grep -vE 'employee invitation email failed' >/dev/null; then
+    grep -rniE 'console\.' lib/employee app/employee components/employee lib/training | grep -vE 'employee invitation email failed' | head
+    bad "employee logging" "the portal logs nothing but the fixed invitation-failure string"
+  else
+    note "employee logging" "nothing logged beyond the fixed invitation-failure string"
+  fi
+  if grep -rniE 'certific' lib/training app/employee components/employee >/dev/null 2>&1; then
+    grep -rniE 'certific' lib/training app/employee components/employee | head
+    bad "training copy" "the training and portal say \"concluído\", never \"certificado\""
+  else
+    note "training copy" "no 'certificate' wording"
+  fi
 fi
 
 # 4g. KNOWN_ISSUES.md must exist (baseline)

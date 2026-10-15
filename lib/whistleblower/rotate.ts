@@ -20,8 +20,13 @@ import { evidenceDir, evidenceField } from "./evidence.ts";
 // see scripts/rotate-report-key.ts.
 
 export type RotateCounts = {
-  /** Values found per kind: reports (description + contact), notes, evidence files. */
-  seen: { reports: number; notes: number; evidence: number };
+  /** Values found per kind: reports (description + contact), notes, employee disclosures, evidence files. */
+  seen: {
+    reports: number;
+    notes: number;
+    disclosures: number;
+    evidence: number;
+  };
   /** Values already under the current key. */
   current: number;
   /** Values re-encrypted (or, in a dry run, that would be). */
@@ -36,7 +41,7 @@ export async function rotate(
 ): Promise<RotateCounts> {
   const now = currentKeyId();
   const counts: RotateCounts = {
-    seen: { reports: 0, notes: 0, evidence: 0 },
+    seen: { reports: 0, notes: 0, disclosures: 0, evidence: 0 },
     current: 0,
     rewritten: 0,
     failed: 0,
@@ -105,6 +110,34 @@ export async function rotate(
         );
       await db.query(
         "ALTER TABLE whistleblower_notes ENABLE TRIGGER whistleblower_notes_no_update_delete",
+      );
+    }
+
+    // Employee disclosures (phase 6) share the key ring and are append-only too: same sanctioned
+    // pattern, trigger off for this transaction only, ciphertext is the only thing that changes.
+    const disclosures = await db.query(
+      "SELECT id, company_id, content FROM disclosures",
+    );
+    const disclosureUpdates: [string, string, string][] = [];
+    for (const d of disclosures.rows) {
+      counts.seen.disclosures++;
+      const content = redo(
+        d.content,
+        aadFor(AAD_TABLES.disclosures, d.company_id, "content"),
+      );
+      if (content) disclosureUpdates.push([content, d.id, d.company_id]);
+    }
+    if (opts.apply && disclosureUpdates.length > 0) {
+      await db.query(
+        "ALTER TABLE disclosures DISABLE TRIGGER disclosures_no_update_delete",
+      );
+      for (const [content, id, companyId] of disclosureUpdates)
+        await db.query(
+          "UPDATE disclosures SET content = $1 WHERE id = $2 AND company_id = $3",
+          [content, id, companyId],
+        );
+      await db.query(
+        "ALTER TABLE disclosures ENABLE TRIGGER disclosures_no_update_delete",
       );
     }
 
