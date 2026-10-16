@@ -1,127 +1,355 @@
-# Handoff — Phase 6: employee portal (acknowledgments, training, disclosure), 2026-10-15
+# Handoff — Phase 7: vendor questionnaire + sanctions screening, 2026-10-16
 
-Branch `phase-6-employee-portal` (from `origin/claude/trusting-lamport-aq0f52`), PR to `main`, **not merged**. The PR **also contains the phase 5 commits until PR #7 merges** (the base branch already carries the accepted phase 5 code).
-**Code tip: 34e83ad** — `./verify.sh` ran on exactly this commit (exit 0, output below). Commits after it touch only `HANDOFF.md` and `docs/phase6-samples/`.
-Guardrails touched, all settled by the notes — **nothing blocked**: tenant isolation (employee session → company from the DB row), the one stored client IP (acknowledgments), encryption at rest (disclosures), scope boundary / no certification claims (training + portal copy), append-only evidence, legal content (no citation added; the training names none). One migration (`0005_employee_portal.sql`), **no new dependency, no new env var**.
+**LIVE CHECK NOT RUN — needs SCREENING_API_KEY and network access to api.opensanctions.org.** This session has no key, and the environment's proxy refuses the host (`curl: (56) CONNECT tunnel failed, response 403`). Every screening result below is against a **local stub** and is labelled so; none of it is evidence about the real service. The phase is **built, not accepted** until `scripts/screening-live-check.sh` has run (follow-up task, not a rebuild).
+
+Branch `phase-7-vendor-screening` (from `origin/claude/trusting-lamport-aq0f52`), PR to `main`, **not merged**. The PR **also contains the phase 5 and 6 commits until PRs #7/#8 merge**.
+**Code tip: 5109983** — `./verify.sh` ran on exactly this commit (exit 0, output below). Commits after it touch only `HANDOFF.md`.
+Guardrails touched, all settled by the notes — **nothing blocked**: tenant isolation (every vendor query filters by the session company; cross-tenant → 404), third-party data egress (vendor name + optional country only), encryption at rest (questionnaire free text), append-only evidence, no verdict wording, anonymity-style rule for the public vendor paths. One migration (`0006_vendor_screening.sql`), **no new dependency**; env: `SCREENING_BASE_URL`, `SCREENING_DATASET` added to `.env.example` (already in CLAUDE.md §6).
 
 ## What changed
 
-**Migration `0005_employee_portal.sql`** (generated, then hand-edited; `drizzle-kit generate` reports no drift)
-- `employees`: `invited_at`, `invite_expires_at`, `deactivated_at`; existing emails lower-cased, then `UNIQUE (company_id, email)`.
-- `acknowledgments` `UNIQUE (employee_id, document_id)`; `training_completions` `UNIQUE (employee_id, module_id)`; `disclosures.period_year` (added nullable, backfilled from `submitted_at` UTC year, then `NOT NULL`, so it is safe on a DB that already has rows) + `UNIQUE (employee_id, type, period_year)`.
-- **Append-only triggers** (UPDATE/DELETE/TRUNCATE rejected, same pattern as 0002/0004) on `acknowledgments`, `training_completions`, `disclosures`.
-- New `employee_sessions` (id, company_id, employee_id, token_hash unique, expires_at, created_at); added to `TENANT_TABLES`.
+**Migration `0006_vendor_screening.sql`** (generated, then the triggers appended by hand; `drizzle-kit generate` reports no drift)
+- `vendors`: + `country`, `tax_id`, `contact_name`, `contact_email` (lower-cased), `invited_at`, `invite_expires_at`, `invite_token_hash`, `submitted_at`, `archived_at`, `created_at`; CHECK `questionnaire_status in (not_sent, sent, submitted)` ("expired" is derived in code). Safe on existing rows (all new columns nullable or defaulted).
+- New `vendor_responses` (five encrypted text columns, three plain booleans) and `vendor_screenings` (status CHECK, `matches` jsonb of ≤ 10 `{id, caption, score, datasets, topics}`, fixed `error_code`); both have `company_id`, are in `TENANT_TABLES`, and have **append-only triggers** (UPDATE/DELETE/TRUNCATE rejected), same pattern as 0002/0004/0005.
 
-**lib/employee/** — `csv.ts` (parser + serializer + formula neutraliser, written from scratch), `session.ts` (hash helpers, read-only `isInviteUsable`, atomic `startSession`, `getPortalEmployee`, `endSession`), `require-employee.ts` (`requireEmployee()` page gate → redirect to the friendly page; `requireEmployeeRoute(request)` → 401; `PORTAL_HEADERS`), `client-ip.ts` (the **only** file that reads `cf-connecting-ip`), `acknowledge.ts`, `disclosure.ts`, `training.ts`, `invites.ts` (`inviteEmail`, `sendInvite`, `sendPending`), `admin.ts` (import / deactivate / reactivate), `roster.ts` (**the** roster model + `computeCompletion`), `detail.ts`, `export.ts` (one table shape for grid/CSV/PDF), `pdf.tsx`, `labels.ts`, `constants.ts`.
-**lib/training/** — `content.ts` (module `anticorruption-pt-BR-v1`: 6 lessons of 380–435 words each with one scenario + what to do, 12 questions, 4 options, one correct, one-sentence explanation; data, not code), `grading.ts` (server-side grading in integers: `correct*100 >= total*80`; `publicQuestions()` strips answers and explanations), `REVIEW.md` (everything DRAFT, note for Esteban).
-
-**Portal** (`app/employee/`, its own root layout — no marketing layout, no banner/UTM) — `[token]` (read-only Start page), `link-invalid` (the one friendly page), `page.tsx` (checklist + progress), `documents/[id]`, `training/[n]` (lessons), `training/quiz` (+ client `Quiz` component: answers go to the server, verdict comes back), `disclosure`. Handlers **all under `/employee/api/`** (so `Path=/employee` covers them): `session` (the exchange), `acknowledge`, `training`, `disclosure`, `sign-out`. Headers (`Cache-Control: private, no-store`, `Referrer-Policy: no-referrer`, frame denial, `X-Robots-Tag`) in `next.config.ts` for pages and set in code by the handlers.
-
-**Dashboard** — `/dashboard/employees` (import form + result, summary bar, grid, per-row send/resend + deactivate/reactivate, "send pending invitations (N)", show-deactivated toggle, CSV + PDF export links; empty state kept), `/dashboard/employees/[id]` (acknowledgments with timestamp + **IP**, training, **decrypted** disclosures, "cannot decrypt" state), `/dashboard/training` (module overview, per-employee results, company rate; "unavailable" for non-pt-BR), Overview widgets real (`companyCompletion`; employees count now = active employees). Route handlers `import`, `invite-pending`, `[id]/invite|deactivate|reactivate`, `export.csv`, `export.pdf` — every one through `requireTenantRoute`, ids are lookup keys combined with the session company, cross-tenant → 404. Sample of the export in `docs/phase6-samples/`.
-
-**Email** — `inviteEmail()` per CONTENT.md §5 (es-AR wording as written; en / es-MX / pt-BR translated faithfully), through `getEmailSender()`, company-name + employee-name + link only (no document text).
-
-**Messages** — 141 new keys in all four locales (`employee.*`, `dashboard.employees.*`, `dashboard.training.*`, `email.invite*`, `dashboard.overview.completionDetail`), 564 rows appended to `messages/DRAFTS.md` (the es-AR invite rows cite CONTENT.md §5; "Row counts" header line replaced by a pointer — the old per-locale counts were stale anyway).
-
-**Phase 5 code touched** (the notes asked for it): `lib/whistleblower/rotate.ts` re-encrypts `disclosures.content` (same sanctioned pattern: `ALTER TABLE … DISABLE TRIGGER disclosures_no_update_delete` inside the rotation's own transaction; counts only), `RotateCounts.seen` gained `disclosures`, `AAD_TABLES.disclosures` added next to the others, `scripts/rotate-report-key.ts` prints the new count, README line.
-
-**verify.sh** — new invariant block 4j: `cf-connecting` appears in exactly one non-test file under `app`/`lib`/`components`/`proxy.ts` outside the anonymous whistleblower trees (and `check-anonymity.sh` is untouched, so those must still contain none); `clientIp()` is called only by the acknowledge handler; `ipAddress`/`ip_address` is touched only by the schema, `acknowledge.ts`, `detail.ts` and the admin detail page (an allow-list compare, so a new reader fails the run); no `x-forwarded-*`/`user-agent`/`x-real-ip` header read outside the anonymous trees; no `console.*` in the portal beyond the fixed invitation-failure string; no "certific…" in training/portal code. The forbidden-claims grep (4d) now also scans `lib/training`, `lib/employee`, `components`; the existing "request company_id" check (4h) already scans all of `app/`, so it covers `app/employee`. **README** gained "Employee portal: links, sessions and what is logged".
-
-**scripts/smoke.sh** — only this edit: the Phase 6 section (below).
+**lib/screening/** — `types.ts` (`ScreeningProvider`, `ScreeningOutcome`), `opensanctions.ts` (client; `mapResponse`; https-only base URL guard), `index.ts` (`getScreeningProvider()`: OpenSanctions when `SCREENING_API_KEY` is set and not `changeme`, else an `available: false` provider; **no fake provider in production code**), `constants.ts` (cooldown 5 min, cap 50/UTC day, 10 s timeout, 10 matches, 0.7 score — one place). Files import siblings with `.ts` extensions and avoid constructor parameter properties so `scripts/screening-live-check.sh` can run them under Node's strip-only TypeScript.
+**lib/vendors/** — `answers.ts` (validation + AES-GCM encrypt/decrypt, AAD `vendor_responses:<company_id>:<field>`), `queries.ts` (tenant-scoped CRUD, detail, derived state), `invites.ts` (email-first send; `questionnaireEmail`), `submit.ts` (read-only `findOpenLink`; atomic `submitQuestionnaire`), `screen.ts` (guards → one provider call → history row + vendor cache in one transaction), `summary.ts` (`summarizeVendors`, for the phase 8 binder), `constants.ts`.
+**Public side** — `app/vendor/` (own root layout, no marketing chrome/cookies/banner): `[token]` form page (GET consumes nothing), `api/submit` (POST), `link-invalid`, `thanks`; `components/vendor/VendorForm.tsx` (client form; typed answers live in component state so errors never lose them; works without JS via redirects). Headers for `/vendor/:path*` in `next.config.ts` and set by the handler itself; `/vendor` added to robots.
+**Dashboard** — `/dashboard/vendors` (add form, list with questionnaire + screening state, send/resend, archive/unarchive, "show archived"), `/dashboard/vendors/[id]` (profile, decrypted latest answer + history, screening history with matches, screen button or "unavailable"); handlers `add`, `[id]/send|archive|unarchive|screen` — every one through `requireTenantRoute`, ids are lookup keys combined with the session company, cross-tenant → 404.
+**Phase 5/6 code touched (as the notes asked):** `lib/whistleblower/rotate.ts` re-encrypts the five `vendor_responses` columns (same sanctioned trigger-off-inside-the-transaction pattern; counts only; `RotateCounts.seen.vendorResponses`), `AAD_TABLES.vendorResponses` next to the others, `scripts/rotate-report-key.ts` prints the new count, README line.
+**Messages** — 104 new keys × 4 locales (`vendor.*`, `dashboard.vendors.*`, `email.vendor*`), 416 rows appended to `messages/DRAFTS.md`. pt-BR is primary; es-AR and es-MX carry one shared neutral Spanish text (the three required pt-BR state strings and the disclaimer are verbatim from the notes).
+**verify.sh** — new block 4k: `scripts/check-vendor-privacy.sh` (new; same pattern as `check-anonymity.sh` plus `headers.get`, scanning `app/vendor`, `components/vendor`, `lib/vendors/submit.ts`, `lib/vendors/answers.ts`); no `console.*` in `lib/screening`; `SCREENING_API_KEY` read in exactly one file (`lib/screening/index.ts`). The forbidden-claims grep (4d) now also scans `lib/screening` and `lib/vendors` (`app` was already scanned). **README** gained "Vendors: questionnaire and sanctions screening".
+**scripts/smoke.sh** — only this edit: the Phase 7 section (labelled "(local stub)" where it concerns screening). **scripts/screening-live-check.sh** — new.
+**Existing tests touched** (all because of this phase, none weakened): `tests/tenant.test.ts` (seeds the two new tables), `tests/dashboard-gate.test.ts` (new entry list), `tests/dashboard-headers.test.ts` (excludes `/vendor` rules), `tests/dashboard-routes.test.tsx` and `tests/session-revocation.test.tsx` (vendors page now takes `searchParams`), `tests/whistleblower-keys-and-migration.test.ts` (rotation covers a vendor response: counts 10/10, trigger back on), and **`tests/country-pages.test.tsx`** (added `cleanup()` — see Judgment calls). New: `tests/vendors-screening.test.ts` (38), `tests/vendors-public.test.tsx` (18), `tests/vendors-dashboard.test.tsx` (33).
 
 ## Evidence
 
-**(a) The new IP invariant failing on a planted violation, then passing** (`lib/planted/spy.ts` reading both `cf-connecting-ip` and `user-agent`; raw, `SKIP_BUILD=1 ./verify.sh | grep …`; the final `FAIL` line in the second block is only "uncommitted changes" — that run was done before the last commit):
+**(a) The new vendor-path invariant failing on a planted violation, then passing** (raw; `SKIP_BUILD=1 ./verify.sh | grep …`, run on the committed tree):
 ```
-=== planted violation: lib/planted/spy.ts
-export const spy = (req: Request) => req.headers.get("cf-connecting-ip") ?? req.headers.get("user-agent");
-lib/planted/spy.ts
-client ip                  FAIL: cf-connecting-ip must be read in exactly one file (lib/employee/client-ip.ts)
-client ip callers          only the acknowledge handler
-ip column                  only schema, acknowledgment writer, admin detail reader and its page
-lib/planted/spy.ts:1:export const spy = (req: Request) => req.headers.get("cf-connecting-ip") ?? req.headers.get("user-agent");
-request headers            FAIL: x-forwarded / user-agent / x-real-ip read outside the anonymous paths
---- result
-verify.sh: FAIL (HEAD 7ba93d7)
-exit=1
+=== planted violation: app/vendor/planted-spy.ts
+export const spy = (req: Request) => req.headers.get("x-forwarded-for") ?? console.log("vendor");
+app/vendor/planted-spy.ts:1:export const spy = (req: Request) => req.headers.get("x-forwarded-for") ?? console.log("vendor");
+app/vendor/planted-spy.ts:1:export const spy = (req: Request) => req.headers.get("x-forwarded-for") ?? console.log("vendor");
+check-vendor-privacy: FAIL — request metadata or logging in the public vendor paths
+vendor public paths        FAIL: request metadata or console output in app/vendor, components/vendor or the public lib/vendors files
+verify.sh: FAIL (HEAD 78fd225)
 
 === after removing it
-client ip                  cf-connecting-ip read only in lib/employee/client-ip.ts
-client ip callers          only the acknowledge handler
-ip column                  only schema, acknowledgment writer, admin detail reader and its page
-request headers            no other client-identifying header read
-employee logging           nothing logged beyond the fixed invitation-failure string
-training copy              no 'certificate' wording
-verify.sh: FAIL (HEAD 7ba93d7)
+branch                     phase-7-vendor-screening
+vendor public paths        no request metadata, no logging
+screening logging          nothing logged
+screening key              SCREENING_API_KEY read only in lib/screening/index.ts
+verify.sh: PASS (HEAD 78fd225)
 ```
 
-**(b) Real rows from the smoke run** (`psql -x`; the first is the acknowledgment — it carries the IP; the second is the disclosure — ciphertext only, the details text `Minha prima é sócia da fornecedora Smoke 6e2f` appears nowhere in the row):
+**(b) Real rows from the smoke run** (psql -x, copied from the `./verify.sh` output below): a `vendor_responses` row — ciphertext only, the respondent name / role / ownership / PEP details appear nowhere in it — and a `vendor_screenings` row **(local stub)**:
 ```
--[ RECORD 1 ]-------------------------------------
-id          | 41483896-f841-46ef-bb8c-34385f75cdda
-company_id  | 530f27a9-c7d8-4762-9693-aab2a53a777d
-employee_id | 5da7b610-6642-404b-9d02-17b49426481d
-document_id | 99f6a05c-add5-400f-a768-13575cb43b9a
-accepted_at | 2026-10-15 11:18:40.871306+00
-ip_address  | 203.0.113.11
-
--[ RECORD 1 ]+--------------------------------------------------------------
-id           | 1559a4a6-f5ed-48a4-b16d-79671d0f43d5
-company_id   | 530f27a9-c7d8-4762-9693-aab2a53a777d
-employee_id  | 5da7b610-6642-404b-9d02-17b49426481d
-type         | conflict_of_interest_annual
-period_year  | 2026
-content      | vsmoke:QmD5VaSNBDkbg+ZJ:SltaN/tVP8dGV9qPvEdNdQ==:e/pmDUKOHw0…
-submitted_at | 2026-10-15 11:18:42.288733+00
-```
-(`content` truncated to 60 chars by `left()`; the format is `v<keyId>:iv:tag:ciphertext`. The request that stored the acknowledgment also carried `X-Forwarded-For: 198.51.100.99`; it is nowhere in the table.)
-
-**(c) An invited employee row: a hash, not the token — and `invite_token_hash` NULL after Start** (same employee; smoke: the raw token is also asserted absent from the row):
-```
--[ RECORD 1 ]-----+-----------------------------------------------------------------
-id                | 5da7b610-6642-404b-9d02-17b49426481d
-name              | Ana Smoke
-email             | ana6-22628@example.test
-invite_token_hash | 7c48541332fdf0bb74474fc7f54ee14b14e17dda2fcf74457edcebcce1610ffa
-invited_at        | 2026-10-15 11:18:39.705+00
-invite_expires_at | 2026-10-29 11:18:39.705+00
-deactivated_at    | 
-
--- after the Start button (POST /employee/api/session):
--[ RECORD 1 ]-----+-------------------------------------
-id                | 5da7b610-6642-404b-9d02-17b49426481d
-email             | ana6-22628@example.test
-invite_token_hash | 
-invited_at        | 2026-10-15 11:18:39.705+00
-invite_expires_at | 2026-10-29 11:18:39.705+00
+--- smoke evidence: the vendor_responses row exactly as stored (psql -x): ciphertext, no plaintext
+-[ RECORD 1 ]------+------------------------------------------
+id                 | f9e667c7-90e8-4645-b282-1fa1fc6f72b9
+company_id         | dad30264-bc7b-45c3-ab67-8a150c006402
+vendor_id          | 8b445c52-5d52-4b05-b359-409d08ed0c71
+submitted_at       | 2026-10-16 10:57:39.521+00
+respondent_name    | vsmoke:vioqLiIg15aJ3XmR:epNIvQfyTO6Kxjc0…
+respondent_role    | vsmoke:nI/sv6ZJCZJHnlvp:3856i7kmUQkxh1Q1…
+ownership_text     | vsmoke:6oL44IBl6oxjw1sn:cC7b5fXzVuZ+J/ZP…
+pep_exposure       | t
+pep_details        | vsmoke:n4AEu+lsRSbI1nQ7:Ok+Lk9na4a1M1JR7…
+prior_sanctions    | f
+sanctions_details  | 
+antibribery_policy | t
+--- smoke evidence (local stub): the vendor_screenings row of the listed vendor as stored (psql -x)
+-[ RECORD 1 ]--------+-------------------------------------------------------------------------------------------------------------------------------
+id                   | b3ca7a6b-e662-4d4a-8f3c-7cea3244f25e
+company_id           | dad30264-bc7b-45c3-ab67-8a150c006402
+vendor_id            | 8b445c52-5d52-4b05-b359-409d08ed0c71
+screened_at          | 2026-10-16 10:57:40.027+00
+provider             | opensanctions
+dataset              | smoke
+name_screened        | Listed Smoke Corp 28694
+status               | possible_match
+match_count          | 1
+matches              | [{"id": "NK-SMOKE-1", "score": 0.97, "topics": ["sanction"], "caption": "Listed Smoke Corp", "datasets": ["smoke_sanctions"]}]
+error_code           | 
+requested_by_user_id | f489ee96-a6c1-480c-b71a-58078de087db
 ```
 
-**(d) The concurrent double-POST test** (`npx vitest run tests/employee-portal.test.tsx -t concurrent --reporter=verbose`): 8 simultaneous `startSession()` calls with one token → exactly 1 winner and 1 session row; then 3 simultaneous HTTP-handler POSTs → exactly 1 redirect to `/employee` and exactly 1 `Set-Cookie`:
+**(c) The request the smoke stub received (local stub)** — only the vendor name and the country code; the `Authorization` header was present, its value is redacted by the stub:
 ```
- ✓ tests/employee-portal.test.tsx > token -> session > two concurrent POSTs with the same token: exactly one wins 316ms
-      Tests  1 passed | 26 skipped (27)
+{"method":"POST","url":"/match/smoke","authorization":"ApiKey <redacted>","body":{"queries":{"q1":{"schema":"Company","properties":{"name":["Listed Smoke Corp 28694"],"country":["BR"]}}}}}
 ```
-`npm run test -- employee`: **6 files, 101 tests passed** (`employee-csv`, `employee-training`, `employee-completion`, `employee-portal`, `employee-dashboard`, `employee-gate`).
+Unit tests assert the same body shape exactly (`tests/vendors-screening.test.ts`: "sends the vendor name and country … and nothing else").
 
-**Smoke — the Phase 6 lines** (real Postgres + real HTTP through the standalone server + the real dev email sink; the whole run: 230 `ok`, 0 `FAIL`):
+**(d) Live check: LIVE CHECK NOT RUN** — needs `SCREENING_API_KEY` and network access to `api.opensanctions.org`. What I did run, honestly:
 ```
+$ env -u SCREENING_API_KEY scripts/screening-live-check.sh
+screening-live-check: SCREENING_API_KEY is not set — refusing to run (nothing was sent)      (exit 2)
+$ curl -sS -m 15 -X POST https://api.opensanctions.org/match/default
+curl: (56) CONNECT tunnel failed, response 403                                                (the environment proxy refuses the host; not worked around)
+```
+To run it (Esteban, or any session with the key and the host allowed): `SCREENING_API_KEY=… scripts/screening-live-check.sh` (optional `SCREENING_BASE_URL`, `SCREENING_DATASET`, `SCREENING_CHECK_NAME`; default name "Wagner Group"). It makes **one** call through the production client and prints the outcome, status, match count and the top caption/score/datasets — never the key, never the body; exit 0 only on `possible_match`. Paste its output here.
+
+**`npm run test -- vendors`:** 3 files, 89 tests, real Postgres, provider injected or a local HTTP stub; all green. They cover: token (GET doesn't consume, submit consumes once, 4 concurrent submits → one row, expired/used/unknown/archived/replaced → identical page and JSON, resend kills the old link, failed email leaves state untouched, hash-only storage, 30-day TTL), ciphertext in the DB + decrypt in the detail page + "cannot decrypt" state + AAD (another tenant can't decrypt), append-only triggers, rotation covers `vendor_responses`, cross-tenant 404 on the page and every handler, mapping with canned provider JSON (score 0.69 without `match` = no match, 0.7 = possible, empty/malformed body = `bad_response`, 401/403/429/5xx/timeout/refused), cooldown, daily cap (errors count; yesterday and other companies don't), archived blocked, unavailable provider, error never shown as no-match, history+cache in one transaction (a failing insert leaves the cache untouched), one provider call for two simultaneous clicks, key never in the DB/outcomes/console, http non-loopback base URL refused, messages-vocabulary (no approved/clear/clean/safe/aprovado/limpo/seguro/aprobado/limpio/"due diligence completa" in the vendor namespaces of any locale), dashboard-vendor files all use the tenant gate, summary function.
+
+## `./verify.sh` on the final code commit (5109983), exit 0 — full output
+```
+--- commit state
+current HEAD               5109983  (2026-10-16T10:56:32+00:00)
+branch                     phase-7-vendor-screening
+comparing against          7b415d4
+commits this pass          20
+uncommitted changes        0 file(s)
+test files changed          21 files changed, 6564 insertions(+), 15 deletions(-)
+--- secrets
+secrets                    none found
+.env.example               present
+--- database
+fresh database             verify_1792148192_27867
+db:migrate                 ok (from scratch)
+tables created             21
+--- lint
+lint                       ok
+--- typecheck
+typecheck                  ok
+--- tests
+ Test Files  39 passed (39)
+      Tests  596 passed (596)
+   Start at  10:56:47
+   Duration  22.12s (tests 53%, import 26%, setup 13%, environment 5%, transform 2%)
+
+     Import  249 modules were evaluated 1401 times · 15.35s total, 26% of tracked time
+             ~3.16s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+test exit code             0
+counts                     total=596 pass=596 fail=0 skip=0
+--- build
+build                      ok
+standalone output          present
+--- smoke
+ok    BR header -> redirect to /br
+ok    AR header -> redirect to /ar
+ok    DE header -> 200 on /
+ok    cookie country=mx beats BR header
+ok    deep link /ar/pricing not redirected (200)
+ok    /ar carries noindex (disabled country)
+ok    /br has no noindex (enabled country)
+ok    sitemap.xml has <loc> entries
+ok    sitemap.xml excludes disabled /ar
+ok    cookie country=other + BR header -> 200, no redirect
+ok    redirect status is 307
+ok    redirect carries cache-control: no-store
+ok    invalid country cookie ignored, header decides
+ok    /checkout -> 200
+ok    /legal/terms -> 200
+ok    /zz -> 404
+ok    /pt-BR -> 404
+ok    robots.txt disallows /dashboard
+ok    robots.txt disallows /employee
+ok    robots.txt disallows /checkout
+ok    robots.txt disallows /onboarding
+ok    ENABLED_COUNTRIES=br,ar at runtime: /ar has no noindex
+ok    ENABLED_COUNTRIES=br,ar at runtime: /mx still noindex
+ok    /checkout?c=br shows the form and the TEST PRICE label
+ok    /checkout?c=ar refused (not in ENABLED_COUNTRIES): no form
+ok    /dashboard without a session redirects to /login
+ok    /onboarding without a session redirects to /login
+ok    POST /api/checkout -> attempt id + hosted-checkout URL
+ok    return_token cookie is httpOnly
+ok    DB: attempt is pending, 0 companies for that email
+ok    invalid CNPJ -> 422 invalid_tax_id
+ok    simulator page renders Pay/Fail buttons
+ok    return page + status poll before payment: still pending, nothing provisioned
+ok    bad signature -> 401
+ok    valid signature but forged payment ref (processor does not confirm) -> 422
+ok    processor says pending -> nothing provisioned
+ok    simulator Pay -> 303 back to /checkout/return
+ok    DB: attempt paid, 1 admin user, 1 company, 1 billing record
+ok    replayed webhook (new event, already paid) -> 200, no second company
+ok    payment_event ledger has the replayed event exactly once
+ok    status poll after payment: paid + signed in (session cookie issued)
+ok    /onboarding reachable with that session
+ok    return token is single-use: reuse -> paid but NOT signed in
+ok    no cookie at all -> paid but NOT signed in
+ok    welcome email landed in the dev outbox with a link
+ok    welcome link: first use signs in (303 -> /onboarding + session cookie)
+ok    welcome link: second use is refused (-> /login?error)
+ok    sign-in: known and unknown emails get the identical response
+ok    sign-in: link emailed to the known address only
+ok    sign-in link: first use sets a session
+ok    sign-in link: second use is refused
+ok    /dashboard with the sign-in session redirects to /onboarding (profile incomplete)
+ok    onboarding with an SVG disguised as .png is rejected (error=logo)
+ok    onboarding with a PNG saves it, ignoring a foreign company id
+ok    DB: only the session's company was renamed
+ok    uploaded logo served with fixed content-type + nosniff
+ok    /dashboard now loads for the signed-in admin
+ok    onboarding created the six documents, all version 1
+ok    documents list -> 200 and links the code of conduct
+ok    document view -> 200 with title and company name
+ok    PDF download: %PDF body, application/pdf, attachment with ASCII filename, no-store
+ok    PDF logs the unusable logo once and still renders (stub logo)
+ok    documents routes without a session: view -> /login, PDF -> 401
+ok    second company is provisioned and signed in
+ok    second company completes onboarding
+ok    second company: first company's document view -> 404
+ok    second company: first company's document PDF -> 404
+ok    second company: malformed document id -> 404
+ok    regenerate with unchanged inputs creates nothing
+ok    rename the company via onboarding: documents untouched until regenerated
+ok    regenerate after the rename creates v2 for all six
+ok    v1 is intact: same content in the database, still viewable with the old name
+ok    v2 carries the new name
+ok    regenerate: bad type -> 400, no session -> 401
+ok    database: direct UPDATE of a document is rejected (append-only trigger)
+ok    database: direct DELETE of a document is rejected (append-only trigger)
+ok    dashboard/overview: signed in -> 200 with the main nav and all eight section links
+ok    dashboard/overview: marks itself aria-current="page"
+ok    dashboard/overview: no session -> redirect to /login
+ok    dashboard/overview: company 2 never sees company 1's name, payment or document id
+ok    dashboard/overview: company 1 never sees company 2's name or payment
+ok    dashboard/documents: signed in -> 200 with the main nav and all eight section links
+ok    dashboard/documents: marks itself aria-current="page"
+ok    dashboard/documents: no session -> redirect to /login
+ok    dashboard/documents: company 2 never sees company 1's name, payment or document id
+ok    dashboard/documents: company 1 never sees company 2's name or payment
+ok    dashboard/employees: signed in -> 200 with the main nav and all eight section links
+ok    dashboard/employees: marks itself aria-current="page"
+ok    dashboard/employees: no session -> redirect to /login
+ok    dashboard/employees: company 2 never sees company 1's name, payment or document id
+ok    dashboard/employees: company 1 never sees company 2's name or payment
+ok    dashboard/training: signed in -> 200 with the main nav and all eight section links
+ok    dashboard/training: marks itself aria-current="page"
+ok    dashboard/training: no session -> redirect to /login
+ok    dashboard/training: company 2 never sees company 1's name, payment or document id
+ok    dashboard/training: company 1 never sees company 2's name or payment
+ok    dashboard/whistleblower: signed in -> 200 with the main nav and all eight section links
+ok    dashboard/whistleblower: marks itself aria-current="page"
+ok    dashboard/whistleblower: no session -> redirect to /login
+ok    dashboard/whistleblower: company 2 never sees company 1's name, payment or document id
+ok    dashboard/whistleblower: company 1 never sees company 2's name or payment
+ok    dashboard/vendors: signed in -> 200 with the main nav and all eight section links
+ok    dashboard/vendors: marks itself aria-current="page"
+ok    dashboard/vendors: no session -> redirect to /login
+ok    dashboard/vendors: company 2 never sees company 1's name, payment or document id
+ok    dashboard/vendors: company 1 never sees company 2's name or payment
+ok    dashboard/billing: signed in -> 200 with the main nav and all eight section links
+ok    dashboard/billing: marks itself aria-current="page"
+ok    dashboard/billing: no session -> redirect to /login
+ok    dashboard/billing: company 2 never sees company 1's name, payment or document id
+ok    dashboard/billing: company 1 never sees company 2's name or payment
+ok    dashboard/settings: signed in -> 200 with the main nav and all eight section links
+ok    dashboard/settings: marks itself aria-current="page"
+ok    dashboard/settings: no session -> redirect to /login
+ok    dashboard/settings: company 2 never sees company 1's name, payment or document id
+ok    dashboard/settings: company 1 never sees company 2's name or payment
+ok    billing: each company sees its own payment, formatted pt-BR
+ok    overview: counts come from the session's company (0 employees, 0 open cases)
+ok    documents list: draft status shown next to the documents
+ok    document pages: no session -> /login; company 2 -> 404 (unchanged inside the shell)
+ok    headers on /dashboard: private no-store, frame-ancestors 'none', X-Frame-Options DENY, Referrer-Policy same-origin
+ok    headers on /dashboard/settings: private no-store, frame-ancestors 'none', X-Frame-Options DENY, Referrer-Policy same-origin
+ok    headers on /dashboard/documents: private no-store, frame-ancestors 'none', X-Frame-Options DENY, Referrer-Policy same-origin
+ok    headers on /onboarding: private no-store, frame-ancestors 'none', X-Frame-Options DENY, Referrer-Policy same-origin
+ok    headers on /login: private no-store, frame-ancestors 'none', X-Frame-Options DENY, Referrer-Policy same-origin
+ok    PDF keeps its own Cache-Control: no-store
+ok    settings: no session -> 401
+ok    settings: SVG disguised as PNG -> error=logo, nothing changed
+ok    settings: save -> 303 to ?saved=1
+ok    settings: DB has the new name, industry and a new logo file
+ok    settings: onboarding_completed_at is intact
+ok    settings: company 2 untouched by the posted company id
+ok    settings: saving regenerated nothing (still 12 documents)
+ok    settings: old logo file is kept on disk
+ok    settings: page shows the new logo and the not-regenerated notice linking to Documents
+ok    settings: header shows the new name, tax id and admin email are read-only text
+ok    audit trail: v1 document view still carries the name it was generated with (PDF: tests/dashboard-audit)
+ok    sign-out form carries a server action (hidden action fields found)
+ok    before sign-out the copied session reaches the dashboard
+ok    sign-out action: 303 to /login
+ok    sign-out action: session cookie is cleared
+ok    after sign-out: /dashboard redirects to /login
+ok    after sign-out: a section and the PDF route are refused too
+ok    REPLAY pre-sign-out cookie: /dashboard -> /login
+ok    REPLAY pre-sign-out cookie: /dashboard/billing -> /login
+ok    REPLAY pre-sign-out cookie: PDF route -> 401
+ok    REPLAY pre-sign-out cookie: settings/save -> 401
+ok    REPLAY pre-sign-out cookie: regenerate -> 401
+ok    REPLAY did not change the company name
+ok    sign in again after sign-out: link sets a new session
+ok    sign in again: new session reaches /dashboard (200) and the PDF
+ok    sign in again: the pre-sign-out cookie is still refused
+ok    the original jar (same user, another browser) ended too: all of that user's sessions end
+ok    channel page: 200 in pt-BR, branded with the company name, form fields present
+ok    channel page headers: no-store, no-referrer, DENY, noindex (header + meta), NO cookie, no banner
+ok    unknown channel slug -> 404; status page renders
+ok    the test image really carries the marker before upload
+ok    anonymous submit with probe headers -> 201 + tracking code XXXX-XXXX-XXXX, no cookie set
+ok    DB: anonymous row — is_anonymous, NULL contact, status new, ciphertext description (no plaintext)
+--- smoke evidence: the anonymous report row exactly as stored (psql)
+-[ RECORD 1 ]-----+-----------------------------------------------------------------------
+id                | d483eb7b-4674-4703-8d13-b4b6aa903b5c
+company_id        | dad30264-bc7b-45c3-ab67-8a150c006402
+tracking_code     | DKRP9XRC94FD
+category          | fraud
+description       | vsmoke:UcKAGy6CrLBFZwlT:7sWw9526kqnaG6XnRikuUQ==:TgeWM5D0sd/EbsajshOxt
+is_anonymous      | t
+reporter_contact  | 
+status            | new
+status_changed_at | 2026-10-16 10:57:29.888368+00
+resolved_at       | 
+created_at        | 2026-10-16 10:57:29.888368+00
+
+ok    full-database marker search (headers, cookie, client file name, EXIF marker): 0 hits in a non-trivial dump
+--- smoke evidence: marker search over the whole database dump (3206 lines, 8 markers): 0 hit(s)
+--- smoke evidence: positive control — the same search after deliberately inserting a marker row: 1 hit(s)
+ok    positive control: the same search DOES find a marker that is really there
+ok    evidence: one row, server-chosen name, sniffed type image/jpeg, stored outside the uploads dir
+ok    evidence on disk is not an image (no JPEG magic) and carries no marker
+--- smoke evidence: the evidence file on disk (ls -l; first 32 bytes, hex + text)
+-rw------- 1 root root 4005 Oct 16 10:57 /tmp/tmp.W9jhucvf4t/43e8e8c3c26e33ad5240d73f79a577f9.enc
+000000 76 73 6d 6f 6b 65 3a 5a 47 34 4f 64 6f 30 2b 52  >vsmoke:ZG4Odo0+R<
+000010 45 44 61 72 6f 77 71 3a 4d 35 41 55 30 76 57 47  >EDarowq:M5AU0vWG<
+000020
+ok    the public uploads route cannot serve the evidence file
+ok    public status: right code -> 'Recebida' and nothing about the report
+ok    public status: wrong, malformed and other-company answers are byte-identical 404s
+ok    dashboard list: report appears (link, 'Recebida'), channel URL shown, no description text
+ok    dashboard detail decrypts the description and says 'Anônima'
+ok    evidence download: attachment, image/jpeg, nosniff, private no-store; a JPEG with the EXIF marker gone
+ok    evidence download without a session -> 401
+ok    add a note -> 303; it shows decrypted, and is ciphertext in the database
+ok    move to 'under review' -> public status shows 'Em análise'
+ok    close it -> resolved_at set, public status shows 'Encerrada'
+ok    case log: note + two status changes recorded; the overview no longer counts it as open
+ok    reopen clears the resolution date
+ok    database: the case log is append-only (UPDATE and DELETE rejected)
+ok    company 2: report detail -> 404, evidence -> 404, status change -> 404, note -> 404
+ok    company 2: its list shows nothing of company 1's (no id, no slug, no description)
+ok    company 1's report is untouched by company 2's attempts
+ok    intake: invalid category / an SVG named .png -> 422, nothing stored
+ok    intake: a filled honeypot looks like success but stores nothing
+ok    intake: opt-in contact is stored encrypted, is_anonymous = false
+ok    notification emails reached the admin in the dev sink (one per stored report: 2)
+ok    notification email: dashboard link, and none of the report's content, code, category or id
+--- smoke evidence: the notification email as written to the dev sink
+{"to":"smoke-1792148240-28694@example.test","subject":"Nova denúncia recebida no seu canal","text":"Uma nova denúncia foi enviada ao seu canal de denúncias. Entre para analisá-la: http://localhost:40529/dashboard/whistleblower","html":"<p>Uma nova denúncia foi enviada ao seu canal de denúncias. Entre para analisá-la: <a href=\"http://localhost:40529/dashboard/whistleblower\">http://localhost:40529/dashboard/whistleblower</a></p>"}
 ok    import (BOM + ';' + one bad line + one duplicate): 303, created 3, skipped 1, invalid 1, line 5 reported, no email in the URL
 ok    DB: three employees, emails lower-cased, none invited yet
 ok    admin grid lists the three, 'Não convidado', and the completion line says 0%
 ok    send pending invitations: 303, 3 sent, 0 failed, 0 remaining
 ok    three invitation emails reached the dev sink, each with its own /employee/<43-char token> link
 --- smoke evidence: the invitation email as written to the dev sink
-{"to":"ana6-22628@example.test","subject":"A Smoke Settings Ltda convida você a concluir seu treinamento de compliance","text":"Olá Ana Smoke, a Smoke Settings Ltda implementou um programa de compliance e precisamos que você conclua duas etapas curtas: 1) ler e aceitar o código de conduta e as políticas, 2) concluir um treinamento breve (15-20 min).\n\nComeçar →: http://localhost:44329/employee/uBiQtludeDTA_cxpAMBb0HWLk9BgnFiEOhiJu-oXrI4\n","html":"<p>Olá Ana Smoke, a Smoke Settings Ltda implementou um programa de compliance e precisamos que você conclua duas etapas curtas: 1) ler e aceitar o código de conduta e as políticas, 2) concluir um treinamento breve (15-20 min).</p><p><a href=\"http://localhost:44329/employee/uBiQtludeDTA_cxpAMBb0HWLk9BgnFiEOhiJu-oXrI4\">Começar →</a></p><p>http://localhost:44329/employee/uBiQtludeDTA_cxpAMBb0HWLk9BgnFiEOhiJu-oXrI4</p>"}
+{"to":"ana6-28694@example.test","subject":"A Smoke Settings Ltda convida você a concluir seu treinamento de compliance","text":"Olá Ana Smoke, a Smoke Settings Ltda implementou um programa de compliance e precisamos que você conclua duas etapas curtas: 1) ler e aceitar o código de conduta e as políticas, 2) concluir um treinamento breve (15-20 min).\n\nComeçar →: http://localhost:40529/employee/hu6ryhVI0mST5OPGTaifshU-2r7qP6uevPCpmK_TgUM\n","html":"<p>Olá Ana Smoke, a Smoke Settings Ltda implementou um programa de compliance e precisamos que você conclua duas etapas curtas: 1) ler e aceitar o código de conduta e as políticas, 2) concluir um treinamento breve (15-20 min).</p><p><a href=\"http://localhost:40529/employee/hu6ryhVI0mST5OPGTaifshU-2r7qP6uevPCpmK_TgUM\">Começar →</a></p><p>http://localhost:40529/employee/hu6ryhVI0mST5OPGTaifshU-2r7qP6uevPCpmK_TgUM</p>"}
 ok    invitation: pt-BR, names the employee, offers the two steps, carries no document text
 ok    DB: invited_at set, 14-day expiry, only the sha256 hash stored (the raw token is nowhere in the row)
 --- smoke evidence: the invited employee row (psql -x): a hash, not the token
 -[ RECORD 1 ]-----+-----------------------------------------------------------------
-id                | 5da7b610-6642-404b-9d02-17b49426481d
+id                | ae8c95fe-97a2-42f8-ac03-83c861a074d7
 name              | Ana Smoke
-email             | ana6-22628@example.test
-invite_token_hash | 7c48541332fdf0bb74474fc7f54ee14b14e17dda2fcf74457edcebcce1610ffa
-invited_at        | 2026-10-15 11:18:39.705+00
-invite_expires_at | 2026-10-29 11:18:39.705+00
+email             | ana6-28694@example.test
+invite_token_hash | 838c24b7d769487ead067b8d662aaf5199da508b40ef253c0b00364daea738ec
+invited_at        | 2026-10-16 10:57:33.165+00
+invite_expires_at | 2026-10-30 10:57:33.165+00
 deactivated_at    | 
 
 ok    GET /employee/<token> (twice): 200 'Start' page with a hidden token field and the company name
@@ -133,11 +361,11 @@ ok    cookie jar: the session cookie is scoped to Path=/employee (never sent to 
 ok    DB: invite_token_hash is NULL after Start, exactly one session row, only its hash stored
 --- smoke evidence: the same employee row after Start (invite_token_hash is NULL)
 -[ RECORD 1 ]-----+-------------------------------------
-id                | 5da7b610-6642-404b-9d02-17b49426481d
-email             | ana6-22628@example.test
+id                | ae8c95fe-97a2-42f8-ac03-83c861a074d7
+email             | ana6-28694@example.test
 invite_token_hash | 
-invited_at        | 2026-10-15 11:18:39.705+00
-invite_expires_at | 2026-10-29 11:18:39.705+00
+invited_at        | 2026-10-16 10:57:33.165+00
+invite_expires_at | 2026-10-30 10:57:33.165+00
 
 ok    portal home: 200, private no-store, checklist shows 0 of 8 steps
 ok    six document pages render (200) and six acknowledgments are accepted (303)
@@ -145,11 +373,11 @@ ok    double click: still exactly six acknowledgment rows
 ok    IP stored from CF-Connecting-IP (203.0.113.11..16), never from X-Forwarded-For
 --- smoke evidence: one acknowledgments row exactly as stored (psql -x) — it carries the client IP
 -[ RECORD 1 ]-------------------------------------
-id          | 41483896-f841-46ef-bb8c-34385f75cdda
-company_id  | 530f27a9-c7d8-4762-9693-aab2a53a777d
-employee_id | 5da7b610-6642-404b-9d02-17b49426481d
-document_id | 99f6a05c-add5-400f-a768-13575cb43b9a
-accepted_at | 2026-10-15 11:18:40.871306+00
+id          | 65d4989e-f04b-4903-ae04-d5c9c927d272
+company_id  | dad30264-bc7b-45c3-ab67-8a150c006402
+employee_id | ae8c95fe-97a2-42f8-ac03-83c861a074d7
+document_id | 50e81ab3-0396-4437-86e3-f7a2efe6621e
+accepted_at | 2026-10-16 10:57:34.258867+00
 ip_address  | 203.0.113.11
 
 ok    a document of ANOTHER company: page -> 404, acknowledge -> 404, no row written
@@ -162,13 +390,13 @@ ok    disclosure: first submit recorded; the second in the same year says 'alrea
 ok    disclosure content is ciphertext in the database (no plaintext anywhere in the row)
 --- smoke evidence: the disclosures row exactly as stored (psql -x): ciphertext, no plaintext
 -[ RECORD 1 ]+--------------------------------------------------------------
-id           | 1559a4a6-f5ed-48a4-b16d-79671d0f43d5
-company_id   | 530f27a9-c7d8-4762-9693-aab2a53a777d
-employee_id  | 5da7b610-6642-404b-9d02-17b49426481d
+id           | 26cfbb92-79b8-4244-9a17-1fe56e5bdbbe
+company_id   | dad30264-bc7b-45c3-ab67-8a150c006402
+employee_id  | ae8c95fe-97a2-42f8-ac03-83c861a074d7
 type         | conflict_of_interest_annual
 period_year  | 2026
-content      | vsmoke:QmD5VaSNBDkbg+ZJ:SltaN/tVP8dGV9qPvEdNdQ==:e/pmDUKOHw0…
-submitted_at | 2026-10-15 11:18:42.288733+00
+content      | vsmoke:7WmRgoxbxOX48XEi:acw+UiBSLT+oLXSO7/q/gA==:0GeWmWaqYQe…
+submitted_at | 2026-10-16 10:57:35.542112+00
 
 ok    admin grid: completion 33% (8 of 24 steps), 1 of 3 fully complete
 ok    admin grid: Ana's eight marks are 'Feito' (6 documents, training, disclosure); the other two are invited, nothing done
@@ -183,46 +411,77 @@ ok    company 2 admin cannot import into or read company 1's roster; its own imp
 ok    Carla opens a session, then the admin deactivates her: her session is deleted and the cookie is refused (401 / friendly page)
 ok    deactivated Carla leaves the numbers: the grid says 'Conclusão 50% · 1 de 2' (8 of 16)
 ok    sign-out in the portal: the session row is gone and the same cookie is refused
-```
+ok    robots.txt disallows /vendor
+ok    add vendor: 303 back to the list; three vendors stored for company 1, email lower-cased, country upper-cased
+ok    add vendor: an empty name is refused with error=name_required and stores nothing
+ok    vendors list: the three vendors, 'Não triado', 'Não enviado'
+ok    send questionnaire: 303 sent; the dev sink holds a /vendor/<43-char token> link
+--- smoke evidence: the questionnaire email as written to the dev sink
+{"to":"vendor-l-28694@example.test","subject":"Smoke Settings Ltda pede que você preencha um breve questionário de integridade","text":"Olá, a Smoke Settings Ltda pede que você preencha um breve questionário de integridade, como parte do seu programa de compliance. Leva poucos minutos e as respostas serão enviadas à Smoke Settings Ltda. O questionário não é uma determinação legal.\n\nAbrir o questionário →: http://localhost:40529/vendor/TgPvd07WN23FCf66bOR5H6kvfHxmW5iRMr-81gcf_Mw\n","html":"<p>Olá, a Smoke Settings Ltda pede que você preencha um breve questionário de integridade, como parte do seu programa de compliance. Leva poucos minutos e as respostas serão enviadas à Smoke Settings Ltda. O questionário não é uma determinação legal.</p><p><a href=\"http://localhost:40529/vendor/TgPvd07WN23FCf66bOR5H6kvfHxmW5iRMr-81gcf_Mw\">Abrir o questionário →</a></p><p>http://localhost:40529/vendor/TgPvd07WN23FCf66bOR5H6kvfHxmW5iRMr-81gcf_Mw</p>"}
+ok    DB: only the sha256 of the token is stored, 30-day expiry, status sent
+ok    GET /vendor/<token> (twice): 200 form in pt-BR with the company name and the not-a-legal-determination line; set no cookie
+ok    vendor page headers: private no-store, no-referrer, DENY, noindex
+ok    GET did not consume the link: the hash is still stored, no response yet
+ok    invalid answers: JSON errors (respondentName required), the link is NOT consumed, nothing stored
+ok    submit: {ok:true}, no cookie set, no-store
+ok    DB: the link is consumed (hash NULL), status submitted, exactly one response
+ok    the used link: submit -> {invalid:true}; GET -> the friendly page (HTTP 200, no stack trace); still one response
+ok    the vendor answers are ciphertext in the database (no plaintext anywhere in the row), booleans plain
+--- smoke evidence: the vendor_responses row exactly as stored (psql -x): ciphertext, no plaintext
+-[ RECORD 1 ]------+------------------------------------------
+id                 | f9e667c7-90e8-4645-b282-1fa1fc6f72b9
+company_id         | dad30264-bc7b-45c3-ab67-8a150c006402
+vendor_id          | 8b445c52-5d52-4b05-b359-409d08ed0c71
+submitted_at       | 2026-10-16 10:57:39.521+00
+respondent_name    | vsmoke:vioqLiIg15aJ3XmR:epNIvQfyTO6Kxjc0…
+respondent_role    | vsmoke:nI/sv6ZJCZJHnlvp:3856i7kmUQkxh1Q1…
+ownership_text     | vsmoke:6oL44IBl6oxjw1sn:cC7b5fXzVuZ+J/ZP…
+pep_exposure       | t
+pep_details        | vsmoke:n4AEu+lsRSbI1nQ7:Ok+Lk9na4a1M1JR7…
+prior_sanctions    | f
+sanctions_details  | 
+antibribery_policy | t
 
-## `./verify.sh` on the final code commit (34e83ad) — exit 0
+ok    vendor_responses and vendor_screenings are append-only (UPDATE and DELETE rejected)
+ok    vendor detail (admin): the DECRYPTED answers, 'Respondido', private no-store
+ok    (local stub) screen the listed vendor: 303 to its page, 'Possível correspondência — revisão necessária' with the match, 97%, list and entity id
+ok    (local stub) the lists-and-date caveat is next to the result and the page never says approved/clear/safe
+ok    (local stub) screen the other vendor: 'Nenhum resultado nas listas triadas em <data>'
+ok    (local stub) a second click inside the cooldown is refused (screen=cooldown) and the stub saw NO new request
+ok    (local stub) provider returns 500: recorded as an error ('Falha na triagem', code upstream), NEVER as 'nenhum resultado'; the vendor cache says error
+ok    (local stub) three runs in the history table: possible_match, no_match, error; the cache matches the latest run
+--- smoke evidence (local stub): the vendor_screenings row of the listed vendor as stored (psql -x)
+-[ RECORD 1 ]--------+-------------------------------------------------------------------------------------------------------------------------------
+id                   | b3ca7a6b-e662-4d4a-8f3c-7cea3244f25e
+company_id           | dad30264-bc7b-45c3-ab67-8a150c006402
+vendor_id            | 8b445c52-5d52-4b05-b359-409d08ed0c71
+screened_at          | 2026-10-16 10:57:40.027+00
+provider             | opensanctions
+dataset              | smoke
+name_screened        | Listed Smoke Corp 28694
+status               | possible_match
+match_count          | 1
+matches              | [{"id": "NK-SMOKE-1", "score": 0.97, "topics": ["sanction"], "caption": "Listed Smoke Corp", "datasets": ["smoke_sanctions"]}]
+error_code           | 
+requested_by_user_id | f489ee96-a6c1-480c-b71a-58078de087db
 
-```
---- commit state
-current HEAD               34e83ad  (2026-10-15T11:17:45+00:00)
-branch                     phase-6-employee-portal
-comparing against          7b415d4
-commits this pass          12
-uncommitted changes        0 file(s)
-test files changed          17 files changed, 4618 insertions(+), 9 deletions(-)
---- secrets
-secrets                    none found
-.env.example               present
---- database
-fresh database             verify_1792063065_21887
-db:migrate                 ok (from scratch)
-tables created             19
---- lint
-lint                       ok
---- typecheck
-typecheck                  ok
---- tests
- Test Files  36 passed (36)
-      Tests  505 passed (505)
-   Start at  11:17:59
-   Duration  17.44s (tests 49%, import 27%, setup 14%, environment 6%, transform 3%)
-
-     Import  227 modules were evaluated 1149 times · 12.27s total, 27% of tracked time
-             ~2.36s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
-             learn more: https://vitest.dev/guide/improving-performance#test-isolation
-test exit code             0
-counts                     total=505 pass=505 fail=0 skip=0
---- build
-build                      ok
-standalone output          present
-...
-(smoke: 230 ok / 0 FAIL; the earlier phases' lines and the Phase 6 block above)
-...
+--- smoke evidence (local stub): the request the stub received for the listed vendor (Authorization value redacted by the stub)
+{"method":"POST","url":"/match/smoke","authorization":"ApiKey <redacted>","body":{"queries":{"q1":{"schema":"Company","properties":{"name":["Listed Smoke Corp 28694"],"country":["BR"]}}}}}
+ok    (local stub) the outgoing body carries ONLY the vendor name and country code; the Authorization header was present
+ok    (local stub) the API key is nowhere in the database or the server log
+ok    company 2 admin: company 1's vendor page -> 404; send / archive / unarchive / screen -> 404; its own list shows none; nothing changed
+ok    no session: the vendor handlers answer 401 and the list redirects to /login
+ok    archive: gone from the list, back under 'show archived', still in the table; screening it -> screen=archived
+ok    (no key) screening unavailable: the page says so and has no screen button, the click is refused, the stub saw nothing, the questionnaire can still be sent
+ok    simulator Fail -> attempt failed, nothing provisioned, status endpoint says failed
+ok    ALLOW_FAKE_PAYMENTS unset: simulator page 404
+ok    ALLOW_FAKE_PAYMENTS unset: simulator action 404
+ok    ALLOW_FAKE_PAYMENTS unset: webhook endpoint 404
+ok    ALLOW_FAKE_PAYMENTS unset: POST /api/checkout -> 503 unavailable
+ok    ALLOW_FAKE_PAYMENTS unset: /checkout?c=br shows 'unavailable', no form
+ok    PAYMENT_PROVIDER unset (default none): /checkout?c=br unavailable too
+smoke: PASS (port 40529)
+smoke                      ok
 --- invariants
 migration drift            schema changed, migration present
 tenant isolation           all tenant tables carry company_id
@@ -238,46 +497,48 @@ ip column                  only schema, acknowledgment writer, admin detail read
 request headers            no other client-identifying header read
 employee logging           nothing logged beyond the fixed invitation-failure string
 training copy              no 'certificate' wording
+vendor public paths        no request metadata, no logging
+screening logging          nothing logged
+screening key              SCREENING_API_KEY read only in lib/screening/index.ts
 KNOWN_ISSUES.md            present
 --- result
-verify.sh: PASS (HEAD 34e83ad)
-
+verify.sh: PASS (HEAD 5109983)
 ```
 
-## Existing tests I touched (each forced by a shape change)
-- `tests/tenant.test.ts` — the seed adds `periodYear: 2026` to its disclosure and one `employee_sessions` row (the new tenant table must be seeded; the test iterates `TENANT_TABLES`).
-- `tests/dashboard-gate.test.ts` — the expected entry-point list gains the 8 new employee routes/pages.
-- `tests/dashboard-headers.test.ts` — the rule list filter also skips `/employee*` (those are asserted in `tests/employee-gate.test.ts`).
-- `tests/dashboard-routes.test.tsx` — employees page now takes `searchParams`; "—" for completion became "0%" (company A has one employee with nothing done).
-- `tests/session-revocation.test.tsx` — employees page `searchParams` prop.
-- `tests/whistleblower-keys-and-migration.test.ts` — rotation now also covers a disclosure: `seen` has `disclosures`, rewritten 4→5, plus an append-only re-check.
-No test was weakened or skipped. `tests/documents-store.test.ts` (TRUNCATE documents, acknowledgments) still passes untouched.
+## CI
+Pushed tip / CI run id: filled in below after the push (see the last section). Code tip = 5109983; HANDOFF-only commits follow it.
 
 ## Judgment calls
-1. **Mail first, then the token hash.** `sendInvite` sends the email with a fresh token and only after a successful send stores `sha256(token)`, `invited_at` and the 14-day expiry. A failed send therefore changes nothing — including a previous link, which keeps working. (The alternative — replace the hash first — would kill a good link when the mail bounces.)
-2. **Deactivate keeps `invited_at`; reactivate clears `invited_at`, `invite_expires_at`, `invite_token_hash`** so a reactivated person shows "Não convidado" and is picked up by "send pending" ("left un-invited" in the notes). A reactivated employee who already completed everything is therefore also "pending" for a new invite; their records stay.
-3. **Friendly page**: one page for every failure (unknown/used/expired/re-issued/deactivated link, missing/ended session, sign-out). Chosen status **200 everywhere**: GET of a bad `/employee/<token>` renders that content inline; the POST failure is a 303 to `/employee/link-invalid` (200). No session exists there, so the company language is unknown: the message is shown in pt-BR, es and en together.
-4. **Disclosure year = UTC calendar year** (as the notes said); tested at the 31 Dec 23:59Z / 1 Jan 00:00Z boundary. Consequence for Brazil (UTC−3): a disclosure submitted between 21:00 and 23:59 São Paulo time on 31 December is recorded under the *next* year (and the next year's form will then show "already submitted" for someone who thinks they filed last year's). Rare, and harmless to the record; say so if you want São Paulo time instead.
-5. **Quiz result** returns per-question correct/incorrect + the explanation, but **not which option was right**, so a failing employee cannot just read off the key (explanations still teach). The quiz is a client component using `fetch`; with JavaScript disabled it cannot be submitted (a form-only fallback was not asked for).
-6. **Invite email for non-pt-BR companies** uses the CONTENT.md two-step body even though training is unavailable there (AR/MX are not launched). Flag for when ar/mx are enabled.
-7. **CSV import result in the redirect URL** as counts + `line:reason` pairs only (never a name or email), so the result page needs no server-side flash storage. Duplicates inside the file count under "skipped".
-8. **`countEmployees` (Overview "N colaboradores") counts active employees only**, consistent with "deactivated leave every number".
-9. **Three entry points are exempt from the `requireEmployee` coverage test** and listed with reasons in `tests/employee-gate.test.ts`: `[token]/page.tsx` (read-only link page), `link-invalid/page.tsx` (no session exists), `api/session/route.ts` (the exchange). The test also asserts the exempt files never touch the portal session.
-10. **Employee CSV/PDF**: the CSV starts with a UTF-8 BOM (Excel + accents), localized header, ISO timestamps; PDF is **A4 landscape** (ten columns) with the table header repeated on every page — the notes said A4, "a compact table that paginates".
-11. **Training copy states what "the company's policies" say** (gift limits, no gifts to public officials without prior approval, no retaliation). Those statements are consistent with the phase 3 pt-BR templates I read, but the lessons are drafts: `lib/training/REVIEW.md` asks Esteban to check them against the generated policies.
-12. **No rate limit on the exchange** (as instructed); no email-me-a-new-link; sessions are not purged when expired (see below).
+1. **Screening runs inside a DB transaction that holds a per-company advisory lock across the provider call (≤ 10 s).** Why: guards (cooldown, cap) must be race-free, otherwise two fast clicks both pass and both bill. Cost: one pooled connection held for the duration of a click, and a company's screenings are serialised. Fine for this traffic; the alternative (reserve-then-update) is impossible because the history table is append-only.
+2. **A provider that throws before sending (e.g. non-https base URL) → "unavailable", nothing recorded**; a provider that returns an `error` outcome → recorded as `error` (counts toward the daily cap, may be billed).
+3. **`possible_match` also requires nothing else than `match === true` or `score >= 0.7`**, and the whole response is `bad_response` if any element of `results` is not an object with a string `id` (strict on purpose; a lenient parse could turn a changed API into "no match").
+4. **Questionnaire page language = the company's country locale** (pt-BR for BR); the shared "invalid link" and "thanks" pages show pt-BR + es + en, like the employee portal. Root layout `lang="pt-BR"`, the `<main lang>` carries the real one.
+5. **Without JavaScript a validation error redirects to `/vendor/<token>?retry=1` and the typed answers are lost** (with JavaScript — the normal case — they are kept). The requirement "re-render without losing answers" is met for the JS path; native `required`/`maxlength` attributes catch most errors first. A server-rendered re-post would have needed react-dom/server in a handler or a server action; not worth it for v1.
+6. **`via=js` is a form field, not an `Accept` header,** because the invariant forbids reading any request header on the public vendor paths.
+7. **Public vendor paths log nothing, but `lib/vendors/invites.ts` (dashboard side) logs the fixed string "vendor questionnaire email failed"** (same as phase 6); `invites.ts` is deliberately outside `check-vendor-privacy.sh`.
+8. **No external link to the provider's entity page** — I am not certain of the URL form, so the entity id is shown as text (as the notes said).
+9. **Dashboard locale strings for es-AR and es-MX are identical** (neutral Spanish, "screening" kept as in the existing dashboard copy). Native-speaker review via `messages/DRAFTS.md`.
+10. **Archived vendors:** the questionnaire link dies with archiving (the submit `UPDATE` requires `archived_at IS NULL`); unarchiving does not revive it — resend.
+11. **Existing flaky test fixed so `verify.sh` can exit 0:** `tests/country-pages.test.tsx` (phase 1, untouched by this phase) intermittently fails the run with "ReferenceError: window is not defined" from React work still queued after jsdom teardown (vitest globals are off, so testing-library never unmounts). It reproduced with that file alone under load (1 of 12 parallel runs, and twice in six full-suite runs on this branch). I added `cleanup()` in its `afterEach`; 24 of 24 loaded runs were clean afterwards. That is evidence, not proof — if `Errors` ever reappears in the vitest summary it is this file.
+12. **`scripts/smoke.sh` is re-runnable only on a fresh database** (a pre-existing step counts companies by name); I hit that by running it twice on one DB, not a regression.
 
 ## Found / for the supervisor
-- **Token handling I would harden further:** (1) the token is in the URL *path*, so it can end up in Cloudflare/Caddy access logs and browser history; a URL *fragment* (`/employee#<token>`, read by a client script and POSTed) would keep it out of server logs, at the price of requiring JS on the Start page. (2) `employee_sessions` rows are never deleted when they expire (only on sign-out/deactivation); harmless but they accumulate — a purge in the phase 9 ops timer. (3) An employee whose session ended (8 h) or whose link was used has no self-service way back; the admin must re-send (out of scope per notes) — expect support load on day one.
-- **Mail scanners:** the GET page consumes nothing, and the exchange is a POST, so a scanner that merely fetches the URL cannot burn the link; a scanner that *submits forms* would (none of the common ones do). Phase 9's real-inbox check is still the proof (already in the plan).
-- **`cf-connecting-ip` is only trustworthy if the origin accepts Cloudflare traffic only** (already carried to phase 9). Until then the IP on an acknowledgment is whatever a direct caller sends; the invariant guarantees it is read in one place and stored in one column.
-- **Phase 5 code touched:** only the rotation extension described above (`rotate.ts`, `constants.ts` AAD entry, the rotate script's output line, one test, one README line). The disclosure ciphertext shares `REPORT_ENCRYPTION_KEYS`, so dropping an old key after rotation now also requires `disclosures` to be clean — the script's counts show it.
-- **Pre-existing smoke fragility (not mine):** the phase 2 smoke line "DB: only the session's company was renamed" derives `$OTHER` from "any other company in the database", which in `./verify.sh` exists only because vitest ran against the same fresh DB first. Run `scripts/smoke.sh` alone against a brand-new database and that one line fails. Not touched ("only this edit").
-- **What Esteban must do at deploy:** migration `0005` against the live database is **his call** (CLAUDE.md §4/§8): it lower-cases existing `employees.email` (none exist before this phase), adds NOT NULL `disclosures.period_year` after a backfill (no rows expected), and creates three append-only tables' triggers; take the verified backup first. Nothing else: no new env var, no new service, no new dependency. Before the first real invitations: Resend sending domain (open input), and the pt-BR training + the invite-email wording reviewed (`lib/training/REVIEW.md`, `messages/DRAFTS.md`).
-- Open legal/Esteban inputs this phase adds (already listed in CLAUDE.md §11 for the training): retention/purge periods for disclosures and acknowledgment IPs (append-only today — erasure would be a deliberate migration), and a notice to employees about the stored IP/time (the portal tells them at the moment of accepting).
 
-## Code tip vs pushed tip
-Code tip `34e83ad`; the branch tip after pushing this file is a docs-only commit on top (see the PR). PR and CI status: see the next section (added after the push).
+**Every assumption about the real OpenSanctions API** (all marked `ASSUMED SHAPE — verify at live check` in `lib/screening/opensanctions.ts`; compare with the live response):
+- Endpoint `POST {base}/match/{dataset}`, default base `https://api.opensanctions.org`, default dataset `default`.
+- Auth header `Authorization: ApiKey <key>` (not `Bearer`).
+- Request `{"queries":{"q1":{"schema":"Company","properties":{"name":[…],"country":[…]}}}}`; `country` expected as an ISO-3166 alpha-2 string (the vendor form stores whatever 2 letters the admin typed, upper-cased).
+- Response `{"responses":{"q1":{"results":[{"id","caption","schema","score","match","datasets":[…],"properties":{"topics":[…]}}],"total":{…}}}}`; `topics` read from `properties.topics`, falling back to a top-level `topics`; `match` is a boolean; `score` a number 0–1.
+- The 0.7 score threshold is from the notes, not from the provider's documentation; the provider's own `match` flag may use a different threshold. Results below 0.7 are still stored (top 10) when another result trips the threshold, but are not shown as a "possible match" on their own.
+- Status mapping: 401/403 → `auth`, 429 → `rate_limited`, 5xx and any other non-2xx and network failure → `upstream`, 10 s → `timeout`.
+- Whether `schema: "Company"` is the right schema for vendors that are sole traders / individuals (v1 screens the entity name only), and whether the hosted API wants `?algorithm=` or a `threshold` query parameter — unknown.
+- The live-check name ("Wagner Group") is my pick of an entity expected to be on several sanctions lists; if it returns no hit the check exits 1 — try `SCREENING_CHECK_NAME` with another listed name before concluding the mapping is wrong.
 
-## PR and CI
-PR: https://github.com/egaluzzi/compinabox/pull/8 (contains phase 5 commits until #7 merges). CI: no workflow run was visible yet when this was written (just after the push — queued/not started); head SHA at that time = the docs commit on top of code tip `34e83ad`. Check the PR's checks.
+**Vendor data privacy.** (1) Vendor **names** (and an optional country code) leave our system to a third party, the screening provider: the privacy policy must name it as a sub-processor and say what is sent (README "Sanctions screening: what is sent, what is stored"). Nothing else is sent: no company id, tax id, email or questionnaire answers (tested). (2) The provider learns *which names a given customer checks*; the request carries the customer's API key, which is ours, so the provider cannot tell customers apart — but it can see our whole pattern. (3) `vendor_screenings` stores the screened name and ≤ 10 matches in clear text (they are public-list entities, not personal data about the vendor's people); the questionnaire answers (which can name individuals — owners, PEP relatives) are encrypted at rest and covered by key rotation. (4) The questionnaire respondent is a vendor employee who never accepted a privacy notice: the form says who is asking and that answers go to that company, but there is no LGPD notice for the respondent — the legal review item in CLAUDE.md §11 should include it. (5) Caddy must keep `/vendor/*` out of its access log (the token is in the path).
+
+**What Esteban must do at deploy** (hard to undo / money / vendor commitment — rule 3):
+1. **Migration `0006`** against the live database (a deliberate step with him in the loop; it is additive and safe on existing rows, but it creates append-only tables).
+2. **OpenSanctions commercial terms and cost** for screening customers' vendors in a paid product — adding a paid service is his call; the "free tier" assumption is unverified. Fallback if unacceptable: self-hosted yente (`SCREENING_BASE_URL` already supports it, loopback http allowed), which costs droplet memory.
+3. **Env on the droplet:** `SCREENING_API_KEY`, and optionally `SCREENING_BASE_URL` (https only, or loopback) and `SCREENING_DATASET`; and allow `api.opensanctions.org` in the worker environment's network settings (cloud environment → Edit → Network access) so the live check can run. Without the key, screening shows "unavailable" and everything else works.
+4. **Spend bound to remember:** at most 50 screenings per company per UTC day and one per vendor per 5 minutes — worst case 50 billed calls per customer-day; the constants are in `lib/screening/constants.ts`.
+5. Privacy policy names the provider as a sub-processor; Caddy log filter for `/vendor/*`.
