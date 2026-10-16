@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 export type VendorFormLabels = {
@@ -21,6 +20,8 @@ export type VendorFormLabels = {
   errors: { required: string; too_long: string; choice: string };
   thanksTitle: string;
   thanksBody: string;
+  invalidTitle: string;
+  invalidBody: string;
 };
 
 type Fields = Record<string, string>;
@@ -47,12 +48,11 @@ export function VendorForm({
   labels: VendorFormLabels;
   retry: boolean;
 }) {
-  const router = useRouter();
   const [v, setV] = useState<Fields>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [state, setState] = useState<"idle" | "sending" | "done" | "network">(
-    "idle",
-  );
+  const [state, setState] = useState<
+    "idle" | "sending" | "done" | "network" | "invalid"
+  >("idle");
   const set = (k: string) => (e: { target: { value: string } }) =>
     setV((p) => ({ ...p, [k]: e.target.value }));
 
@@ -72,8 +72,7 @@ export function VendorForm({
       };
       if (json.ok) return setState("done");
       if (json.invalid) {
-        router.replace("/vendor/link-invalid");
-        return;
+        return setState("invalid"); // the same message the friendly page shows
       }
       setErrors(json.errors ?? {});
       setState("idle");
@@ -87,6 +86,14 @@ export function VendorForm({
       <div role="status" className="space-y-2">
         <h1 className="text-2xl font-bold">{labels.thanksTitle}</h1>
         <p>{labels.thanksBody}</p>
+      </div>
+    );
+
+  if (state === "invalid")
+    return (
+      <div role="alert" className="space-y-2">
+        <h1 className="text-2xl font-bold">{labels.invalidTitle}</h1>
+        <p>{labels.invalidBody}</p>
       </div>
     );
 

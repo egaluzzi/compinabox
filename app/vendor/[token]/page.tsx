@@ -56,6 +56,8 @@ export default async function Questionnaire({
           },
           thanksTitle: t("vendor.thanksTitle"),
           thanksBody: t("vendor.thanksBody"),
+          invalidTitle: t("vendor.invalidTitle"),
+          invalidBody: t("vendor.invalidBody"),
         }}
       />
     </main>
