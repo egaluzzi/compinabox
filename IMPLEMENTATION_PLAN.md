@@ -180,14 +180,14 @@ Judgment: the supervisor reads the handler and one real anonymous DB row (raw `p
 
 SPEC §5.4, §5.5. CLAUDE.md §8 (tenant isolation; employee acknowledgments DO log IP — the only place a client IP is stored). **Deep review** — tokenized access and tenant isolation. Detailed decisions are in `SUPERVISOR_NOTES.md`; summary so they survive the relay.
 
-- [ ] **Roster:** employees via CSV import (`name,email`; `,` or `;`; BOM-safe; ≤ 500 rows; valid rows imported, bad rows reported by line); unique per company by lower-cased email; **deactivate/reactivate, never delete**; `invited_at`, `invite_expires_at`, `deactivated_at`
-- [ ] **Invites:** admin-triggered (per employee + "send pending", ≤ 50 per click), CONTENT.md §5 template; link `/employee/<token>`, 14-day TTL; re-issue (admin button) kills the previous link; only the hash is stored
-- [ ] **Link → session:** `GET /employee/<token>` never consumes (mail scanners); a "Start" POST consumes the token (single use, atomic) and sets an httpOnly 8-hour portal session (`employee_sessions`, DB-backed, revocable; cookie `Path=/employee`, handlers under `/employee/api`); used/expired/unknown tokens all give the same friendly page
-- [ ] **Acknowledgments:** employee reads each of the six documents (company's current version) and accepts; stores timestamp **and IP** (`cf-connecting-ip`, read in exactly one file); idempotent; append-only in the DB; a regenerated document makes the old acceptance "outdated"
-- [ ] **Training:** pt-BR scenario-based module (6 lessons mirroring the policy suite, 12-question quiz, pass ≥ 80%, graded server-side, retakes allowed, `TrainingCompletion` row with score on pass); content drafted by the worker under `lib/training/` with a `REVIEW.md` (DRAFT, for Esteban); no legal citations, no compliance claims; other locales show an "unavailable" state and are excluded from completion
-- [ ] **Annual conflict-of-interest disclosure:** one per employee per calendar year; content encrypted at rest (same key ring as phase 5; rotation script extended); append-only
-- [ ] **Dashboard:** Employees (import, grid, invite/resend, deactivate), per-employee detail (acks with timestamps + IP, training score/date, disclosure content), Training (module overview + per-employee results), company completion % (defined in notes), CSV + PDF export (no IP, no disclosure content; CSV formula-injection safe); Overview widgets real
-- [ ] Tenant isolation: every new table carries `company_id`; employee session carries company from the DB row; coverage test that every employee-portal file uses `requireEmployee`
+- [x] **Roster:** employees via CSV import (`name,email`; `,` or `;`; BOM-safe; ≤ 500 rows; valid rows imported, bad rows reported by line); unique per company by lower-cased email; **deactivate/reactivate, never delete**; `invited_at`, `invite_expires_at`, `deactivated_at`
+- [x] **Invites:** admin-triggered (per employee + "send pending", ≤ 50 per click), CONTENT.md §5 template; link `/employee/<token>`, 14-day TTL; re-issue (admin button) kills the previous link; only the hash is stored
+- [x] **Link → session:** `GET /employee/<token>` never consumes (mail scanners); a "Start" POST consumes the token (single use, atomic) and sets an httpOnly 8-hour portal session (`employee_sessions`, DB-backed, revocable; cookie `Path=/employee`, handlers under `/employee/api`); used/expired/unknown tokens all give the same friendly page
+- [x] **Acknowledgments:** employee reads each of the six documents (company's current version) and accepts; stores timestamp **and IP** (`cf-connecting-ip`, read in exactly one file); idempotent; append-only in the DB; a regenerated document makes the old acceptance "outdated"
+- [x] **Training:** pt-BR scenario-based module (6 lessons mirroring the policy suite, 12-question quiz, pass ≥ 80%, graded server-side, retakes allowed, `TrainingCompletion` row with score on pass); content drafted by the worker under `lib/training/` with a `REVIEW.md` (DRAFT, for Esteban); no legal citations, no compliance claims; other locales show an "unavailable" state and are excluded from completion
+- [x] **Annual conflict-of-interest disclosure:** one per employee per calendar year; content encrypted at rest (same key ring as phase 5; rotation script extended); append-only
+- [x] **Dashboard:** Employees (import, grid, invite/resend, deactivate), per-employee detail (acks with timestamps + IP, training score/date, disclosure content), Training (module overview + per-employee results), company completion % (defined in notes), CSV + PDF export (no IP, no disclosure content; CSV formula-injection safe); Overview widgets real
+- [x] Tenant isolation: every new table carries `company_id`; employee session carries company from the DB row; coverage test that every employee-portal file uses `requireEmployee`
 
 **Definition of done**
 ```
@@ -253,6 +253,7 @@ SPEC §9 (blog), §10, CLAUDE.md §4.
 - [ ] **`REPORT_ENCRYPTION_KEY` custody:** set on the droplet and stored separately from the database backups (password manager); losing it makes every report unreadable and a backup without it is useless — Esteban confirms (hard to undo); `EVIDENCE_DIR` exists, is outside Caddy's served paths, and is included in backups
 - [ ] Phase 5 carry-overs: Caddy request-body size cap on `/api/report` (the handler buffers the multipart body before validating sizes); set `NEXT_TELEMETRY_DISABLED=1`; decide how `npm run rotate-report-key` runs on the droplet (it needs a checkout + `node_modules`, the deploy ships only the standalone output); `scripts/backup.sh` currently dumps the DB only — extend it (or add a second job) to cover `EVIDENCE_DIR`
 - [ ] Phase 6 carry-overs: origin only reachable from Cloudflare (firewall/Caddy allow-list of Cloudflare ranges) so `cf-connecting-ip` on acknowledgments cannot be spoofed; real-inbox check that invite links survive mail scanners (the GET confirm page should make them safe); Resend daily/second rate limits vs bulk invites (≤ 50 per click)
+- [ ] Phase 6 carry-overs (2): Caddy must not log the path of `/employee/*` (the invite token is in the URL path; it dies on use or after 14 days, but keep it out of logs anyway); purge expired `employee_sessions` rows in the ops timer; day-one support note for Esteban: an employee whose session ended (8 h) or whose link was used needs the admin to re-send the invitation
 - [ ] Backup bucket is **private**; Esteban confirms a downloaded dump restores with `scripts/restore-test.sh`
 
 **Definition of done**
@@ -327,6 +328,7 @@ Log standalone sweeps here — e.g. a bug pattern found twice incidentally — s
 - Customer text editing of generated documents (v1 is regenerate-only)
 - Backup manifest: record per-table counts at dump time so the restore test can also prove the dump matched the database
 - Ad-variant landing pages `/{country}/gobierno`, `/{country}/proveedores` (CONTENT.md §7)
+- Employee portal: self-service "email me a new link"; token in URL fragment instead of path (needs JS); disclosure year in company-local time instead of UTC (a 31 Dec evening São Paulo submission lands in the next year); invite email wording for AR/MX when those open; no-JS quiz fallback
 - Multi-admin per company; password login (note: with one admin, a report about that admin has no independent recipient)
 - Whistleblower: retention/purge policy and reporter privacy notice (lawyer + Esteban), no-JS submit path, smoke "only the session's company was renamed" check fails if run alone on an empty DB
 - Object storage for uploads (currently local disk behind Caddy)
