@@ -1,11 +1,17 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Pricing from "@/app/[country]/pricing/page";
 import CountryLanding from "@/app/[country]/page";
 import { localeFromCookies } from "@/lib/i18n";
 
 const params = (country: string) => ({ params: Promise.resolve({ country }) });
-afterEach(() => vi.unstubAllEnvs());
+// Unmount what each test rendered: vitest globals are off, so testing-library does not do it
+// itself, and React work still queued when the jsdom environment is torn down surfaces as an
+// intermittent "window is not defined" uncaught exception that fails verify.sh (seen under load).
+afterEach(() => {
+  cleanup();
+  vi.unstubAllEnvs();
+});
 
 describe("pricing page", () => {
   it("disabled country: waitlist form, no checkout CTA", async () => {

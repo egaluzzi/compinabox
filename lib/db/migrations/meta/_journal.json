@@ -29,6 +29,27 @@
       "when": 1792016150764,
       "tag": "0003_brief_magus",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792027132436,
+      "tag": "0004_whistleblower",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792061300245,
+      "tag": "0005_employee_portal",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792146529658,
+      "tag": "0006_vendor_screening",
+      "breakpoints": true
     }
   ]
 }

@@ -144,10 +144,10 @@ Judgment: empty states exist for every section; renaming a company leaves the ol
 
 Found in the phase 4 review: signing out only clears the cookie. Sessions are stateless JWTs (7 days), so a copied cookie keeps working after sign-out (the worker replayed one by hand). Whistleblower data arrives in phase 5, so this closes first.
 
-- [ ] `users.sessions_valid_after` (timestamptz, default now) + migration; every issued session (Auth.js sign-in, welcome link, return-token sign-in) carries its issue time
-- [ ] `getTenant()` rejects a session issued before the user's `sessions_valid_after`
-- [ ] Sign-out sets `sessions_valid_after = now()` (all of that user's sessions end; one admin per company, so this is the intended meaning)
-- [ ] Tests on real Postgres: replaying a pre-sign-out cookie gets 401/redirect on every dashboard section and the PDF route; a session issued after sign-out works; sign-in links and welcome links still single-use
+- [x] `users.sessions_valid_after` (timestamptz, default now) + migration; every issued session (Auth.js sign-in, welcome link, return-token sign-in) carries its issue time
+- [x] `getTenant()` rejects a session issued before the user's `sessions_valid_after`
+- [x] Sign-out sets `sessions_valid_after = now()` (all of that user's sessions end; one admin per company, so this is the intended meaning)
+- [x] Tests on real Postgres: replaying a pre-sign-out cookie gets 401/redirect on every dashboard section and the PDF route; a session issued after sign-out works; sign-in links and welcome links still single-use
 
 **Definition of done:** `./verify.sh`; smoke replays the old cookie after sign-out and is refused.
 
@@ -155,63 +155,67 @@ Found in the phase 4 review: signing out only clears the cookie. Sessions are st
 
 ## Phase 5 — Whistleblower intake + case log
 
-SPEC §5.3, §11. **Deep review** — anonymity and tenant isolation.
+SPEC §5.3, §11. CLAUDE.md §8 (anonymous reporting, tenant isolation). **Deep review** — anonymity, encryption, tenant isolation. Scoped in detail in `SUPERVISOR_NOTES.md`; decisions summarised here so they survive the relay.
 
-- [ ] `/report/[slug]` public page, branded, pt-BR (+ other locales from messages), form per CONTENT.md §5
-- [ ] Anonymous by default: request handler must not persist IP, user-agent or any header unless `wants_contact = true`; evidence upload stripped of EXIF
-- [ ] Tracking code (12 chars, unguessable) + `/report/[slug]/status` lookup, rate-limited
-- [ ] Report `description` and `reporter_contact` encrypted at rest (application-level, key from env)
-- [ ] Dashboard → Whistleblower: list, detail, status (new/under review/closed), notes, resolution date; notes are append-only
-- [ ] Email notification to admin on new report (no report content in the email)
-
-- [ ] **Align report statuses**: the schema default is `received` (phase 2) but the dashboard counts open cases as `new` | `under_review` (`OPEN_REPORT_STATUSES` in `lib/db/tenant.ts`); pick one lifecycle (new / under review / closed per SPEC), change the default via migration, and update the constant and its tests
+- [x] **Company slug:** `companies.slug` (unique, not null, immutable, ASCII-slugified name + collision suffix), set at provisioning, backfilled by the migration; the public URL is `/report/[slug]`
+- [x] `/report/[slug]` public page, branded (company name + logo), language = company country locale, form per CONTENT.md §5; no cookies, no banner, no tracking, `noindex`, `Referrer-Policy: no-referrer`, frame denial
+- [x] Anonymous by default: the intake handlers read **no** request metadata (no IP, user-agent, forwarded headers) and log nothing; `is_anonymous = !wants_contact`; contact stored only on opt-in
+- [x] Evidence: optional, up to 3 images (PNG/JPEG, 5 MB each); metadata stripped (EXIF/XMP/ICC/text chunks); **encrypted at rest in a directory that is never web-served** (not `UPLOADS_DIR`); downloaded only through a tenant-gated route
+- [x] Tracking code (12 chars, 32-letter unambiguous alphabet, shown grouped) + `/report/[slug]/status` lookup; wrong slug and wrong code are indistinguishable; rate-limited per slug in process memory (no IP is read)
+- [x] `description`, `reporter_contact`, case notes and evidence encrypted at rest (AES-256-GCM, key from env, key id in the ciphertext, documented rotation + rotation script)
+- [x] Dashboard → Whistleblower: channel URL, list, detail, status (new / under review / closed), append-only notes (DB trigger), resolution date, evidence download
+- [x] Email notification to the company admin on a new report (no report content, no category, link to dashboard); a failed send never loses the report
+- [x] **Align report statuses**: lifecycle `new` → `under_review` → `closed`; default becomes `new` via migration (existing `received` rows → `new`), CHECK constraint, `OPEN_REPORT_STATUSES` and its tests updated
 
 **Definition of done**
 ```
-./verify.sh
-npm run test -- whistleblower   # includes: anonymous submit → DB row has NULL ip/ua/contact; cross-tenant read → 404
+./verify.sh                      # includes new invariant: no request-metadata access in report handlers; smoke covers the whole anonymous flow
+npm run test -- whistleblower    # anonymous submit with marker IP/UA headers -> marker string appears nowhere in any table; cross-tenant read/note/evidence -> 404; encryption round trip, tamper, rotation
 ```
-Judgment: read the handler and the DB row by hand for one anonymous report — nothing identifying; encryption key rotation documented in README; tracking-code lookup can't enumerate.
+Judgment: the supervisor reads the handler and one real anonymous DB row (raw `psql` output in HANDOFF); ciphertext visible in `psql` for description/contact/notes; evidence file on disk is not an image; tracking-code lookup cannot enumerate; encryption key rotation documented in README.
 
 ---
 
 ## Phase 6 — Employee portal: training + acknowledgment tracking
 
-SPEC §5.4, §5.5.
+SPEC §5.4, §5.5. CLAUDE.md §8 (tenant isolation; employee acknowledgments DO log IP — the only place a client IP is stored). **Deep review** — tokenized access and tenant isolation. Detailed decisions are in `SUPERVISOR_NOTES.md`; summary so they survive the relay.
 
-- [ ] Employees: CSV import (name, email), invite email per CONTENT.md §5, signed single-use token links (`/employee/[token]`), re-issue on expiry
-- [ ] Acknowledgment flow: read + accept code of conduct and each policy; stores timestamp **and IP** (this one does log IP — SPEC §5.5)
-- [ ] Training module: 15–25 min scenario-based content in pt-BR (content drafted by worker from the policy suite, flagged for Esteban's review), end quiz, pass threshold 80%, `TrainingCompletion` row
-- [ ] Annual conflict-of-interest disclosure form → `Disclosure`
-- [ ] Dashboard → Employees/Training: per-employee status grid, company completion %, CSV + PDF export
-- [ ] Overview widgets from phase 4 now real
+- [x] **Roster:** employees via CSV import (`name,email`; `,` or `;`; BOM-safe; ≤ 500 rows; valid rows imported, bad rows reported by line); unique per company by lower-cased email; **deactivate/reactivate, never delete**; `invited_at`, `invite_expires_at`, `deactivated_at`
+- [x] **Invites:** admin-triggered (per employee + "send pending", ≤ 50 per click), CONTENT.md §5 template; link `/employee/<token>`, 14-day TTL; re-issue (admin button) kills the previous link; only the hash is stored
+- [x] **Link → session:** `GET /employee/<token>` never consumes (mail scanners); a "Start" POST consumes the token (single use, atomic) and sets an httpOnly 8-hour portal session (`employee_sessions`, DB-backed, revocable; cookie `Path=/employee`, handlers under `/employee/api`); used/expired/unknown tokens all give the same friendly page
+- [x] **Acknowledgments:** employee reads each of the six documents (company's current version) and accepts; stores timestamp **and IP** (`cf-connecting-ip`, read in exactly one file); idempotent; append-only in the DB; a regenerated document makes the old acceptance "outdated"
+- [x] **Training:** pt-BR scenario-based module (6 lessons mirroring the policy suite, 12-question quiz, pass ≥ 80%, graded server-side, retakes allowed, `TrainingCompletion` row with score on pass); content drafted by the worker under `lib/training/` with a `REVIEW.md` (DRAFT, for Esteban); no legal citations, no compliance claims; other locales show an "unavailable" state and are excluded from completion
+- [x] **Annual conflict-of-interest disclosure:** one per employee per calendar year; content encrypted at rest (same key ring as phase 5; rotation script extended); append-only
+- [x] **Dashboard:** Employees (import, grid, invite/resend, deactivate), per-employee detail (acks with timestamps + IP, training score/date, disclosure content), Training (module overview + per-employee results), company completion % (defined in notes), CSV + PDF export (no IP, no disclosure content; CSV formula-injection safe); Overview widgets real
+- [x] Tenant isolation: every new table carries `company_id`; employee session carries company from the DB row; coverage test that every employee-portal file uses `requireEmployee`
 
 **Definition of done**
 ```
-./verify.sh
-npm run test -- employee        # token single-use, expiry, cross-tenant token rejected
+./verify.sh                      # new invariants: client IP read in exactly one file; employee paths never read company_id from the request; smoke covers the full flow
+npm run test -- employee         # token single-use/expiry/re-issue, cross-tenant, append-only, quiz boundary, completion math, CSV import/export
 ```
-Judgment: an expired or reused token shows a friendly page, not a stack trace; export matches the grid.
+Judgment: an expired or reused token shows a friendly page, not a stack trace; export matches the grid; the supervisor reads the token-exchange and acknowledgment handlers and one real `acknowledgments` row; training content read for tone and scope-boundary (no "you are compliant/certified").
 
 ---
 
 ## Phase 7 — Vendor questionnaire + sanctions screening
 
-SPEC §5.6.
+SPEC §5.6. **Deep review** — third-party data egress (vendor names leave the system) and a paid external service. Detailed decisions in `SUPERVISOR_NOTES.md`. **Two inputs only Esteban can supply gate acceptance** (CLAUDE.md §11): an OpenSanctions API key + confirmed commercial terms/cost, and network access to `api.opensanctions.org` for the worker environment. The worker builds everything without them; the phase is **not accepted until the live round-trip below has run.**
 
-- [ ] `ScreeningProvider` interface + OpenSanctions (yente) implementation; results cached per vendor with `screened_at`
-- [ ] Vendor invite via tokenized link → questionnaire (ownership, PEP exposure, prior sanctions, anti-bribery policy y/n)
-- [ ] Dashboard → Vendors: list, questionnaire status, screening result, re-screen
-- [ ] Copy labels it a *screening tool*, never "due diligence investigation" (SPEC §5.6 — guardrail)
+- [ ] **Vendors:** add (name, optional country/tax id, contact email), archive (never delete); tenant-scoped; list + detail under `/dashboard/vendors`
+- [ ] **Questionnaire:** admin sends a tokenized link (`/vendor/<token>`, 30-day TTL, new link kills the old); one public form (ownership structure, PEP exposure y/n + details, prior sanctions y/n + details, anti-bribery policy y/n, respondent name/role); submit consumes the token atomically; answers' free text encrypted at rest (same key ring), append-only; resend to request an update
+- [ ] **`ScreeningProvider` interface** + OpenSanctions (yente `/match`) implementation, base URL + dataset configurable (hosted API or a self-hosted yente later), 10 s timeout, errors are recorded as errors — never as "no match"
+- [ ] **Screening:** explicit admin action (run / re-run), per-vendor cooldown and per-company daily cap (bounds spend); result cached on the vendor (`screening_result`, `screened_at`) and every run kept in an append-only `vendor_screenings` history (status, matches summary, datasets, date)
+- [ ] **Copy:** a *screening tool*, never "due diligence investigation"; results say "possible match — review needed" / "no match found in the lists screened on <date>", never "clear / approved / safe"; always the lists-and-date caveat
+- [ ] Unconfigured provider (no key) → screening visibly "unavailable", questionnaire still works; never a silent fallback or fake result in production
 
 **Definition of done**
 ```
-./verify.sh
-npm run test -- vendors         # provider mocked in unit tests
-# live check, pasted into HANDOFF.md:
-curl -s "https://api.opensanctions.org/match/default" ... | head   # one real call with a known-listed name returns a hit
+./verify.sh                      # smoke runs the real client against a local stub HTTP server shaped like yente's /match
+npm run test -- vendors          # provider mocked in unit tests; token, cross-tenant, encryption, append-only, cooldown/cap, error-is-not-clear
+scripts/screening-live-check.sh  # ONE real call with a known-listed name -> hit, pasted into HANDOFF.md (needs SCREENING_API_KEY + network allow)
 ```
-Judgment: mock-only is **not** verified for this phase — one real API round-trip required in evidence.
+Judgment: **mock-only is not verified for this phase.** If the live check could not run, the worker says so and the supervisor holds the phase at "built, not accepted" until it has (a follow-up task, not a rebuild). Supervisor reads the provider mapping against the live response shape once it exists.
 
 ---
 
@@ -246,6 +250,12 @@ SPEC §9 (blog), §10, CLAUDE.md §4.
 - [ ] Droplet `.env` review: `ALLOW_FAKE_PAYMENTS` and `EMAIL_DEV_SINK` unset, `APP_URL`/`AUTH_URL` are the public https origin, `AUTH_SECRET` real
 - [ ] Real Resend send verified from the droplet (welcome email + sign-in link delivered to a real inbox; link works once)
 - [ ] Welcome-link scanner check: open the delivered link via the real mail path; if a prefetch burns it, switch `/api/welcome` to GET → confirm page → POST
+- [ ] **Whistleblower anonymity at the edge (phase 5 follow-ups):** Caddy must not write client IPs to its access log for `/report/*` (log filter or no access log for that path) and Cloudflare per-IP rate limits cover `/report/*` and `/api/report/*`; GTM/GA4 and the consent banner must never load on `/report/*` or `/dashboard/*`; the privacy policy must say Cloudflare, as proxy, sees reporter IPs
+- [ ] **`REPORT_ENCRYPTION_KEY` custody:** set on the droplet and stored separately from the database backups (password manager); losing it makes every report unreadable and a backup without it is useless — Esteban confirms (hard to undo); `EVIDENCE_DIR` exists, is outside Caddy's served paths, and is included in backups
+- [ ] Phase 5 carry-overs: Caddy request-body size cap on `/api/report` (the handler buffers the multipart body before validating sizes); set `NEXT_TELEMETRY_DISABLED=1`; decide how `npm run rotate-report-key` runs on the droplet (it needs a checkout + `node_modules`, the deploy ships only the standalone output); `scripts/backup.sh` currently dumps the DB only — extend it (or add a second job) to cover `EVIDENCE_DIR`
+- [ ] Phase 6 carry-overs: origin only reachable from Cloudflare (firewall/Caddy allow-list of Cloudflare ranges) so `cf-connecting-ip` on acknowledgments cannot be spoofed; real-inbox check that invite links survive mail scanners (the GET confirm page should make them safe); Resend daily/second rate limits vs bulk invites (≤ 50 per click)
+- [ ] Phase 6 carry-overs (2): Caddy must not log the path of `/employee/*` (the invite token is in the URL path; it dies on use or after 14 days, but keep it out of logs anyway); purge expired `employee_sessions` rows in the ops timer; day-one support note for Esteban: an employee whose session ended (8 h) or whose link was used needs the admin to re-send the invitation
+- [ ] Phase 7 carry-overs: `SCREENING_API_KEY` / `SCREENING_BASE_URL` / `SCREENING_DATASET` on the droplet; vendor names are sent to the screening provider — the privacy policy must name it as a sub-processor; vendor-link paths (`/vendor/*`) kept out of Caddy logs like `/employee/*`
 - [ ] Backup bucket is **private**; Esteban confirms a downloaded dump restores with `scripts/restore-test.sh`
 
 **Definition of done**
@@ -320,7 +330,9 @@ Log standalone sweeps here — e.g. a bug pattern found twice incidentally — s
 - Customer text editing of generated documents (v1 is regenerate-only)
 - Backup manifest: record per-table counts at dump time so the restore test can also prove the dump matched the database
 - Ad-variant landing pages `/{country}/gobierno`, `/{country}/proveedores` (CONTENT.md §7)
-- Multi-admin per company; password login
+- Employee portal: self-service "email me a new link"; token in URL fragment instead of path (needs JS); disclosure year in company-local time instead of UTC (a 31 Dec evening São Paulo submission lands in the next year); invite email wording for AR/MX when those open; no-JS quiz fallback
+- Multi-admin per company; password login (note: with one admin, a report about that admin has no independent recipient)
+- Whistleblower: retention/purge policy and reporter privacy notice (lawyer + Esteban), no-JS submit path, smoke "only the session's company was renamed" check fails if run alone on an empty DB
 - Object storage for uploads (currently local disk behind Caddy)
 - DO Managed Postgres migration (only if backups/upgrades become a burden)
 - Investigation protocol / case workflow beyond status + notes

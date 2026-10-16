@@ -11,6 +11,7 @@ import {
 import { getEmailSender } from "@/lib/email";
 import { linkEmail } from "@/lib/email/templates";
 import { COUNTRY_LOCALE } from "@/lib/i18n";
+import { uniqueCompanySlug } from "@/lib/whistleblower/company-slug";
 import type { Country } from "@/lib/countries";
 import {
   PaymentLookupUnavailable,
@@ -131,6 +132,7 @@ export async function handlePaymentWebhook(
       .insert(companies)
       .values({
         name: attempt.companyName,
+        slug: await uniqueCompanySlug(tx, attempt.companyName),
         taxId: attempt.taxId,
         country: attempt.country,
       })

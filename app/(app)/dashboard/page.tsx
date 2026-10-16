@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireTenant } from "@/lib/auth/require-tenant";
-import { completionPercent } from "@/lib/dashboard/completion";
+import { companyCompletion } from "@/lib/dashboard/completion";
 import { getDb } from "@/lib/db/client";
 import { countEmployees, countOpenReports } from "@/lib/db/tenant";
 import { parseDocument } from "@/lib/documents/generate";
@@ -18,7 +18,7 @@ const SECTION_LINKS = [
 ] as const;
 
 export default async function Overview() {
-  const { tenant, t } = await requireTenant();
+  const { tenant, locale, t } = await requireTenant();
   const db = getDb();
   const [rows, employees, openCases] = await Promise.all([
     listDocuments(db, tenant.companyId),
@@ -33,7 +33,8 @@ export default async function Overview() {
   const drafts = current.filter(
     (r) => parseDocument(r.content).reviewStatus === "draft",
   ).length;
-  const completion = completionPercent();
+  const completionInfo = await companyCompletion(db, tenant.companyId, locale);
+  const completion = completionInfo.percent;
 
   const card = "rounded border border-slate-200 p-4";
   const label = "text-sm font-medium text-slate-700";
@@ -73,9 +74,16 @@ export default async function Overview() {
           <p className="mt-1 text-2xl font-semibold">
             {completion === null ? "—" : `${completion}%`}
           </p>
-          {completion === null && (
+          {completion === null ? (
             <p className="mt-1 text-sm text-slate-600">
               {t("dashboard.overview.completionNote")}
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-slate-600">
+              {t("dashboard.overview.completionDetail", {
+                full: completionInfo.fullyComplete,
+                active: completionInfo.activeEmployees,
+              })}
             </p>
           )}
         </li>

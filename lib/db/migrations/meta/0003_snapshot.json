@@ -81,12 +81,8 @@
           "name": "accounts_user_id_users_id_fk",
           "tableFrom": "accounts",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -146,12 +142,8 @@
           "name": "acknowledgments_company_id_companies_id_fk",
           "tableFrom": "acknowledgments",
           "tableTo": "companies",
-          "columnsFrom": [
-            "company_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -159,12 +151,8 @@
           "name": "acknowledgments_employee_id_employees_id_fk",
           "tableFrom": "acknowledgments",
           "tableTo": "employees",
-          "columnsFrom": [
-            "employee_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["employee_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -172,12 +160,8 @@
           "name": "acknowledgments_document_id_documents_id_fk",
           "tableFrom": "acknowledgments",
           "tableTo": "documents",
-          "columnsFrom": [
-            "document_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["document_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -248,12 +232,8 @@
           "name": "billing_records_company_id_companies_id_fk",
           "tableFrom": "billing_records",
           "tableTo": "companies",
-          "columnsFrom": [
-            "company_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -519,12 +499,8 @@
           "name": "disclosures_company_id_companies_id_fk",
           "tableFrom": "disclosures",
           "tableTo": "companies",
-          "columnsFrom": [
-            "company_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -532,12 +508,8 @@
           "name": "disclosures_employee_id_employees_id_fk",
           "tableFrom": "disclosures",
           "tableTo": "employees",
-          "columnsFrom": [
-            "employee_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["employee_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -618,12 +590,8 @@
           "name": "documents_company_id_companies_id_fk",
           "tableFrom": "documents",
           "tableTo": "companies",
-          "columnsFrom": [
-            "company_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -631,12 +599,8 @@
           "name": "documents_generated_by_user_id_users_id_fk",
           "tableFrom": "documents",
           "tableTo": "users",
-          "columnsFrom": [
-            "generated_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["generated_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -646,11 +610,7 @@
         "documents_company_type_version": {
           "name": "documents_company_type_version",
           "nullsNotDistinct": false,
-          "columns": [
-            "company_id",
-            "type",
-            "version"
-          ]
+          "columns": ["company_id", "type", "version"]
         }
       },
       "policies": {},
@@ -706,12 +666,8 @@
           "name": "employees_company_id_companies_id_fk",
           "tableFrom": "employees",
           "tableTo": "companies",
-          "columnsFrom": [
-            "company_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -771,12 +727,8 @@
           "name": "payment_event_attempt_id_checkout_attempt_id_fk",
           "tableFrom": "payment_event",
           "tableTo": "checkout_attempt",
-          "columnsFrom": [
-            "attempt_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["attempt_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -786,9 +738,7 @@
         "payment_event_event_key_unique": {
           "name": "payment_event_event_key_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "event_key"
-          ]
+          "columns": ["event_key"]
         }
       },
       "policies": {},
@@ -824,12 +774,8 @@
           "name": "sessions_user_id_users_id_fk",
           "tableFrom": "sessions",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -889,12 +835,8 @@
           "name": "training_completions_company_id_companies_id_fk",
           "tableFrom": "training_completions",
           "tableTo": "companies",
-          "columnsFrom": [
-            "company_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -902,12 +844,8 @@
           "name": "training_completions_employee_id_employees_id_fk",
           "tableFrom": "training_completions",
           "tableTo": "employees",
-          "columnsFrom": [
-            "employee_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["employee_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -987,12 +925,8 @@
           "name": "users_company_id_companies_id_fk",
           "tableFrom": "users",
           "tableTo": "companies",
-          "columnsFrom": [
-            "company_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1002,9 +936,7 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -1060,12 +992,8 @@
           "name": "vendors_company_id_companies_id_fk",
           "tableFrom": "vendors",
           "tableTo": "companies",
-          "columnsFrom": [
-            "company_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1106,9 +1034,7 @@
         "verification_tokens_token_unique": {
           "name": "verification_tokens_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -1153,9 +1079,7 @@
         "waitlist_leads_email_unique": {
           "name": "waitlist_leads_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -1231,12 +1155,8 @@
           "name": "whistleblower_reports_company_id_companies_id_fk",
           "tableFrom": "whistleblower_reports",
           "tableTo": "companies",
-          "columnsFrom": [
-            "company_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1246,9 +1166,7 @@
         "whistleblower_reports_tracking_code_unique": {
           "name": "whistleblower_reports_tracking_code_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "tracking_code"
-          ]
+          "columns": ["tracking_code"]
         }
       },
       "policies": {},

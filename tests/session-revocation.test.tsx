@@ -80,10 +80,10 @@ const D = "@/app/(app)/dashboard";
 const PAGES: [string, Record<string, unknown>?][] = [
   [`${D}/page`],
   [`${D}/documents/page`, { searchParams: Promise.resolve({}) }],
-  [`${D}/employees/page`],
+  [`${D}/employees/page`, { searchParams: Promise.resolve({}) }],
   [`${D}/training/page`],
   [`${D}/whistleblower/page`],
-  [`${D}/vendors/page`],
+  [`${D}/vendors/page`, { searchParams: Promise.resolve({}) }],
   [`${D}/billing/page`],
   [`${D}/settings/page`, { searchParams: Promise.resolve({}) }],
 ];
