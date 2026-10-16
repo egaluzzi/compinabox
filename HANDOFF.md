@@ -506,12 +506,12 @@ verify.sh: PASS (HEAD 5109983)
 ```
 
 ## CI
-Pushed tip / CI run id: filled in below after the push (see the last section). Code tip = 5109983; HANDOFF-only commits follow it.
+PR: https://github.com/egaluzzi/compinabox/pull/9 . CI run 38890777927 on head 9d1ae41 was **queued** when I stopped (result not seen — check it). Code tip = 5109983; pushed tip = this HANDOFF commit (HANDOFF-only commits follow the code tip).
 
 ## Judgment calls
 1. **Screening runs inside a DB transaction that holds a per-company advisory lock across the provider call (≤ 10 s).** Why: guards (cooldown, cap) must be race-free, otherwise two fast clicks both pass and both bill. Cost: one pooled connection held for the duration of a click, and a company's screenings are serialised. Fine for this traffic; the alternative (reserve-then-update) is impossible because the history table is append-only.
 2. **A provider that throws before sending (e.g. non-https base URL) → "unavailable", nothing recorded**; a provider that returns an `error` outcome → recorded as `error` (counts toward the daily cap, may be billed).
-3. **`possible_match` also requires nothing else than `match === true` or `score >= 0.7`**, and the whole response is `bad_response` if any element of `results` is not an object with a string `id` (strict on purpose; a lenient parse could turn a changed API into "no match").
+3. **`possible_match` iff some result has `match === true` or `score >= 0.7`** (as specified), and the whole response is `bad_response` if any element of `results` is not an object with a string `id` (strict on purpose; a lenient parse could turn a changed API into "no match").
 4. **Questionnaire page language = the company's country locale** (pt-BR for BR); the shared "invalid link" and "thanks" pages show pt-BR + es + en, like the employee portal. Root layout `lang="pt-BR"`, the `<main lang>` carries the real one.
 5. **Without JavaScript a validation error redirects to `/vendor/<token>?retry=1` and the typed answers are lost** (with JavaScript — the normal case — they are kept). The requirement "re-render without losing answers" is met for the JS path; native `required`/`maxlength` attributes catch most errors first. A server-rendered re-post would have needed react-dom/server in a handler or a server action; not worth it for v1.
 6. **`via=js` is a form field, not an `Accept` header,** because the invariant forbids reading any request header on the public vendor paths.
