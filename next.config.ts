@@ -30,6 +30,16 @@ const EMPLOYEE_HEADERS = [
   { key: "X-Robots-Tag", value: "noindex, nofollow" },
 ];
 
+// The tokenized vendor questionnaire (pages and handlers; the handler also sets these itself, see
+// lib/vendors/constants.ts). The link is in the URL, so: no referrer, no cache, not indexed.
+const VENDOR_HEADERS = [
+  { key: "Cache-Control", value: "private, no-store" },
+  { key: "Referrer-Policy", value: "no-referrer" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+  { key: "X-Robots-Tag", value: "noindex, nofollow" },
+];
+
 const nextConfig: NextConfig = {
   output: "standalone",
   async headers() {
@@ -41,6 +51,10 @@ const nextConfig: NextConfig = {
       ...["/employee", "/employee/:path*"].map((source) => ({
         source,
         headers: EMPLOYEE_HEADERS,
+      })),
+      ...["/vendor/:path*"].map((source) => ({
+        source,
+        headers: VENDOR_HEADERS,
       })),
       ...["/report/:path*", "/api/report/:path*"].map((source) => ({
         source,

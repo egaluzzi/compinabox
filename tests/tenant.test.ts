@@ -78,9 +78,28 @@ async function seedTenantRows(who: "A" | "B", companyId: string) {
     toStatus: "under_review",
     authorUserId: (who === "A" ? A : B).user.id,
   });
-  await db
+  const [vendor] = await db
     .insert(schema.vendors)
-    .values({ companyId, name: `Vendor ${label}` });
+    .values({ companyId, name: `Vendor ${label}` })
+    .returning();
+  await db.insert(schema.vendorResponses).values({
+    companyId,
+    vendorId: vendor.id,
+    respondentName: `enc-${label}`,
+    respondentRole: `enc-${label}`,
+    ownershipText: `enc-${label}`,
+    pepExposure: false,
+    priorSanctions: false,
+    antibriberyPolicy: true,
+  });
+  await db.insert(schema.vendorScreenings).values({
+    companyId,
+    vendorId: vendor.id,
+    provider: "test",
+    dataset: "default",
+    nameScreened: vendor.name,
+    status: "no_match",
+  });
   await db.insert(schema.billingRecords).values({
     companyId,
     amountCents: 1000,

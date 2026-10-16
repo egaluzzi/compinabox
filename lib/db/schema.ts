@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -342,16 +343,97 @@ export const whistleblowerNotes = pgTable(
   ],
 );
 
-export const vendors = pgTable("vendors", {
+export const vendors = pgTable(
+  "vendors",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: companyId(),
+    name: text("name").notNull(),
+    country: text("country"), // free 2-letter code, only if given
+    taxId: text("tax_id"),
+    contactName: text("contact_name"),
+    contactEmail: text("contact_email"), // lower-cased
+    // not_sent | sent | submitted ("expired" is derived from invite_expires_at in code)
+    questionnaireStatus: text("questionnaire_status")
+      .notNull()
+      .default("not_sent"),
+    invitedAt: timestamp("invited_at", { withTimezone: true }),
+    inviteExpiresAt: timestamp("invite_expires_at", { withTimezone: true }),
+    inviteTokenHash: text("invite_token_hash"), // sha256 only, NULL once used or never sent
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    // Cache of the latest vendor_screenings row: no_match | possible_match | error
+    screeningResult: text("screening_result"),
+    screenedAt: timestamp("screened_at", { withTimezone: true }),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    check(
+      "vendors_questionnaire_status_check",
+      sql`${t.questionnaireStatus} in ('not_sent', 'sent', 'submitted')`,
+    ),
+  ],
+);
+
+// Append-only (DB trigger, migration 0006). The five free-text fields are encrypted with the
+// REPORT_ENCRYPTION_KEYS ring (AAD vendor_responses:<company_id>:<field>); booleans are plain.
+export const vendorResponses = pgTable("vendor_responses", {
   id: uuid("id").defaultRandom().primaryKey(),
   companyId: companyId(),
-  name: text("name").notNull(),
-  questionnaireStatus: text("questionnaire_status")
+  vendorId: uuid("vendor_id")
     .notNull()
-    .default("not_sent"),
-  screeningResult: text("screening_result"),
-  screenedAt: timestamp("screened_at", { withTimezone: true }),
+    .references(() => vendors.id),
+  submittedAt: timestamp("submitted_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  respondentName: text("respondent_name").notNull(), // encrypted
+  respondentRole: text("respondent_role").notNull(), // encrypted
+  ownershipText: text("ownership_text").notNull(), // encrypted
+  pepExposure: boolean("pep_exposure").notNull(),
+  pepDetails: text("pep_details"), // encrypted
+  priorSanctions: boolean("prior_sanctions").notNull(),
+  sanctionsDetails: text("sanctions_details"), // encrypted
+  antibriberyPolicy: boolean("antibribery_policy").notNull(),
 });
+
+export type ScreeningMatch = {
+  id: string;
+  caption: string;
+  score: number;
+  datasets: string[];
+  topics: string[];
+};
+
+// Append-only (DB trigger, migration 0006). Only the five match fields are ever stored.
+export const vendorScreenings = pgTable(
+  "vendor_screenings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: companyId(),
+    vendorId: uuid("vendor_id")
+      .notNull()
+      .references(() => vendors.id),
+    screenedAt: timestamp("screened_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    provider: text("provider").notNull(),
+    dataset: text("dataset").notNull(),
+    nameScreened: text("name_screened").notNull(),
+    status: text("status").notNull(), // no_match | possible_match | error
+    matchCount: integer("match_count").notNull().default(0),
+    matches: jsonb("matches").$type<ScreeningMatch[]>().notNull().default([]),
+    errorCode: text("error_code"), // fixed short code, never a message
+    requestedByUserId: uuid("requested_by_user_id").references(() => users.id),
+  },
+  (t) => [
+    check(
+      "vendor_screenings_status_check",
+      sql`${t.status} in ('no_match', 'possible_match', 'error')`,
+    ),
+  ],
+);
 
 export const billingRecords = pgTable("billing_records", {
   id: uuid("id").defaultRandom().primaryKey(),

@@ -523,6 +523,127 @@ curl -s -o /dev/null -b "$JARE" -X POST "$B/employee/api/sign-out"
 t "sign-out in the portal: the session row is gone and the same cookie is refused" bash -c "[ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from employee_sessions where employee_id='$ANA'\")\" = 0 ] && [ \"\$(code -b '$JARE' -X POST --data '{}' $B/employee/api/training)\" = 401 ]"
 rm -f "$P6_CSV" "$P6_HDR" "$P6_HTML" "$JARE" "$JARE3" /tmp/p6.csv /tmp/p6.pdf
 
+# ---------------------------------------------------------------------------------------------
+# Phase 7: vendors — add -> questionnaire link (GET does not consume) -> submit (encrypted at rest)
+# -> admin sees the answers -> screening through the REAL client against a LOCAL STUB HTTP server
+# shaped like the assumed OpenSanctions /match response (possible match / no match / cooldown /
+# 500). Every screening line below is labelled "(local stub)": it is NOT evidence about the live
+# service — that is scripts/screening-live-check.sh. Company 1 = JAR5, company 2 = JAR3.
+# ---------------------------------------------------------------------------------------------
+P7="$$"
+P7_HTML=$(mktemp); P7_HDR=$(mktemp); STUBDIR=$(mktemp -d); STUBLOG="$STUBDIR/requests.log"; STUBMODE="$STUBDIR/mode"
+STUB_KEY="smoke-dummy-screening-key-$P7-ZZ"
+cat >"$STUBDIR/stub.js" <<'JS'
+const http = require("http"), fs = require("fs");
+const [port, log, modeFile] = process.argv.slice(2);
+http.createServer((req, res) => {
+  let b = "";
+  req.on("data", (c) => (b += c));
+  req.on("end", () => {
+    const auth = req.headers.authorization ? req.headers.authorization.replace(/ApiKey .+/, "ApiKey <redacted>") : "<absent>";
+    fs.appendFileSync(log, JSON.stringify({ method: req.method, url: req.url, authorization: auth, body: (() => { try { return JSON.parse(b || "null"); } catch (e) { return null; } })() }) + "\n");
+    if (fs.existsSync(modeFile) && fs.readFileSync(modeFile, "utf8").trim() === "500") { res.statusCode = 500; return res.end("boom"); }
+    let name = "";
+    try { name = (JSON.parse(b).queries.q1.properties.name || [""])[0]; } catch (e) { res.statusCode = 400; return res.end("bad request"); }
+    const hit = name.includes("Listed Smoke Corp");
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ responses: { q1: { results: hit ? [{ id: "NK-SMOKE-1", caption: "Listed Smoke Corp", schema: "Company", score: 0.97, match: true, datasets: ["smoke_sanctions"], properties: { topics: ["sanction"] } }] : [], total: { value: hit ? 1 : 0 } } } }));
+  });
+}).listen(+port, "127.0.0.1");
+JS
+STUBPORT=$(node -e 'const s=require("net").createServer().listen(0,()=>{console.log(s.address().port);s.close()})')
+node "$STUBDIR/stub.js" "$STUBPORT" "$STUBLOG" "$STUBMODE" &
+STUB_PID=$!
+for _ in $(seq 1 40); do curl -s -o /dev/null "http://127.0.0.1:$STUBPORT/" && break; sleep 0.1; done
+start_server "${FAKE_ENV[@]}" SCREENING_API_KEY="$STUB_KEY" SCREENING_BASE_URL="http://127.0.0.1:$STUBPORT" SCREENING_DATASET=smoke
+t "robots.txt disallows /vendor" bash -c "curl -s $B/robots.txt | grep -qE '^Disallow: /vendor\$'"
+V_LIST="Listed Smoke Corp $P7"; V_QUIET="Quiet Smoke Ltda $P7"; V_ERR="Err Smoke Ltda $P7"
+VL_E="vendor-l-$P7@example.test"; VQ_E="vendor-q-$P7@example.test"
+ADDR=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -b "$JAR5" -F "name=$V_LIST" -F country=br -F taxId=11.222.333/0001-81 -F contactName=Contato -F "contactEmail=${VL_E^^}" "$B/dashboard/vendors/add")
+curl -s -o /dev/null -b "$JAR5" -F "name=$V_QUIET" -F "contactEmail=$VQ_E" "$B/dashboard/vendors/add"
+curl -s -o /dev/null -b "$JAR5" -F "name=$V_ERR" "$B/dashboard/vendors/add"
+VL=$(SQL "select id from vendors where company_id='$CID' and name='$V_LIST'"); VQ=$(SQL "select id from vendors where company_id='$CID' and name='$V_QUIET'"); VE=$(SQL "select id from vendors where company_id='$CID' and name='$V_ERR'")
+t "add vendor: 303 back to the list; three vendors stored for company 1, email lower-cased, country upper-cased" bash -c "echo '$ADDR' | grep -q '^303 .*added=1' && [ -n '$VL' ] && [ -n '$VQ' ] && [ -n '$VE' ] && [ \"\$(psql '$DATABASE_URL' -Atc \"select contact_email || ',' || country from vendors where id='$VL'\")\" = '$VL_E,BR' ]"
+t "add vendor: an empty name is refused with error=name_required and stores nothing" bash -c "[ \"\$(curl -s -o /dev/null -w '%{redirect_url}' -b '$JAR5' -F name= $B/dashboard/vendors/add)\" = '$B/dashboard/vendors?error=name_required' ]"
+curl -s -b "$JAR5" "$B/dashboard/vendors" -o "$P7_HTML"
+t "vendors list: the three vendors, 'Não triado', 'Não enviado'" bash -c "grep -q '$V_LIST' '$P7_HTML' && grep -q '$V_QUIET' '$P7_HTML' && grep -q 'Não triado' '$P7_HTML' && grep -q 'Não enviado' '$P7_HTML'"
+
+# the questionnaire link
+SENDR=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -b "$JAR5" -X POST "$B/dashboard/vendors/$VL/send")
+vendor_link() { # vendor_link <to> -> the last /vendor/<token> link mailed to that address
+  node -e 'const fs=require("fs"),d=process.argv[1],to=process.argv[2];let out=[];for(const f of fs.readdirSync(d).sort()){const m=JSON.parse(fs.readFileSync(d+"/"+f,"utf8"));if(m.to===to&&/\/vendor\//.test(m.text))out.push(m.text.match(/https?:\/\/\S+\/vendor\/\S+/)[0])}console.log(out[out.length-1]||"")' "$OUTBOX" "$1"
+}
+VLINK=$(vendor_link "$VL_E"); VTOK=${VLINK##*/}
+t "send questionnaire: 303 sent; the dev sink holds a /vendor/<43-char token> link" bash -c "echo '$SENDR' | grep -q 'send=sent' && echo '$VLINK' | grep -qE '/vendor/[A-Za-z0-9_-]{43}\$'"
+echo "--- smoke evidence: the questionnaire email as written to the dev sink"
+node -e 'const fs=require("fs"),d=process.argv[1];for(const f of fs.readdirSync(d).sort()){const m=JSON.parse(fs.readFileSync(d+"/"+f,"utf8"));if(m.to===process.argv[2]&&/\/vendor\//.test(m.text))console.log(JSON.stringify(m))}' "$OUTBOX" "$VL_E" | tail -1
+t "DB: only the sha256 of the token is stored, 30-day expiry, status sent" bash -c "[ \"\$(psql '$DATABASE_URL' -Atc \"select (invite_expires_at - invited_at = interval '30 days' and invite_token_hash = '\$(printf %s '$VTOK' | openssl dgst -sha256 | awk '{print \$NF}')' and questionnaire_status = 'sent')::text from vendors where id='$VL'\")\" = true ] && ! psql '$DATABASE_URL' -Atc \"select * from vendors where id='$VL'\" | grep -q '$VTOK'"
+curl -s -D "$P7_HDR" -o "$P7_HTML" "$VLINK"; curl -s -o /dev/null "$VLINK"
+t "GET /vendor/<token> (twice): 200 form in pt-BR with the company name and the not-a-legal-determination line; set no cookie" bash -c "head -1 '$P7_HDR' | grep -q ' 200' && grep -q 'Questionário de integridade' '$P7_HTML' && grep -q 'Smoke Settings Ltda' '$P7_HTML' && grep -q 'não é uma determinação legal' '$P7_HTML' && ! tr -d '\r' <'$P7_HDR' | grep -iq '^set-cookie'"
+t "vendor page headers: private no-store, no-referrer, DENY, noindex" bash -c "H=\$(tr -d '\r' <'$P7_HDR') && echo \"\$H\" | grep -iq '^cache-control: private, no-store' && echo \"\$H\" | grep -iq '^referrer-policy: no-referrer' && echo \"\$H\" | grep -iq '^x-frame-options: DENY' && echo \"\$H\" | grep -iq '^x-robots-tag: noindex'"
+t "GET did not consume the link: the hash is still stored, no response yet" bash -c "[ \"\$(psql '$DATABASE_URL' -Atc \"select (invite_token_hash is not null)::text || ',' || (select count(*) from vendor_responses where vendor_id='$VL') from vendors where id='$VL'\")\" = true,0 ]"
+
+# submit: a validation error keeps the link; a good submit consumes it once
+BADR=$(curl -s -X POST -F "token=$VTOK" -F via=js -F respondentName= -F respondentRole=CFO -F ownershipText=x -F pep=no -F sanctions=no -F antibribery=yes "$B/vendor/api/submit")
+t "invalid answers: JSON errors (respondentName required), the link is NOT consumed, nothing stored" bash -c "echo '$BADR' | grep -q '\"respondentName\":\"required\"' && [ \"\$(psql '$DATABASE_URL' -Atc \"select (invite_token_hash is not null)::text || ',' || (select count(*) from vendor_responses where vendor_id='$VL') from vendors where id='$VL'\")\" = true,0 ]"
+GOODR=$(curl -s -D "$P7_HDR" -X POST -F "token=$VTOK" -F via=js -F 'respondentName=Maria Silva Smoke' -F 'respondentRole=Diretora Financeira' -F 'ownershipText=Controlada por Holding Smoke SA (100%)' -F pep=yes -F 'pepDetails=Primo é prefeito (smoke 5d2c)' -F sanctions=no -F antibribery=yes "$B/vendor/api/submit")
+t "submit: {ok:true}, no cookie set, no-store" bash -c "echo '$GOODR' | grep -q '\"ok\":true' && ! tr -d '\r' <'$P7_HDR' | grep -iq '^set-cookie' && tr -d '\r' <'$P7_HDR' | grep -iq '^cache-control: private, no-store'"
+t "DB: the link is consumed (hash NULL), status submitted, exactly one response" bash -c "[ \"\$(psql '$DATABASE_URL' -Atc \"select (invite_token_hash is null)::text || ',' || questionnaire_status || ',' || (select count(*) from vendor_responses where vendor_id='$VL') from vendors where id='$VL'\")\" = true,submitted,1 ]"
+AGAIN=$(curl -s -X POST -F "token=$VTOK" -F via=js -F respondentName=X -F respondentRole=X -F ownershipText=X -F pep=no -F sanctions=no -F antibribery=no "$B/vendor/api/submit")
+G3=$(curl -s -w '\n%{http_code}' "$VLINK")
+t "the used link: submit -> {invalid:true}; GET -> the friendly page (HTTP 200, no stack trace); still one response" bash -c "echo '$AGAIN' | grep -q '\"invalid\":true' && echo '$G3' | grep -q 'Este link não é mais válido' && echo '$G3' | tail -1 | grep -q '^200\$' && [ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from vendor_responses where vendor_id='$VL'\")\" = 1 ]"
+t "the vendor answers are ciphertext in the database (no plaintext anywhere in the row), booleans plain" bash -c "R=\$(psql '$DATABASE_URL' -Atc \"select * from vendor_responses where vendor_id='$VL'\") && echo \"\$R\" | grep -q 'vsmoke:' && ! echo \"\$R\" | grep -qE 'Maria Silva|Diretora|Holding Smoke|prefeito|5d2c'"
+echo "--- smoke evidence: the vendor_responses row exactly as stored (psql -x): ciphertext, no plaintext"
+psql "$DATABASE_URL" -x -c "select id, company_id, vendor_id, submitted_at, left(respondent_name, 40) || '…' as respondent_name, left(respondent_role, 40) || '…' as respondent_role, left(ownership_text, 40) || '…' as ownership_text, pep_exposure, left(pep_details, 40) || '…' as pep_details, prior_sanctions, sanctions_details, antibribery_policy from vendor_responses where vendor_id='$VL'"
+t "vendor_responses and vendor_screenings are append-only (UPDATE and DELETE rejected)" bash -c "psql '$DATABASE_URL' -qc \"update vendor_responses set pep_exposure=false where vendor_id='$VL'\" 2>&1 | grep -q 'append-only' && psql '$DATABASE_URL' -qc \"delete from vendor_responses where vendor_id='$VL'\" 2>&1 | grep -q 'append-only'"
+
+# the admin sees the answers
+curl -s -D "$P7_HDR" -b "$JAR5" "$B/dashboard/vendors/$VL" -o "$P7_HTML"
+t "vendor detail (admin): the DECRYPTED answers, 'Respondido', private no-store" bash -c "grep -q 'Maria Silva Smoke' '$P7_HTML' && grep -q 'Controlada por Holding Smoke SA' '$P7_HTML' && grep -q 'Primo é prefeito (smoke 5d2c)' '$P7_HTML' && grep -q 'Respondido em' '$P7_HTML' && tr -d '\r' <'$P7_HDR' | grep -iq '^cache-control: private, no-store'"
+
+# screening against the LOCAL STUB
+: >"$STUBLOG"
+S1=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -b "$JAR5" -X POST "$B/dashboard/vendors/$VL/screen")
+curl -s -b "$JAR5" "$B/dashboard/vendors/$VL" -o "$P7_HTML"
+t "(local stub) screen the listed vendor: 303 to its page, 'Possível correspondência — revisão necessária' with the match, 97%, list and entity id" bash -c "echo '$S1' | grep -q '^303 .*screen=possible_match' && grep -q 'Possível correspondência — revisão necessária' '$P7_HTML' && grep -q 'Listed Smoke Corp' '$P7_HTML' && grep -q '97%' '$P7_HTML' && grep -q 'smoke_sanctions' '$P7_HTML' && grep -q 'NK-SMOKE-1' '$P7_HTML'"
+t "(local stub) the lists-and-date caveat is next to the result and the page never says approved/clear/safe" bash -c "grep -q 'Não é uma investigação de due diligence nem uma determinação legal' '$P7_HTML' && grep -q 'A ausência de resultados não comprova ausência de risco' '$P7_HTML' && ! grep -qiE 'aprovad|limpo|segur[oa]|approved' '$P7_HTML'"
+S2=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -b "$JAR5" -X POST "$B/dashboard/vendors/$VQ/screen")
+curl -s -b "$JAR5" "$B/dashboard/vendors/$VQ" -o "$P7_HTML"
+t "(local stub) screen the other vendor: 'Nenhum resultado nas listas triadas em <data>'" bash -c "echo '$S2' | grep -q 'screen=no_match' && grep -qE 'Nenhum resultado nas listas triadas em [0-9]{1,2}/[0-9]{1,2}/[0-9]{4}' '$P7_HTML'"
+N_BEFORE=$(wc -l <"$STUBLOG")
+S3=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -b "$JAR5" -X POST "$B/dashboard/vendors/$VL/screen")
+t "(local stub) a second click inside the cooldown is refused (screen=cooldown) and the stub saw NO new request" bash -c "echo '$S3' | grep -q 'screen=cooldown' && [ \"\$(wc -l <'$STUBLOG')\" = '$N_BEFORE' ]"
+echo "500" >"$STUBMODE"
+S4=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -b "$JAR5" -X POST "$B/dashboard/vendors/$VE/screen")
+curl -s -b "$JAR5" "$B/dashboard/vendors/$VE" -o "$P7_HTML"
+t "(local stub) provider returns 500: recorded as an error ('Falha na triagem', code upstream), NEVER as 'nenhum resultado'; the vendor cache says error" bash -c "echo '$S4' | grep -q 'screen=error' && grep -q 'Falha na triagem' '$P7_HTML' && grep -q 'upstream' '$P7_HTML' && ! grep -q 'Nenhum resultado nas listas triadas' '$P7_HTML' && [ \"\$(psql '$DATABASE_URL' -Atc \"select screening_result from vendors where id='$VE'\")\" = error ]"
+rm -f "$STUBMODE"
+t "(local stub) three runs in the history table: possible_match, no_match, error; the cache matches the latest run" bash -c "[ \"\$(psql '$DATABASE_URL' -Atc \"select string_agg(status, ',' order by status) from vendor_screenings where company_id='$CID'\")\" = 'error,no_match,possible_match' ] && [ \"\$(psql '$DATABASE_URL' -Atc \"select screening_result from vendors where id='$VL'\")\" = possible_match ]"
+echo "--- smoke evidence (local stub): the vendor_screenings row of the listed vendor as stored (psql -x)"
+psql "$DATABASE_URL" -x -c "select id, company_id, vendor_id, screened_at, provider, dataset, name_screened, status, match_count, matches, error_code, requested_by_user_id from vendor_screenings where vendor_id='$VL'"
+echo "--- smoke evidence (local stub): the request the stub received for the listed vendor (Authorization value redacted by the stub)"
+head -1 "$STUBLOG"
+t "(local stub) the outgoing body carries ONLY the vendor name and country code; the Authorization header was present" bash -c "head -1 '$STUBLOG' | node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const r=JSON.parse(d);const q=r.body.queries;const p=q.q1.properties;const ok=r.method===\"POST\"&&r.url===\"/match/smoke\"&&r.authorization===\"ApiKey <redacted>\"&&Object.keys(r.body).join()===\"queries\"&&Object.keys(q).join()===\"q1\"&&Object.keys(q.q1).sort().join()===\"properties,schema\"&&Object.keys(p).sort().join()===\"country,name\"&&p.name[0]===process.argv[1]&&p.country[0]===\"BR\";process.exit(ok?0:1)})' '$V_LIST'"
+t "(local stub) the API key is nowhere in the database or the server log" bash -c "! psql '$DATABASE_URL' -Atc \"select (select string_agg(v::text, '') from vendors v) || (select coalesce(string_agg(s::text, ''), '') from vendor_screenings s)\" | grep -q '$STUB_KEY' && ! grep -q '$STUB_KEY' '$LOG'"
+
+# company 2 cannot see or touch company 1's vendors
+t "company 2 admin: company 1's vendor page -> 404; send / archive / unarchive / screen -> 404; its own list shows none; nothing changed" bash -c "[ \"\$(code -b '$JAR3' $B/dashboard/vendors/$VL)\" = 404 ] && for a in send archive unarchive screen; do [ \"\$(code -b '$JAR3' -X POST $B/dashboard/vendors/$VL/\$a)\" = 404 ] || exit 1; done; ! curl -s -b '$JAR3' $B/dashboard/vendors | grep -q 'Smoke Corp' && [ \"\$(psql '$DATABASE_URL' -Atc \"select (archived_at is null)::text || ',' || count(*) from vendors v, vendor_screenings s where v.id='$VL' and s.vendor_id=v.id group by archived_at\")\" = true,1 ]"
+t "no session: the vendor handlers answer 401 and the list redirects to /login" bash -c "[ \"\$(code -X POST $B/dashboard/vendors/$VL/screen)\" = 401 ] && [ \"\$(code -F name=x $B/dashboard/vendors/add)\" = 401 ] && curl -s -D - -o /dev/null $B/dashboard/vendors | tr -d '\r' | grep -iqE '^location: .*/login'"
+
+# archive hides, never deletes; archived vendors are refused a questionnaire and a screening
+curl -s -o /dev/null -b "$JAR5" -X POST "$B/dashboard/vendors/$VQ/archive"
+t "archive: gone from the list, back under 'show archived', still in the table; screening it -> screen=archived" bash -c "! curl -s -b '$JAR5' $B/dashboard/vendors | grep -q '$V_QUIET' && curl -s -b '$JAR5' '$B/dashboard/vendors?show=archived' | grep -q '$V_QUIET' && [ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from vendors where id='$VQ'\")\" = 1 ] && curl -s -o /dev/null -w '%{redirect_url}' -b '$JAR5' -X POST $B/dashboard/vendors/$VQ/screen | grep -q 'screen=archived'"
+
+# no provider configured: screening visibly unavailable, never a fake result; the questionnaire still works
+N_BEFORE=$(wc -l <"$STUBLOG")
+start_server "${FAKE_ENV[@]}"
+curl -s -b "$JAR5" "$B/dashboard/vendors/$VL" -o "$P7_HTML"
+S5=$(curl -s -o /dev/null -w '%{redirect_url}' -b "$JAR5" -X POST "$B/dashboard/vendors/$VL/screen")
+S6=$(curl -s -o /dev/null -w '%{redirect_url}' -b "$JAR5" -X POST "$B/dashboard/vendors/$VL/send")
+t "(no key) screening unavailable: the page says so and has no screen button, the click is refused, the stub saw nothing, the questionnaire can still be sent" bash -c "grep -q 'Triagem indisponível' '$P7_HTML' && ! grep -q '/screen\"' '$P7_HTML' && echo '$S5' | grep -q 'screen=unavailable' && [ \"\$(wc -l <'$STUBLOG')\" = '$N_BEFORE' ] && echo '$S6' | grep -q 'send=sent'"
+kill $STUB_PID 2>/dev/null; wait $STUB_PID 2>/dev/null
+rm -rf "$STUBDIR" "$P7_HTML" "$P7_HDR"
+
 rm -f "$JAR4" "$SO_HDR" "$JAR_OLD" "$JAR5"
 
 rm -f "$JAR3" /tmp/pdf.hdr /tmp/doc1.pdf /tmp/st3.out

@@ -337,7 +337,94 @@
     },
     "vendors": {
       "empty": "Nenhum fornecedor ainda. Os fornecedores que você adicionar aparecerão aqui, com o status do questionário e o resultado da triagem.",
-      "action": "Adicionar fornecedor"
+      "action": "Adicionar fornecedor",
+      "intro": "Adicione fornecedores, envie o questionário de integridade e rode a triagem contra listas públicas de sanções. Cada triagem é uma ação sua e pode ter custo.",
+      "name": "Nome do fornecedor",
+      "country": "País (código de 2 letras, opcional)",
+      "taxId": "CNPJ ou identificação fiscal (opcional)",
+      "contactName": "Nome do contato (opcional)",
+      "contactEmail": "E-mail do contato (necessário para enviar o questionário)",
+      "addButton": "Adicionar",
+      "added": "Fornecedor adicionado.",
+      "formError": {
+        "name_required": "Informe o nome do fornecedor.",
+        "name_long": "O nome pode ter no máximo 200 caracteres.",
+        "country_invalid": "O país deve ser um código de 2 letras (por exemplo, BR).",
+        "tax_id_long": "A identificação fiscal é longa demais.",
+        "contact_name_long": "O nome do contato é longo demais.",
+        "email_invalid": "O e-mail do contato não parece válido."
+      },
+      "colName": "Fornecedor",
+      "colCountry": "País",
+      "colQuestionnaire": "Questionário",
+      "colScreening": "Triagem",
+      "colActions": "Ações",
+      "qState": {
+        "not_sent": "Não enviado",
+        "sent": "Enviado, aguardando resposta",
+        "expired": "Link expirado",
+        "submitted": "Respondido em {date}"
+      },
+      "screenState": {
+        "never": "Não triado",
+        "no_match": "Nenhum resultado nas listas triadas em {date}",
+        "possible_match": "Possível correspondência — revisão necessária",
+        "error": "Falha na triagem"
+      },
+      "onDate": "em {date}",
+      "send": "Enviar questionário",
+      "resend": "Reenviar questionário",
+      "noEmail": "Sem e-mail de contato",
+      "sendResult": {
+        "sent": "Questionário enviado. Um novo link substituiu o anterior.",
+        "failed": "Não foi possível enviar o e-mail. Nada foi alterado; tente novamente.",
+        "notconfigured": "O envio de e-mail não está configurado.",
+        "no_email": "Este fornecedor não tem e-mail de contato.",
+        "archived": "Fornecedores arquivados não recebem questionário."
+      },
+      "archive": "Arquivar",
+      "unarchive": "Desarquivar",
+      "showArchived": "Mostrar arquivados",
+      "hideArchived": "Ocultar arquivados",
+      "archivedBadge": "Arquivado",
+      "detailsLink": "Detalhes",
+      "back": "← Fornecedores",
+      "profile": "Perfil",
+      "none": "—",
+      "screen": "Triar agora",
+      "rescreen": "Triar novamente",
+      "screenUnavailable": "Triagem indisponível: o serviço de triagem não está configurado. O questionário continua funcionando.",
+      "screenResult": {
+        "cooldown": "Este fornecedor foi triado há menos de 5 minutos. Aguarde para triar novamente.",
+        "cap": "Limite diário de triagens da empresa atingido (50 por dia, UTC). Tente novamente amanhã.",
+        "archived": "Fornecedores arquivados não podem ser triados.",
+        "unavailable": "Triagem indisponível.",
+        "no_match": "Triagem concluída: nenhum resultado nas listas triadas.",
+        "possible_match": "Triagem concluída: possível correspondência — revisão necessária.",
+        "error": "Falha na triagem — tente novamente mais tarde."
+      },
+      "disclaimer": "Ferramenta de triagem automatizada contra listas públicas de sanções ({dataset}). Não é uma investigação de due diligence nem uma determinação legal. A ausência de resultados não comprova ausência de risco.",
+      "answersHeading": "Respostas do questionário",
+      "noAnswers": "Ainda sem respostas.",
+      "latestAnswer": "Resposta mais recente",
+      "olderAnswers": "Respostas anteriores",
+      "answeredOn": "Enviada em {date}",
+      "respondent": "Respondente",
+      "ownership": "Estrutura societária",
+      "pep": "Pessoa politicamente exposta (sócio, administrador ou associado próximo)",
+      "sanctions": "Sanções, ou investigação ou condenação por corrupção",
+      "antibribery": "Política antissuborno/anticorrupção em vigor",
+      "detailsLabel": "Detalhes",
+      "yes": "Sim",
+      "no": "Não",
+      "cannotDecrypt": "Não foi possível descriptografar esta resposta — chave ausente.",
+      "screeningsHeading": "Histórico de triagem",
+      "noScreenings": "Nenhuma triagem executada.",
+      "screeningMeta": "{date} · {dataset} · nome triado: {name}",
+      "matchLine": "{caption} — pontuação {score}% · listas: {datasets} · temas: {topics}",
+      "entityId": "ID da entidade: {id}",
+      "errorCode": "Código do erro: {code}",
+      "matchesNote": "Correspondências são indícios para revisão humana, não conclusões."
     },
     "billing": {
       "subscriptionLabel": "Status da assinatura",
@@ -381,7 +468,10 @@
     "reportBody": "Uma nova denúncia foi enviada ao seu canal de denúncias. Entre para analisá-la: {url}",
     "inviteSubject": "A {company} convida você a concluir seu treinamento de compliance",
     "inviteBody": "Olá {name}, a {company} implementou um programa de compliance e precisamos que você conclua duas etapas curtas: 1) ler e aceitar o código de conduta e as políticas, 2) concluir um treinamento breve (15-20 min).",
-    "inviteButton": "Começar →"
+    "inviteButton": "Começar →",
+    "vendorSubject": "{company} pede que você preencha um breve questionário de integridade",
+    "vendorBody": "Olá, a {company} pede que você preencha um breve questionário de integridade, como parte do seu programa de compliance. Leva poucos minutos e as respostas serão enviadas à {company}. O questionário não é uma determinação legal.",
+    "vendorButton": "Abrir o questionário →"
   },
   "documents": {
     "title": "Documentos",
@@ -526,5 +616,33 @@
       "title": "Situação dos colaboradores",
       "generatedOn": "Gerado em {date}"
     }
+  },
+  "vendor": {
+    "title": "Questionário de integridade — {company}",
+    "intro": "{company} pediu que você preencha este breve questionário de integridade. As respostas serão enviadas somente a {company}.",
+    "notLegal": "Este questionário não é uma determinação legal e não implica nenhuma conclusão sobre a sua empresa.",
+    "respondentName": "Seu nome",
+    "respondentRole": "Seu cargo ou função",
+    "ownership": "Estrutura societária: quem é proprietário ou controla a empresa?",
+    "ownershipHelp": "Descreva em texto livre (sócios, acionistas relevantes, controladores).",
+    "pep": "Algum sócio, administrador ou diretor é pessoa politicamente exposta (PEP) ou associado próximo de uma?",
+    "sanctions": "A empresa ou algum sócio já foi alvo de sanções, ou de investigação ou condenação por corrupção?",
+    "antibribery": "A empresa mantém uma política antissuborno/anticorrupção em vigor?",
+    "details": "Se sim, explique",
+    "yes": "Sim",
+    "no": "Não",
+    "submit": "Enviar respostas",
+    "submitting": "Enviando…",
+    "errorSummary": "Revise os campos indicados e envie novamente.",
+    "error": {
+      "required": "Preencha este campo.",
+      "too_long": "O texto é longo demais.",
+      "choice": "Escolha Sim ou Não."
+    },
+    "networkError": "Não foi possível enviar agora. Suas respostas continuam nesta página; tente novamente.",
+    "thanksTitle": "Respostas enviadas",
+    "thanksBody": "Obrigado. Suas respostas foram enviadas à empresa que solicitou o questionário. Você pode fechar esta página.",
+    "invalidTitle": "Este link não é mais válido",
+    "invalidBody": "O link do questionário já foi usado, expirou ou foi substituído. Peça à empresa que o convidou para enviar um novo link."
   }
 }

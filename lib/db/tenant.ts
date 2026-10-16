@@ -11,6 +11,8 @@ import {
   employeeSessions,
   trainingCompletions,
   users,
+  vendorResponses,
+  vendorScreenings,
   vendors,
   whistleblowerEvidence,
   whistleblowerNotes,
@@ -33,6 +35,8 @@ export const TENANT_TABLES = {
   whistleblowerEvidence,
   whistleblowerNotes,
   vendors,
+  vendorResponses,
+  vendorScreenings,
   billingRecords,
 } as const;
 

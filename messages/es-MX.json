@@ -337,7 +337,94 @@
     },
     "vendors": {
       "empty": "Todavía no hay proveedores. Los proveedores que se agreguen aparecerán aquí, con el estado del cuestionario y el resultado del screening.",
-      "action": "Agregar proveedor"
+      "action": "Agregar proveedor",
+      "intro": "Agregue proveedores, envíe el cuestionario de integridad y ejecute el screening contra listas públicas de sanciones. Cada screening es una acción suya y puede tener costo.",
+      "name": "Nombre del proveedor",
+      "country": "País (código de 2 letras, opcional)",
+      "taxId": "ID fiscal (opcional)",
+      "contactName": "Nombre del contacto (opcional)",
+      "contactEmail": "Correo del contacto (necesario para enviar el cuestionario)",
+      "addButton": "Agregar",
+      "added": "Proveedor agregado.",
+      "formError": {
+        "name_required": "Ingrese el nombre del proveedor.",
+        "name_long": "El nombre puede tener como máximo 200 caracteres.",
+        "country_invalid": "El país debe ser un código de 2 letras (por ejemplo, BR).",
+        "tax_id_long": "El ID fiscal es demasiado largo.",
+        "contact_name_long": "El nombre del contacto es demasiado largo.",
+        "email_invalid": "El correo del contacto no parece válido."
+      },
+      "colName": "Proveedor",
+      "colCountry": "País",
+      "colQuestionnaire": "Cuestionario",
+      "colScreening": "Screening",
+      "colActions": "Acciones",
+      "qState": {
+        "not_sent": "No enviado",
+        "sent": "Enviado, en espera de respuesta",
+        "expired": "Enlace vencido",
+        "submitted": "Respondido el {date}"
+      },
+      "screenState": {
+        "never": "Sin screening",
+        "no_match": "Sin resultados en las listas revisadas el {date}",
+        "possible_match": "Posible coincidencia — requiere revisión",
+        "error": "Falló el screening"
+      },
+      "onDate": "el {date}",
+      "send": "Enviar cuestionario",
+      "resend": "Reenviar cuestionario",
+      "noEmail": "Sin correo de contacto",
+      "sendResult": {
+        "sent": "Cuestionario enviado. El nuevo enlace reemplaza al anterior.",
+        "failed": "No se pudo enviar el correo. No se cambió nada; intente de nuevo.",
+        "notconfigured": "El envío de correo no está configurado.",
+        "no_email": "Este proveedor no tiene correo de contacto.",
+        "archived": "A los proveedores archivados no se les envía cuestionario."
+      },
+      "archive": "Archivar",
+      "unarchive": "Desarchivar",
+      "showArchived": "Mostrar archivados",
+      "hideArchived": "Ocultar archivados",
+      "archivedBadge": "Archivado",
+      "detailsLink": "Detalles",
+      "back": "← Proveedores",
+      "profile": "Perfil",
+      "none": "—",
+      "screen": "Ejecutar screening",
+      "rescreen": "Ejecutar screening de nuevo",
+      "screenUnavailable": "Screening no disponible: el servicio de screening no está configurado. El cuestionario sigue funcionando.",
+      "screenResult": {
+        "cooldown": "Este proveedor tuvo un screening hace menos de 5 minutos. Espere antes de repetirlo.",
+        "cap": "Se alcanzó el límite diario de screenings de la empresa (50 por día, UTC). Intente de nuevo mañana.",
+        "archived": "Los proveedores archivados no pueden pasar por screening.",
+        "unavailable": "Screening no disponible.",
+        "no_match": "Screening terminado: sin resultados en las listas revisadas.",
+        "possible_match": "Screening terminado: posible coincidencia — requiere revisión.",
+        "error": "Falló el screening — intente de nuevo más tarde."
+      },
+      "disclaimer": "Herramienta de screening automatizado contra listas públicas de sanciones ({dataset}). No es una investigación de due diligence ni una determinación legal. La ausencia de resultados no prueba la ausencia de riesgo.",
+      "answersHeading": "Respuestas del cuestionario",
+      "noAnswers": "Todavía no hay respuestas.",
+      "latestAnswer": "Respuesta más reciente",
+      "olderAnswers": "Respuestas anteriores",
+      "answeredOn": "Enviada el {date}",
+      "respondent": "Respondiente",
+      "ownership": "Estructura de propiedad",
+      "pep": "Persona expuesta políticamente (socio, directivo o asociado cercano)",
+      "sanctions": "Sanciones, o investigación o condena por corrupción",
+      "antibribery": "Política antisoborno/anticorrupción vigente",
+      "detailsLabel": "Detalles",
+      "yes": "Sí",
+      "no": "No",
+      "cannotDecrypt": "No se pudo descifrar esta respuesta — falta la clave.",
+      "screeningsHeading": "Historial de screening",
+      "noScreenings": "No se ha ejecutado ningún screening.",
+      "screeningMeta": "{date} · {dataset} · nombre revisado: {name}",
+      "matchLine": "{caption} — puntaje {score}% · listas: {datasets} · temas: {topics}",
+      "entityId": "ID de la entidad: {id}",
+      "errorCode": "Código de error: {code}",
+      "matchesNote": "Las coincidencias son indicios para revisión humana, no conclusiones."
     },
     "billing": {
       "subscriptionLabel": "Estado de la suscripción",
@@ -381,7 +468,10 @@
     "reportBody": "Se envió una nueva denuncia a tu canal de denuncias. Inicia sesión para revisarla: {url}",
     "inviteSubject": "{company} te invita a completar tu capacitación de cumplimiento",
     "inviteBody": "Hola {name}, {company} implementó un programa de cumplimiento y necesitamos que completes dos pasos cortos: 1) leer y aceptar el código de conducta y las políticas, 2) completar una capacitación breve (15-20 min).",
-    "inviteButton": "Empezar →"
+    "inviteButton": "Empezar →",
+    "vendorSubject": "{company} le pide que complete un breve cuestionario de integridad",
+    "vendorBody": "Hola, {company} le pide que complete un breve cuestionario de integridad como parte de su programa de cumplimiento. Toma pocos minutos y sus respuestas se envían a {company}. El cuestionario no es una determinación legal.",
+    "vendorButton": "Abrir el cuestionario →"
   },
   "documents": {
     "title": "Documentos",
@@ -526,5 +616,33 @@
       "title": "Estado de cumplimiento de los empleados",
       "generatedOn": "Generado el {date}"
     }
+  },
+  "vendor": {
+    "title": "Cuestionario de integridad — {company}",
+    "intro": "{company} le pidió que complete este breve cuestionario de integridad. Sus respuestas se envían solo a {company}.",
+    "notLegal": "Este cuestionario no es una determinación legal y no implica ninguna conclusión sobre su empresa.",
+    "respondentName": "Su nombre",
+    "respondentRole": "Su cargo o función",
+    "ownership": "Estructura de propiedad: ¿quién es dueño o controla la empresa?",
+    "ownershipHelp": "Describa en texto libre (socios, accionistas relevantes, controladores).",
+    "pep": "¿Algún socio, directivo o administrador es una persona expuesta políticamente (PEP) o asociado cercano de una?",
+    "sanctions": "¿La empresa o algún socio ha sido objeto de sanciones, o de una investigación o condena por corrupción?",
+    "antibribery": "¿La empresa tiene una política antisoborno/anticorrupción vigente?",
+    "details": "En caso afirmativo, explique",
+    "yes": "Sí",
+    "no": "No",
+    "submit": "Enviar respuestas",
+    "submitting": "Enviando…",
+    "errorSummary": "Revise los campos indicados y envíe de nuevo.",
+    "error": {
+      "required": "Complete este campo.",
+      "too_long": "El texto es demasiado largo.",
+      "choice": "Elija Sí o No."
+    },
+    "networkError": "No se pudo enviar ahora. Sus respuestas siguen en esta página; intente de nuevo.",
+    "thanksTitle": "Respuestas enviadas",
+    "thanksBody": "Gracias. Sus respuestas se enviaron a la empresa que solicitó el cuestionario. Puede cerrar esta página.",
+    "invalidTitle": "Este enlace ya no es válido",
+    "invalidBody": "El enlace del cuestionario ya se usó, venció o fue reemplazado. Pida a la empresa que lo invitó que le envíe un enlace nuevo."
   }
 }

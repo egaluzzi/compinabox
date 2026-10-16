@@ -337,7 +337,94 @@
     },
     "vendors": {
       "empty": "No vendors yet. Vendors you add will appear here, with their questionnaire status and screening result.",
-      "action": "Add vendor"
+      "action": "Add vendor",
+      "intro": "Add vendors, send the integrity questionnaire and run a screening against public sanctions lists. Each screening is an action you take and may carry a cost.",
+      "name": "Vendor name",
+      "country": "Country (2-letter code, optional)",
+      "taxId": "Tax ID (optional)",
+      "contactName": "Contact name (optional)",
+      "contactEmail": "Contact email (needed to send the questionnaire)",
+      "addButton": "Add",
+      "added": "Vendor added.",
+      "formError": {
+        "name_required": "Enter the vendor name.",
+        "name_long": "The name can have at most 200 characters.",
+        "country_invalid": "The country must be a 2-letter code (for example, BR).",
+        "tax_id_long": "The tax ID is too long.",
+        "contact_name_long": "The contact name is too long.",
+        "email_invalid": "The contact email does not look valid."
+      },
+      "colName": "Vendor",
+      "colCountry": "Country",
+      "colQuestionnaire": "Questionnaire",
+      "colScreening": "Screening",
+      "colActions": "Actions",
+      "qState": {
+        "not_sent": "Not sent",
+        "sent": "Sent, awaiting reply",
+        "expired": "Link expired",
+        "submitted": "Answered on {date}"
+      },
+      "screenState": {
+        "never": "Not screened",
+        "no_match": "No results in the lists screened on {date}",
+        "possible_match": "Possible match — review needed",
+        "error": "Screening failed"
+      },
+      "onDate": "on {date}",
+      "send": "Send questionnaire",
+      "resend": "Resend questionnaire",
+      "noEmail": "No contact email",
+      "sendResult": {
+        "sent": "Questionnaire sent. The new link replaces any earlier one.",
+        "failed": "The email could not be sent. Nothing was changed; try again.",
+        "notconfigured": "Email sending is not configured.",
+        "no_email": "This vendor has no contact email.",
+        "archived": "Archived vendors cannot be sent a questionnaire."
+      },
+      "archive": "Archive",
+      "unarchive": "Unarchive",
+      "showArchived": "Show archived",
+      "hideArchived": "Hide archived",
+      "archivedBadge": "Archived",
+      "detailsLink": "Details",
+      "back": "← Vendors",
+      "profile": "Profile",
+      "none": "—",
+      "screen": "Screen now",
+      "rescreen": "Screen again",
+      "screenUnavailable": "Screening unavailable: the screening service is not configured. The questionnaire still works.",
+      "screenResult": {
+        "cooldown": "This vendor was screened less than 5 minutes ago. Wait before screening again.",
+        "cap": "The company's daily screening limit has been reached (50 per day, UTC). Try again tomorrow.",
+        "archived": "Archived vendors cannot be screened.",
+        "unavailable": "Screening unavailable.",
+        "no_match": "Screening finished: no results in the lists screened.",
+        "possible_match": "Screening finished: possible match — review needed.",
+        "error": "Screening failed — try again later."
+      },
+      "disclaimer": "Automated screening tool against public sanctions lists ({dataset}). It is not a due diligence investigation or a legal determination. The absence of results does not prove the absence of risk.",
+      "answersHeading": "Questionnaire answers",
+      "noAnswers": "No answers yet.",
+      "latestAnswer": "Latest answer",
+      "olderAnswers": "Earlier answers",
+      "answeredOn": "Submitted on {date}",
+      "respondent": "Respondent",
+      "ownership": "Ownership structure",
+      "pep": "Politically exposed person (owner, director or close associate)",
+      "sanctions": "Sanctions, or an anti-corruption investigation or conviction",
+      "antibribery": "Anti-bribery/anti-corruption policy in place",
+      "detailsLabel": "Details",
+      "yes": "Yes",
+      "no": "No",
+      "cannotDecrypt": "This answer cannot be decrypted — key missing.",
+      "screeningsHeading": "Screening history",
+      "noScreenings": "No screening has been run.",
+      "screeningMeta": "{date} · {dataset} · name screened: {name}",
+      "matchLine": "{caption} — score {score}% · lists: {datasets} · topics: {topics}",
+      "entityId": "Entity ID: {id}",
+      "errorCode": "Error code: {code}",
+      "matchesNote": "Matches are leads for human review, not conclusions."
     },
     "billing": {
       "subscriptionLabel": "Subscription status",
@@ -381,7 +468,10 @@
     "reportBody": "A new report was submitted to your whistleblower channel. Sign in to review it: {url}",
     "inviteSubject": "{company} invites you to complete your compliance training",
     "inviteBody": "Hello {name}, {company} has put a compliance program in place and we need you to complete two short steps: 1) read and accept the code of conduct and the policies, 2) complete a short training (15-20 min).",
-    "inviteButton": "Start →"
+    "inviteButton": "Start →",
+    "vendorSubject": "{company} asks you to complete a short integrity questionnaire",
+    "vendorBody": "Hello, {company} asks you to fill in a short integrity questionnaire as part of its compliance program. It takes a few minutes and your answers go to {company}. The questionnaire is not a legal determination.",
+    "vendorButton": "Open the questionnaire →"
   },
   "documents": {
     "title": "Documents",
@@ -526,5 +616,33 @@
       "title": "Employee compliance status",
       "generatedOn": "Generated on {date}"
     }
+  },
+  "vendor": {
+    "title": "Integrity questionnaire — {company}",
+    "intro": "{company} has asked you to fill in this short integrity questionnaire. Your answers go only to {company}.",
+    "notLegal": "This questionnaire is not a legal determination and implies no conclusion about your company.",
+    "respondentName": "Your name",
+    "respondentRole": "Your role",
+    "ownership": "Ownership structure: who owns or controls the company?",
+    "ownershipHelp": "Describe in free text (partners, significant shareholders, controllers).",
+    "pep": "Is any owner, director or officer a politically exposed person (PEP) or a close associate of one?",
+    "sanctions": "Has the company or an owner ever been subject to sanctions, or to an anti-corruption investigation or conviction?",
+    "antibribery": "Does the company have an anti-bribery/anti-corruption policy in place?",
+    "details": "If yes, please explain",
+    "yes": "Yes",
+    "no": "No",
+    "submit": "Send answers",
+    "submitting": "Sending…",
+    "errorSummary": "Please check the fields marked and send again.",
+    "error": {
+      "required": "Fill in this field.",
+      "too_long": "The text is too long.",
+      "choice": "Choose Yes or No."
+    },
+    "networkError": "Could not send right now. Your answers are still on this page; try again.",
+    "thanksTitle": "Answers sent",
+    "thanksBody": "Thank you. Your answers have been sent to the company that requested the questionnaire. You can close this page.",
+    "invalidTitle": "This link is no longer valid",
+    "invalidBody": "The questionnaire link has already been used, has expired or has been replaced. Ask the company that invited you to send a new link."
   }
 }
