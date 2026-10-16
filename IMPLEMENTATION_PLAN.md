@@ -200,21 +200,22 @@ Judgment: an expired or reused token shows a friendly page, not a stack trace; e
 
 ## Phase 7 — Vendor questionnaire + sanctions screening
 
-SPEC §5.6.
+SPEC §5.6. **Deep review** — third-party data egress (vendor names leave the system) and a paid external service. Detailed decisions in `SUPERVISOR_NOTES.md`. **Two inputs only Esteban can supply gate acceptance** (CLAUDE.md §11): an OpenSanctions API key + confirmed commercial terms/cost, and network access to `api.opensanctions.org` for the worker environment. The worker builds everything without them; the phase is **not accepted until the live round-trip below has run.**
 
-- [ ] `ScreeningProvider` interface + OpenSanctions (yente) implementation; results cached per vendor with `screened_at`
-- [ ] Vendor invite via tokenized link → questionnaire (ownership, PEP exposure, prior sanctions, anti-bribery policy y/n)
-- [ ] Dashboard → Vendors: list, questionnaire status, screening result, re-screen
-- [ ] Copy labels it a *screening tool*, never "due diligence investigation" (SPEC §5.6 — guardrail)
+- [ ] **Vendors:** add (name, optional country/tax id, contact email), archive (never delete); tenant-scoped; list + detail under `/dashboard/vendors`
+- [ ] **Questionnaire:** admin sends a tokenized link (`/vendor/<token>`, 30-day TTL, new link kills the old); one public form (ownership structure, PEP exposure y/n + details, prior sanctions y/n + details, anti-bribery policy y/n, respondent name/role); submit consumes the token atomically; answers' free text encrypted at rest (same key ring), append-only; resend to request an update
+- [ ] **`ScreeningProvider` interface** + OpenSanctions (yente `/match`) implementation, base URL + dataset configurable (hosted API or a self-hosted yente later), 10 s timeout, errors are recorded as errors — never as "no match"
+- [ ] **Screening:** explicit admin action (run / re-run), per-vendor cooldown and per-company daily cap (bounds spend); result cached on the vendor (`screening_result`, `screened_at`) and every run kept in an append-only `vendor_screenings` history (status, matches summary, datasets, date)
+- [ ] **Copy:** a *screening tool*, never "due diligence investigation"; results say "possible match — review needed" / "no match found in the lists screened on <date>", never "clear / approved / safe"; always the lists-and-date caveat
+- [ ] Unconfigured provider (no key) → screening visibly "unavailable", questionnaire still works; never a silent fallback or fake result in production
 
 **Definition of done**
 ```
-./verify.sh
-npm run test -- vendors         # provider mocked in unit tests
-# live check, pasted into HANDOFF.md:
-curl -s "https://api.opensanctions.org/match/default" ... | head   # one real call with a known-listed name returns a hit
+./verify.sh                      # smoke runs the real client against a local stub HTTP server shaped like yente's /match
+npm run test -- vendors          # provider mocked in unit tests; token, cross-tenant, encryption, append-only, cooldown/cap, error-is-not-clear
+scripts/screening-live-check.sh  # ONE real call with a known-listed name -> hit, pasted into HANDOFF.md (needs SCREENING_API_KEY + network allow)
 ```
-Judgment: mock-only is **not** verified for this phase — one real API round-trip required in evidence.
+Judgment: **mock-only is not verified for this phase.** If the live check could not run, the worker says so and the supervisor holds the phase at "built, not accepted" until it has (a follow-up task, not a rebuild). Supervisor reads the provider mapping against the live response shape once it exists.
 
 ---
 
@@ -254,6 +255,7 @@ SPEC §9 (blog), §10, CLAUDE.md §4.
 - [ ] Phase 5 carry-overs: Caddy request-body size cap on `/api/report` (the handler buffers the multipart body before validating sizes); set `NEXT_TELEMETRY_DISABLED=1`; decide how `npm run rotate-report-key` runs on the droplet (it needs a checkout + `node_modules`, the deploy ships only the standalone output); `scripts/backup.sh` currently dumps the DB only — extend it (or add a second job) to cover `EVIDENCE_DIR`
 - [ ] Phase 6 carry-overs: origin only reachable from Cloudflare (firewall/Caddy allow-list of Cloudflare ranges) so `cf-connecting-ip` on acknowledgments cannot be spoofed; real-inbox check that invite links survive mail scanners (the GET confirm page should make them safe); Resend daily/second rate limits vs bulk invites (≤ 50 per click)
 - [ ] Phase 6 carry-overs (2): Caddy must not log the path of `/employee/*` (the invite token is in the URL path; it dies on use or after 14 days, but keep it out of logs anyway); purge expired `employee_sessions` rows in the ops timer; day-one support note for Esteban: an employee whose session ended (8 h) or whose link was used needs the admin to re-send the invitation
+- [ ] Phase 7 carry-overs: `SCREENING_API_KEY` / `SCREENING_BASE_URL` / `SCREENING_DATASET` on the droplet; vendor names are sent to the screening provider — the privacy policy must name it as a sub-processor; vendor-link paths (`/vendor/*`) kept out of Caddy logs like `/employee/*`
 - [ ] Backup bucket is **private**; Esteban confirms a downloaded dump restores with `scripts/restore-test.sh`
 
 **Definition of done**
