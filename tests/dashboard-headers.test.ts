@@ -7,7 +7,9 @@ describe("security headers for authenticated pages (next.config)", () => {
     // The public whistleblower channel has its own rule set (tests/whistleblower-public.test.ts).
     const rules = (await nextConfig.headers!()).filter(
       (r) =>
-        !r.source.startsWith("/report") && !r.source.startsWith("/api/report"),
+        !r.source.startsWith("/report") &&
+        !r.source.startsWith("/api/report") &&
+        !r.source.startsWith("/employee"), // the employee portal: tests/employee-gate.test.ts
     );
     expect(rules.map((r) => r.source).sort()).toEqual(
       [

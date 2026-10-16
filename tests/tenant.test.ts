@@ -38,6 +38,12 @@ async function seedTenantRows(who: "A" | "B", companyId: string) {
     documentId: document.id,
     ipAddress: "192.0.2.1",
   });
+  await db.insert(schema.employeeSessions).values({
+    companyId,
+    employeeId: employee.id,
+    tokenHash: `hash-${label}`,
+    expiresAt: new Date(Date.now() + 3600_000),
+  });
   await db
     .insert(schema.trainingCompletions)
     .values({ companyId, employeeId: employee.id, moduleId: "m1", score: 90 });
@@ -45,6 +51,7 @@ async function seedTenantRows(who: "A" | "B", companyId: string) {
     companyId,
     employeeId: employee.id,
     type: "gift",
+    periodYear: 2026,
     content: `d ${label}`,
   });
   const [report] = await db

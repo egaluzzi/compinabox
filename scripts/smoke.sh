@@ -387,6 +387,142 @@ echo "--- smoke evidence: the notification email as written to the dev sink"
 echo "$MAILS" | head -1
 rm -f "$RHDR" "$EVJPG" /tmp/rpt.html /tmp/ev.out
 
+# ---------------------------------------------------------------------------------------------
+# Phase 6: the employee portal — CSV import -> invitations -> link (GET does not consume) -> Start ->
+# acknowledge six documents (with the Cloudflare client IP) -> fail the quiz once, pass it -> the
+# annual disclosure -> admin grid + CSV/PDF exports -> link reuse, re-issue, tenant isolation,
+# deactivation. Real Postgres + real HTTP + the real dev email sink. Company 1 = JAR5 (admin),
+# company 2 = JAR3.
+# ---------------------------------------------------------------------------------------------
+t() { # t "<description>" <command...>  — runs the command in THIS shell (no quoting gymnastics)
+  local d=$1; shift
+  if "$@" >/dev/null 2>&1; then printf 'ok    %s\n' "$d"; else printf 'FAIL  %s\n' "$d"; fail=1; fi
+}
+P6="$$"
+P6_CSV=$(mktemp); P6_HDR=$(mktemp); P6_HTML=$(mktemp); JARE=$(mktemp); JARE3=$(mktemp)
+ANA_E="ana6-$P6@example.test"; BETO_E="beto6-$P6@example.test"; CARLA_E="carla6-$P6@example.test"
+# UTF-8 BOM, ';' delimiter, Portuguese header, an upper-case email, one invalid line, one duplicate
+printf '\xef\xbb\xbfnome;email\nAna Smoke;ANA6-%s@example.test\nBeto Smoke;%s\nCarla Smoke;%s\nSem Email;nao-e-email\nAna Repetida;%s\n' "$P6" "$BETO_E" "$CARLA_E" "$ANA_E" >"$P6_CSV"
+IMP=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -b "$JAR5" -F "file=@$P6_CSV;type=text/csv" "$B/dashboard/employees/import")
+t "import (BOM + ';' + one bad line + one duplicate): 303, created 3, skipped 1, invalid 1, line 5 reported, no email in the URL" \
+  bash -c "echo '$IMP' | grep -q '^303 .*imported=3\.0\.1\.1' && echo '$IMP' | grep -q 'bad=5:email_invalid' && ! echo '$IMP' | grep -qi 'example.test'"
+ANA=$(SQL "select id from employees where company_id='$CID' and email='$ANA_E'")
+BETO=$(SQL "select id from employees where company_id='$CID' and email='$BETO_E'")
+CARLA=$(SQL "select id from employees where company_id='$CID' and email='$CARLA_E'")
+t "DB: three employees, emails lower-cased, none invited yet" \
+  bash -c "[ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from employees where company_id='$CID' and email in ('$ANA_E','$BETO_E','$CARLA_E') and invited_at is null and invite_token_hash is null\")\" = 3 ]"
+curl -s -b "$JAR5" "$B/dashboard/employees" -o "$P6_HTML"
+t "admin grid lists the three, 'Não convidado', and the completion line says 0%" bash -c "grep -q 'Ana Smoke' '$P6_HTML' && grep -q 'Beto Smoke' '$P6_HTML' && grep -q 'Não convidado' '$P6_HTML' && grep -q 'Conclusão 0% · 0 de 3' '$P6_HTML'"
+
+# invitations: "send pending" (<= 50 per click)
+BATCH=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -b "$JAR5" -X POST "$B/dashboard/employees/invite-pending")
+t "send pending invitations: 303, 3 sent, 0 failed, 0 remaining" bash -c "echo '$BATCH' | grep -q '^303 .*batch=3\.0\.0'"
+mail_link() { # mail_link <to> [n-th mail, default last] -> prints the /employee/<token> link
+  node -e 'const fs=require("fs"),d=process.argv[1],to=process.argv[2];let out=[];for(const f of fs.readdirSync(d).sort()){const m=JSON.parse(fs.readFileSync(d+"/"+f,"utf8"));if(m.to===to&&/employee\//.test(m.text))out.push(m.text.match(/https?:\/\/\S+\/employee\/\S+/)[0])}console.log(out[out.length-1]||"")' "$OUTBOX" "$1"
+}
+LINK_A=$(mail_link "$ANA_E"); LINK_B1=$(mail_link "$BETO_E"); LINK_C=$(mail_link "$CARLA_E")
+TOK_A=${LINK_A##*/}; TOK_B1=${LINK_B1##*/}; TOK_C=${LINK_C##*/}
+t "three invitation emails reached the dev sink, each with its own /employee/<43-char token> link" \
+  bash -c "echo '$LINK_A' | grep -qE '/employee/[A-Za-z0-9_-]{43}\$' && echo '$LINK_B1' | grep -qE '/employee/[A-Za-z0-9_-]{43}\$' && [ '$TOK_A' != '$TOK_B1' ] && [ '$TOK_A' != '$TOK_C' ]"
+MAIL_A=$(node -e 'const fs=require("fs"),d=process.argv[1];for(const f of fs.readdirSync(d).sort()){const m=JSON.parse(fs.readFileSync(d+"/"+f,"utf8"));if(m.to===process.argv[2]&&/employee\//.test(m.text))console.log(JSON.stringify(m))}' "$OUTBOX" "$ANA_E" | tail -1)
+echo "--- smoke evidence: the invitation email as written to the dev sink"
+echo "$MAIL_A"
+t "invitation: pt-BR, names the employee, offers the two steps, carries no document text" \
+  bash -c "echo '$MAIL_A' | grep -q 'convida você a concluir seu treinamento' && echo '$MAIL_A' | grep -q 'Olá Ana Smoke' && echo '$MAIL_A' | grep -q '15-20 min' && ! echo '$MAIL_A' | grep -qiE 'Nosso compromisso|vantagem indevida|Comprometimento da alta'"
+t "DB: invited_at set, 14-day expiry, only the sha256 hash stored (the raw token is nowhere in the row)" \
+  bash -c "[ \"\$(psql '$DATABASE_URL' -Atc \"select (invited_at is not null and invite_expires_at - invited_at = interval '14 days' and invite_token_hash = '\$(printf %s '$TOK_A' | openssl dgst -sha256 | awk '{print \$NF}')')::text from employees where id='$ANA'\")\" = true ] && ! psql '$DATABASE_URL' -Atc \"select * from employees where id='$ANA'\" | grep -q '$TOK_A'"
+echo "--- smoke evidence: the invited employee row (psql -x): a hash, not the token"
+psql "$DATABASE_URL" -x -c "select id, name, email, invite_token_hash, invited_at, invite_expires_at, deactivated_at from employees where id='$ANA'"
+
+# the link page: GET never consumes (mail scanners and link previews prefetch it)
+G1=$(curl -s -o "$P6_HTML" -w '%{http_code}' "$LINK_A"); G2=$(curl -s -o /dev/null -w '%{http_code}' "$LINK_A")
+t "GET /employee/<token> (twice): 200 'Start' page with a hidden token field and the company name" bash -c "[ '$G1' = 200 ] && [ '$G2' = 200 ] && grep -q 'name=\"token\"' '$P6_HTML' && grep -q 'Começar' '$P6_HTML' && grep -q 'action=\"/employee/api/session\"' '$P6_HTML'"
+t "GET did not consume the link: the hash is still stored, the token is usable" bash -c "[ \"\$(psql '$DATABASE_URL' -Atc \"select (invite_token_hash is not null)::text from employees where id='$ANA'\")\" = true ]"
+curl -s -D "$P6_HDR" -o /dev/null "$LINK_A"
+t "link page headers: private no-store, no-referrer, DENY, noindex" bash -c "H=\$(tr -d '\r' <'$P6_HDR') && echo \"\$H\" | grep -iq '^cache-control: private, no-store' && echo \"\$H\" | grep -iq '^referrer-policy: no-referrer' && echo \"\$H\" | grep -iq '^x-frame-options: DENY' && echo \"\$H\" | grep -iq '^x-robots-tag: noindex'"
+t "no portal cookie reaches /employee without a session: /employee -> friendly page, handlers -> 401" bash -c "curl -s -D - -o /dev/null $B/employee | tr -d '\r' | grep -iqE '^location: .*/employee/link-invalid' && [ \"\$(code -X POST -F documentId=x $B/employee/api/acknowledge)\" = 401 ] && [ \"\$(code -X POST --data '{}' $B/employee/api/training)\" = 401 ]"
+
+# Start (POST) consumes the link and opens the session
+curl -s -D "$P6_HDR" -o /dev/null -c "$JARE" -X POST --data-urlencode "token=$TOK_A" "$B/employee/api/session"
+t "Start: 303 to /employee; cookie employee_session is HttpOnly, SameSite=Lax, Path=/employee, 8 hours" bash -c "H=\$(tr -d '\r' <'$P6_HDR') && head -1 '$P6_HDR' | grep -q ' 303 ' && echo \"\$H\" | grep -iq '^location: .*/employee\$' && echo \"\$H\" | grep -i '^set-cookie: employee_session=' | grep -iq 'HttpOnly' && echo \"\$H\" | grep -i '^set-cookie: employee_session=' | grep -iq 'Path=/employee' && echo \"\$H\" | grep -i '^set-cookie: employee_session=' | grep -iq 'SameSite=lax' && echo \"\$H\" | grep -i '^set-cookie: employee_session=' | grep -iq 'Max-Age=28800'"
+t "cookie jar: the session cookie is scoped to Path=/employee (never sent to /dashboard, /report)" bash -c "grep -q '/employee.*employee_session' '$JARE' && ! curl -s -D - -o /dev/null -b '$JARE' $B/dashboard | tr -d '\r' | grep -iq 'employee'"
+t "DB: invite_token_hash is NULL after Start, exactly one session row, only its hash stored" bash -c "[ \"\$(psql '$DATABASE_URL' -Atc \"select (invite_token_hash is null)::text from employees where id='$ANA'\")\" = true ] && [ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from employee_sessions where employee_id='$ANA'\")\" = 1 ] && ! psql '$DATABASE_URL' -Atc 'select * from employee_sessions' | grep -q \"\$(grep employee_session '$JARE' | awk '{print \$NF}')\""
+echo "--- smoke evidence: the same employee row after Start (invite_token_hash is NULL)"
+psql "$DATABASE_URL" -x -c "select id, email, invite_token_hash, invited_at, invite_expires_at from employees where id='$ANA'"
+curl -s -D "$P6_HDR" -b "$JARE" -o "$P6_HTML" "$B/employee"
+t "portal home: 200, private no-store, checklist shows 0 of 8 steps" bash -c "head -1 '$P6_HDR' | grep -q ' 200' && tr -d '\r' <'$P6_HDR' | grep -iq '^cache-control: private, no-store' && grep -q '0 de 8 etapas concluídas' '$P6_HTML' && grep -q 'Smoke' '$P6_HTML'"
+
+# acknowledge the six documents (with the Cloudflare header), then a double click and a foreign id
+# the CURRENT version of each type (earlier smoke steps regenerated the documents)
+DOCS=$(SQL "select distinct on (type) id from documents where company_id='$CID' order by type, version desc")
+N=0; ACKFAIL=0
+for d in $DOCS; do
+  N=$((N+1))
+  [ "$(code -b "$JARE" "$B/employee/documents/$d")" = 200 ] || ACKFAIL=1
+  [ "$(code -b "$JARE" -H "CF-Connecting-IP: 203.0.113.$((10+N))" -H 'X-Forwarded-For: 198.51.100.99' -F documentId="$d" "$B/employee/api/acknowledge")" = 303 ] || ACKFAIL=1
+done
+t "six document pages render (200) and six acknowledgments are accepted (303)" bash -c "[ '$ACKFAIL' = 0 ] && [ '$N' = 6 ]"
+FIRSTDOC=$(echo "$DOCS" | head -1)
+code -b "$JARE" -F documentId="$FIRSTDOC" "$B/employee/api/acknowledge" >/dev/null
+t "double click: still exactly six acknowledgment rows" bash -c "[ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from acknowledgments where employee_id='$ANA'\")\" = 6 ]"
+t "IP stored from CF-Connecting-IP (203.0.113.11..16), never from X-Forwarded-For" bash -c "[ \"\$(psql '$DATABASE_URL' -Atc \"select string_agg(ip_address, ',' order by ip_address) from acknowledgments where employee_id='$ANA'\")\" = '203.0.113.11,203.0.113.12,203.0.113.13,203.0.113.14,203.0.113.15,203.0.113.16' ]"
+echo "--- smoke evidence: one acknowledgments row exactly as stored (psql -x) — it carries the client IP"
+psql "$DATABASE_URL" -x -c "select id, company_id, employee_id, document_id, accepted_at, ip_address from acknowledgments where employee_id='$ANA' order by accepted_at limit 1"
+OTHERDOC=$(SQL "select id from documents where company_id <> '$CID' limit 1")
+t "a document of ANOTHER company: page -> 404, acknowledge -> 404, no row written" bash -c "[ \"\$(code -b '$JARE' $B/employee/documents/$OTHERDOC)\" = 404 ] && [ \"\$(code -b '$JARE' -F documentId=$OTHERDOC $B/employee/api/acknowledge)\" = 404 ] && [ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from acknowledgments where document_id='$OTHERDOC'\")\" = 0 ]"
+t "the acknowledgments table is append-only (UPDATE, DELETE rejected)" bash -c "psql '$DATABASE_URL' -qc \"update acknowledgments set ip_address='9.9.9.9' where employee_id='$ANA'\" 2>&1 | grep -q 'append-only' && psql '$DATABASE_URL' -qc \"delete from acknowledgments where employee_id='$ANA'\" 2>&1 | grep -q 'append-only'"
+
+# training: the quiz page ships no answers; fail once (9 of 12), then pass (10 of 12)
+curl -s -b "$JARE" "$B/employee/training/quiz" -o "$P6_HTML"
+t "quiz page: 12 questions, no explanation text and no correct-answer marker in the HTML" bash -c "[ \"\$(grep -o 'type=\"radio\"' '$P6_HTML' | wc -l)\" = 48 ] && ! grep -qiE 'correctIndex|\"correct\"|Os registros precisam refletir' '$P6_HTML'"
+answers() { node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types -e 'import("./lib/training/content.ts").then(m=>{const n=+process.argv[1],a={};m.QUESTIONS.forEach((q,i)=>a[q.id]=i<n?(q.correct+1)%4:q.correct);console.log(JSON.stringify({answers:a}))})' "$1"; }
+FAIL_R=$(curl -s -b "$JARE" -H 'content-type: application/json' --data "$(answers 3)" "$B/employee/api/training")
+t "quiz 9 of 12: not passed (score 75), explanations returned, NOTHING stored" bash -c "echo '$FAIL_R' | grep -q '\"passed\":false' && echo '$FAIL_R' | grep -q '\"score\":75' && echo '$FAIL_R' | grep -q '\"explanation\"' && [ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from training_completions where employee_id='$ANA'\")\" = 0 ]"
+PASS_R=$(curl -s -b "$JARE" -H 'content-type: application/json' --data "$(answers 2)" "$B/employee/api/training")
+curl -s -b "$JARE" -o /dev/null -H 'content-type: application/json' --data "$(answers 0)" "$B/employee/api/training"
+t "quiz retake 10 of 12: passed (score 83); a repeated pass stays one row with the first score" bash -c "echo '$PASS_R' | grep -q '\"passed\":true' && [ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) || ',' || max(score) from training_completions where employee_id='$ANA' and module_id='anticorruption-pt-BR-v1'\")\" = '1,83' ]"
+t "lessons render server-side (pt-BR scenario), no answers in them" bash -c "curl -s -b '$JARE' $B/employee/training/1 | grep -q 'Cenário' && [ \"\$(code -b '$JARE' $B/employee/training/7)\" = 404 ]"
+
+# annual disclosure: encrypted at rest, one per year
+D1=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -b "$JARE" -F choice=some -F 'details=Minha prima é sócia da fornecedora Smoke 6e2f' "$B/employee/api/disclosure")
+D2=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -b "$JARE" -F choice=none "$B/employee/api/disclosure")
+t "disclosure: first submit recorded; the second in the same year says 'already' and changes nothing" bash -c "echo '$D1' | grep -q 'result=submitted' && echo '$D2' | grep -q 'result=already' && [ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from disclosures where employee_id='$ANA'\")\" = 1 ]"
+t "disclosure content is ciphertext in the database (no plaintext anywhere in the row)" bash -c "C=\$(psql '$DATABASE_URL' -Atc \"select content from disclosures where employee_id='$ANA'\") && echo \"\$C\" | grep -qE '^vsmoke:' && ! echo \"\$C\" | grep -qiE 'prima|Smoke 6e2f|hasConflict'"
+echo "--- smoke evidence: the disclosures row exactly as stored (psql -x): ciphertext, no plaintext"
+psql "$DATABASE_URL" -x -c "select id, company_id, employee_id, type, period_year, left(content, 60) || '…' as content, submitted_at from disclosures where employee_id='$ANA'"
+
+# the admin sees it: grid, completion (hand-computed 8 of 24 steps = 33%), detail page, exports
+curl -s -b "$JAR5" "$B/dashboard/employees" -o "$P6_HTML"
+t "admin grid: completion 33% (8 of 24 steps), 1 of 3 fully complete" bash -c "grep -q 'Conclusão 33% · 1 de 3 colaboradores com tudo concluído' '$P6_HTML'"
+t "admin grid: Ana's eight marks are 'Feito' (6 documents, training, disclosure); the other two are invited, nothing done" bash -c "[ \"\$(grep -o '>Feito ' '$P6_HTML' | wc -l)\" = 8 ] && [ \"\$(grep -o '>Convidado<' '$P6_HTML' | wc -l)\" -ge 2 ]"
+t "Overview widgets are real: 33% and '1 de 3 colaboradores com tudo concluído'" bash -c "H=\$(curl -s -b '$JAR5' $B/dashboard) && echo \"\$H\" | grep -q '33%' && echo \"\$H\" | grep -q '3 colaboradores'"
+curl -s -D "$P6_HDR" -b "$JAR5" "$B/dashboard/employees/$ANA" -o "$P6_HTML"
+t "employee detail (admin): the six acceptances with IPs, training 83%, the DECRYPTED disclosure; private no-store" bash -c "grep -q '203.0.113.13' '$P6_HTML' && grep -q 'Pontuação 83%' '$P6_HTML' && grep -q 'Minha prima é sócia da fornecedora Smoke 6e2f' '$P6_HTML' && tr -d '\r' <'$P6_HDR' | grep -iq '^cache-control: private, no-store'"
+curl -s -D "$P6_HDR" -b "$JAR5" -o /tmp/p6.csv "$B/dashboard/employees/export.csv"
+GRIDROWS=$(curl -s -b "$JAR5" "$B/dashboard/employees" | grep -o 'href="/dashboard/employees/[0-9a-f-]\{36\}"' | wc -l)
+CSVROWS=$(($(tr -d '\r' </tmp/p6.csv | grep -c .) - 1))
+t "CSV export: attachment, UTF-8 with BOM, one row per grid row ($GRIDROWS), ISO timestamps, NO IP and NO disclosure content" bash -c "tr -d '\r' <'$P6_HDR' | grep -iq '^content-disposition: attachment' && [ '$CSVROWS' = '$GRIDROWS' ] && [ '$GRIDROWS' = 3 ] && [ \"\$(head -c 3 /tmp/p6.csv | od -An -tx1 | tr -d ' ')\" = efbbbf ] && grep -qE '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z' /tmp/p6.csv && ! grep -qE '203\.0\.113|198\.51\.100|prima|Smoke 6e2f' /tmp/p6.csv && ! head -1 /tmp/p6.csv | grep -qi 'ip'"
+curl -s -D "$P6_HDR" -b "$JAR5" -o /tmp/p6.pdf "$B/dashboard/employees/export.pdf"
+PDFTXT=$(node -e 'import("pdfjs-dist/legacy/build/pdf.mjs").then(async p=>{const d=await p.getDocument({data:new Uint8Array(require("fs").readFileSync(process.argv[1])),verbosity:0}).promise;let t="";for(let i=1;i<=d.numPages;i++){const c=await (await d.getPage(i)).getTextContent();t+=c.items.map(x=>x.str).join(" ")+"\n"}console.log(t)})' /tmp/p6.pdf)
+t "PDF export: a real PDF attachment with all three employees, 'Página 1 de 1', no IP, no disclosure content" bash -c "head -c 5 /tmp/p6.pdf | grep -q '%PDF-' && tr -d '\r' <'$P6_HDR' | grep -iq '^content-type: application/pdf' && for n in 'Ana Smoke' 'Beto Smoke' 'Carla Smoke' 'Página 1 de 1'; do echo '$PDFTXT' | grep -q \"\$n\" || exit 1; done; ! echo '$PDFTXT' | grep -qE '203\.0\.113|prima'"
+
+# link reuse, re-issue, tenant isolation, deactivation
+REUSE_POST=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -X POST --data-urlencode "token=$TOK_A" "$B/employee/api/session")
+REUSE_HTML=$(curl -s -w '\n%{http_code}' "$LINK_A")
+t "the first link, reused: GET -> the friendly page (HTTP 200, no stack trace); POST -> 303 to that page, no cookie" bash -c "echo '$REUSE_POST' | grep -q '^303 .*/employee/link-invalid' && echo '$REUSE_HTML' | grep -q 'Este link não é mais válido' && echo '$REUSE_HTML' | tail -1 | grep -q '^200\$' && ! echo '$REUSE_HTML' | grep -qE 'Error:|at .*\\(.*:[0-9]+'"
+curl -s -o /dev/null -b "$JAR5" -X POST "$B/dashboard/employees/$BETO/invite"
+LINK_B2=$(mail_link "$BETO_E"); TOK_B2=${LINK_B2##*/}
+B2POST=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -X POST --data-urlencode "token=$TOK_B1" "$B/employee/api/session")
+t "re-issue: Beto's NEW link differs; the unused OLD link is dead (POST -> friendly page), the new one still shows Start" bash -c "[ '$TOK_B1' != '$TOK_B2' ] && echo '$B2POST' | grep -q '/employee/link-invalid' && curl -s '$LINK_B1' | grep -q 'Este link não é mais válido' && curl -s '$LINK_B2' | grep -q 'Começar'"
+t "company 2 admin: Ana's detail -> 404; invite / deactivate / reactivate -> 404; export and grid show none of company 1's people" bash -c "[ \"\$(code -b '$JAR3' $B/dashboard/employees/$ANA)\" = 404 ] && for a in invite deactivate reactivate; do [ \"\$(code -b '$JAR3' -X POST $B/dashboard/employees/$ANA/\$a)\" = 404 ] || exit 1; done; ! curl -s -b '$JAR3' $B/dashboard/employees/export.csv | grep -q 'example.test' && ! curl -s -b '$JAR3' $B/dashboard/employees | grep -q 'Ana Smoke' && [ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from employees where id='$ANA' and deactivated_at is null\")\" = 1 ]"
+t "company 2 admin cannot import into or read company 1's roster; its own import is its own (same email allowed)" bash -c "curl -s -o /dev/null -b '$JAR3' -F 'file=@$P6_CSV;type=text/csv' $B/dashboard/employees/import && [ \"\$(psql '$DATABASE_URL' -Atc \"select count(distinct company_id) from employees where email='$ANA_E'\")\" = 2 ] && [ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from employees where company_id='$CID'\")\" = 3 ]"
+curl -s -o /dev/null -c "$JARE3" -X POST --data-urlencode "token=$TOK_C" "$B/employee/api/session"
+t "Carla opens a session, then the admin deactivates her: her session is deleted and the cookie is refused (401 / friendly page)" bash -c "[ \"\$(code -b '$JARE3' $B/employee)\" = 200 ] && [ \"\$(code -b '$JAR5' -X POST $B/dashboard/employees/$CARLA/deactivate)\" = 303 ] && [ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from employee_sessions where employee_id='$CARLA'\")\" = 0 ] && [ \"\$(code -b '$JARE3' -X POST --data '{}' $B/employee/api/training)\" = 401 ] && curl -s -D - -o /dev/null -b '$JARE3' $B/employee | tr -d '\r' | grep -iqE '^location: .*/employee/link-invalid' && [ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from employees where id='$CARLA'\")\" = 1 ]"
+t "deactivated Carla leaves the numbers: the grid says 'Conclusão 50% · 1 de 2' (8 of 16)" bash -c "curl -s -b '$JAR5' $B/dashboard/employees | grep -q 'Conclusão 50% · 1 de 2 colaboradores'"
+curl -s -o /dev/null -b "$JARE" -X POST "$B/employee/api/sign-out"
+t "sign-out in the portal: the session row is gone and the same cookie is refused" bash -c "[ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from employee_sessions where employee_id='$ANA'\")\" = 0 ] && [ \"\$(code -b '$JARE' -X POST --data '{}' $B/employee/api/training)\" = 401 ]"
+rm -f "$P6_CSV" "$P6_HDR" "$P6_HTML" "$JARE" "$JARE3" /tmp/p6.csv /tmp/p6.pdf
+
 rm -f "$JAR4" "$SO_HDR" "$JAR_OLD" "$JAR5"
 
 rm -f "$JAR3" /tmp/pdf.hdr /tmp/doc1.pdf /tmp/st3.out

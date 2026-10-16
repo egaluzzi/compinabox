@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull } from "drizzle-orm";
 import type { DbOrTx } from "@/lib/documents/store";
 import type { Db } from "./client";
 import {
@@ -8,6 +8,7 @@ import {
   disclosures,
   documents,
   employees,
+  employeeSessions,
   trainingCompletions,
   users,
   vendors,
@@ -23,6 +24,7 @@ import {
  */
 export const TENANT_TABLES = {
   employees,
+  employeeSessions,
   documents,
   acknowledgments,
   trainingCompletions,
@@ -112,11 +114,14 @@ export async function getTenantUser(db: Db, companyId: string, userId: string) {
 /** Statuses that count as an open whistleblower case (lifecycle: new -> under_review -> closed). */
 export const OPEN_REPORT_STATUSES = ["new", "under_review"] as const;
 
+/** Active employees only: deactivated ones leave the roster and every number built on it. */
 export async function countEmployees(db: Db, companyId: string) {
   const [row] = await db
     .select({ n: count() })
     .from(employees)
-    .where(eq(employees.companyId, companyId));
+    .where(
+      and(eq(employees.companyId, companyId), isNull(employees.deactivatedAt)),
+    );
   return row?.n ?? 0;
 }
 
