@@ -233,7 +233,7 @@ exit=0
 ```
 
 ## CI
-PR #10 opened; CI result to be recorded here after it runs (see PR checks).
+PR #10: GitHub Actions `verify` job **success** on head 3d51f5e (https://github.com/egaluzzi/compinabox/actions/runs/40139165677), started 22:34:50Z, completed 22:37:26Z.
 
 ## Judgment calls
 
