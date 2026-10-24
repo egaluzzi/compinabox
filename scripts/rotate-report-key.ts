@@ -18,7 +18,7 @@ try {
   const c = await rotate(client, { apply });
   process.stdout.write(
     `${apply ? "APPLIED" : "DRY RUN (nothing written; pass --apply)"}\n` +
-      `seen: reports=${c.seen.reports} notes=${c.seen.notes} evidence=${c.seen.evidence}\n` +
+      `seen: reports=${c.seen.reports} notes=${c.seen.notes} disclosures=${c.seen.disclosures} evidence=${c.seen.evidence}\n` +
       `already under the current key: ${c.current}\n` +
       `${apply ? "re-encrypted" : "would re-encrypt"}: ${c.rewritten}\n` +
       `could not decrypt (left untouched): ${c.failed}\n`,

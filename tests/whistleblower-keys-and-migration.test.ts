@@ -15,6 +15,8 @@ import {
 } from "vitest";
 import {
   companies,
+  disclosures,
+  employees,
   whistleblowerEvidence,
   whistleblowerNotes,
   whistleblowerReports,
@@ -25,6 +27,7 @@ import { uniqueCompanySlug } from "@/lib/whistleblower/company-slug";
 import { evidenceDir } from "@/lib/whistleblower/evidence";
 import { storeReport } from "@/lib/whistleblower/intake";
 import { addNote } from "@/lib/whistleblower/queries";
+import { submitDisclosure } from "@/lib/employee/disclosure";
 import { rotate } from "@/lib/whistleblower/rotate";
 import { slugify } from "@/lib/whistleblower/slug";
 import { scratchDb, seedCompany, uid, useTestDb } from "./helpers/db";
@@ -54,7 +57,7 @@ describe("key rotation script (library function)", () => {
     await scratch.drop();
   });
 
-  it("re-encrypts reports, notes and evidence files under the new first key; idempotent; dry run writes nothing; counts only", async () => {
+  it("re-encrypts reports, notes, employee disclosures and evidence files under the new first key; idempotent; dry run writes nothing; counts only", async () => {
     const { db: sdb, client } = scratch;
     const k1 = randomBytes(32).toString("base64");
     const k2 = randomBytes(32).toString("base64");
@@ -72,6 +75,19 @@ describe("key rotation script (library function)", () => {
       .from(whistleblowerReports)
       .where(eq(whistleblowerReports.trackingCode, code));
     await addNote(sdb, actor, report.id, "Nota para rodar");
+    const [emp] = await sdb
+      .insert(employees)
+      .values({
+        companyId: s.company.id,
+        name: "Rot Employee",
+        email: `rot-${uid()}@example.test`,
+      })
+      .returning();
+    await submitDisclosure(
+      sdb,
+      { companyId: s.company.id, employeeId: emp.id },
+      { hasConflict: true, details: "Divulgação única 7f3a" },
+    );
     const [ev] = await sdb
       .select()
       .from(whistleblowerEvidence)
@@ -85,9 +101,9 @@ describe("key rotation script (library function)", () => {
     vi.stubEnv("REPORT_ENCRYPTION_KEYS", `b:${k2},a:${k1}`);
     const dry = await rotate(client, { apply: false });
     expect(dry).toEqual({
-      seen: { reports: 1, notes: 1, evidence: 1 },
+      seen: { reports: 1, notes: 1, disclosures: 1, evidence: 1 },
       current: 0,
-      rewritten: 4, // description, contact, note body, file
+      rewritten: 5, // description, contact, note body, disclosure, file
       failed: 0,
     });
     const [afterDry] = await sdb
@@ -101,7 +117,7 @@ describe("key rotation script (library function)", () => {
     expect(applied).toEqual(dry);
     // counts only: nothing in the result carries content
     expect(JSON.stringify(applied)).not.toMatch(
-      /Rotação|rot@example|Nota para/,
+      /Rotação|rot@example|Nota para|Divulgação/,
     );
 
     const [after] = await sdb
@@ -116,6 +132,19 @@ describe("key rotation script (library function)", () => {
       .from(whistleblowerNotes)
       .where(eq(whistleblowerNotes.reportId, report.id));
     expect(keyIdOf(noteRow.body!)).toBe("b");
+    const [discRow] = await sdb
+      .select()
+      .from(disclosures)
+      .where(eq(disclosures.employeeId, emp.id));
+    expect(keyIdOf(discRow.content)).toBe("b");
+    expect(
+      JSON.parse(
+        decryptText(
+          discRow.content,
+          aadFor("disclosures", s.company.id, "content"),
+        ),
+      ),
+    ).toEqual({ hasConflict: true, details: "Divulgação única 7f3a" });
     expect(
       decryptText(
         after.description,
@@ -125,8 +154,8 @@ describe("key rotation script (library function)", () => {
 
     // idempotent: a second run has nothing left to do
     expect(await rotate(client, { apply: true })).toEqual({
-      seen: { reports: 1, notes: 1, evidence: 1 },
-      current: 4,
+      seen: { reports: 1, notes: 1, disclosures: 1, evidence: 1 },
+      current: 5,
       rewritten: 0,
       failed: 0,
     });
@@ -146,6 +175,13 @@ describe("key rotation script (library function)", () => {
         .update(whistleblowerNotes)
         .set({ body: "x" })
         .where(eq(whistleblowerNotes.id, noteRow.id)),
+    ).rejects.toThrow();
+    // ... and so are the disclosures
+    await expect(
+      sdb
+        .update(disclosures)
+        .set({ content: "x" })
+        .where(eq(disclosures.id, discRow.id)),
     ).rejects.toThrow();
   });
 

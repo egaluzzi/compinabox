@@ -31,4 +31,6 @@ export const AAD_TABLES = {
   reports: "whistleblower_reports",
   notes: "whistleblower_notes",
   evidence: "whistleblower_evidence",
+  /** Employee conflict-of-interest disclosures (phase 6) share the same key ring and rotation. */
+  disclosures: "disclosures",
 } as const;
