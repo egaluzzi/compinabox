@@ -219,20 +219,25 @@ Judgment: **mock-only is not verified for this phase.** If the live check could 
 
 ---
 
-## Phase 8 — Binder / certificate generator
+## Phase 8 — Binder (dossier) generator
 
-SPEC §5.7. Build last — pulls from everything above.
+SPEC §5.7. Built last because it pulls from everything above. This PDF is the deliverable a customer hands to an auditor or procurement officer, so **design quality and what it leaves out are both requirements**. It states what the platform recorded as of a date; it never says the company is compliant, adequate or certified (CLAUDE.md §8). Wording is a draft for the lawyer (`lib/binder/REVIEW.md`).
 
-- [ ] One-click PDF: cover (Brazil legal basis), code of conduct, policies, training report, acknowledgment roster, whistleblower channel proof (URL + screenshot), vendor screening summary
-- [ ] Generated async (job table + polling) — large PDFs must not time out the request
-- [ ] Download from Overview; previous binders kept
+- [ ] `binders` table + async generation: a click inserts a job (queued → running → ready | failed), renders in the background, the page polls; one active job per company; process-wide render concurrency cap; stuck jobs recovered; cooldown and daily cap
+- [ ] The PDF (company locale, pt-BR): cover (logo, company, CNPJ, as-of date, binder id, draft banner while documents/`br.ts` are draft, "how to read this dossier" with the not-legal-advice / not-a-certification statement), contents with PDF bookmarks, legal context from `br.ts`, the six documents (current versions, as generated), training report, acknowledgment roster, disclosure status, whistleblower channel proof, vendor screening summary, data notes appendix; "Página X de Y" and running header throughout; long tables break across pages with a repeating header
+- [ ] **What is deliberately NOT in it** (enforced by a verify.sh check and a marker test): employee emails and IP addresses, disclosure contents, any whistleblower report content, evidence, tracking codes, vendor questionnaire answers, anything decrypted. Channel usage statistics are off by default (an explicit option at generation time)
+- [ ] The whistleblower "screenshot" in SPEC §5.7 is replaced by the channel URL, a factual description of how it works, and its availability date (a screenshot needs a headless browser on the droplet — rejected, CLAUDE.md §3)
+- [ ] Snapshot consistency: all data read in one transaction at job start, `as_of` printed; data changing during rendering never appears
+- [ ] Ready binders are immutable and never deleted (DB trigger); the PDF bytes are stored in Postgres (so the nightly backup covers them), with a size cap; SHA-256 of the file shown on the dashboard next to each binder
+- [ ] `/dashboard/binder`: generate (with a plain notice that the file contains employee names and dates), status, list of previous binders (date, status, size, hash, download); Overview card replaces the placeholder; tenant-scoped, other tenants' ids 404; download is authenticated, `attachment`, `no-store`
+- [ ] Verified on a large company (500 employees, 50 vendors): wall time and peak memory recorded
 
 **Definition of done**
 ```
-./verify.sh
-npm run test -- binder
+./verify.sh                      # includes smoke: generate -> poll -> download %PDF -> list -> cross-tenant 404
+npm run test -- binder           # exclusion marker test, snapshot-consistency, concurrency, recovery, immutability, tenant
 ```
-Judgment: open the PDF — this is the deliverable the customer hands to an auditor; design quality is a requirement. Cover text carries the "not legal advice" disclaimer.
+Judgment: PNGs of the cover, a contents page, a long-table page, the channel page and the vendor page committed under `docs/phase8-samples/` and viewed by the supervisor; cover text carries the "not legal advice" disclaimer and never claims compliance; no new dependency without a written reason.
 
 ---
 
@@ -255,6 +260,7 @@ SPEC §9 (blog), §10, CLAUDE.md §4.
 - [ ] Phase 5 carry-overs: Caddy request-body size cap on `/api/report` (the handler buffers the multipart body before validating sizes); set `NEXT_TELEMETRY_DISABLED=1`; decide how `npm run rotate-report-key` runs on the droplet (it needs a checkout + `node_modules`, the deploy ships only the standalone output); `scripts/backup.sh` currently dumps the DB only — extend it (or add a second job) to cover `EVIDENCE_DIR`
 - [ ] Phase 6 carry-overs: origin only reachable from Cloudflare (firewall/Caddy allow-list of Cloudflare ranges) so `cf-connecting-ip` on acknowledgments cannot be spoofed; real-inbox check that invite links survive mail scanners (the GET confirm page should make them safe); Resend daily/second rate limits vs bulk invites (≤ 50 per click)
 - [ ] Phase 6 carry-overs (2): Caddy must not log the path of `/employee/*` (the invite token is in the URL path; it dies on use or after 14 days, but keep it out of logs anyway); purge expired `employee_sessions` rows in the ops timer; day-one support note for Esteban: an employee whose session ended (8 h) or whose link was used needs the admin to re-send the invitation
+- [ ] Phase 8 carry-over: `binders` rows hold PDF bytes in Postgres — watch dump size at the monthly restore test; Overview/Binder page copy and the personal-data contents of the binder are on the lawyer's list
 - [ ] Phase 7 carry-overs: `SCREENING_API_KEY` / `SCREENING_BASE_URL` / `SCREENING_DATASET` on the droplet; vendor names are sent to the screening provider — the privacy policy must name it as a sub-processor; vendor-link paths (`/vendor/*`) kept out of Caddy logs like `/employee/*`
 - [ ] Backup bucket is **private**; Esteban confirms a downloaded dump restores with `scripts/restore-test.sh`
 
