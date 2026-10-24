@@ -7,8 +7,9 @@ import {
   gte,
   inArray,
   isNotNull,
-  or,
   lt,
+  or,
+  sql,
 } from "drizzle-orm";
 import type { Db } from "@/lib/db/client";
 import { binders, type BinderOptions } from "@/lib/db/schema";
@@ -76,7 +77,12 @@ export async function recoverStuck(
   const cutoff = new Date(now.getTime() - BINDER_STUCK_MS);
   const rows = await db
     .update(binders)
-    .set({ status: "failed", errorCode: "interrupted", finishedAt: now })
+    // finished_at = the moment it became overdue, so the cooldown does not also punish the retry
+    .set({
+      status: "failed",
+      errorCode: "interrupted",
+      finishedAt: sql`coalesce(${binders.startedAt}, ${binders.createdAt}) + ${`${BINDER_STUCK_MS} milliseconds`}::interval`,
+    })
     .where(
       and(
         eq(binders.companyId, companyId),

@@ -365,6 +365,11 @@ function Table({
   head: string[];
   rows: (string | [string, string])[][];
 }) {
+  const cellStyles = cols.map((col) => [
+    st.tCell,
+    colStyle(col),
+    { textAlign: col.align ?? "left" },
+  ]);
   return (
     <View>
       <View style={st.tHead} fixed>
@@ -383,22 +388,19 @@ function Table({
       </View>
       {rows.map((r, ri) => (
         <View key={ri} style={st.tRow} wrap={false}>
-          {r.map((cell, i) => (
-            <View key={i} style={colStyle(cols[i])}>
-              {typeof cell === "string" ? (
-                <Text
-                  style={[st.tCell, { textAlign: cols[i].align ?? "left" }]}
-                >
-                  {cell}
-                </Text>
-              ) : (
-                <>
-                  <Text style={st.tCell}>{cell[0]}</Text>
-                  <Text style={st.tCellMuted}>{cell[1]}</Text>
-                </>
-              )}
-            </View>
-          ))}
+          {r.map((cell, i) =>
+            typeof cell === "string" ? (
+              // plain cells are a bare Text: fewer nodes, and a 500-row table is mostly cells
+              <Text key={i} style={cellStyles[i]}>
+                {cell}
+              </Text>
+            ) : (
+              <View key={i} style={colStyle(cols[i])}>
+                <Text style={st.tCell}>{cell[0]}</Text>
+                <Text style={st.tCellMuted}>{cell[1]}</Text>
+              </View>
+            ),
+          )}
         </View>
       ))}
     </View>
