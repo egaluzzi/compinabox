@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { eq } from "drizzle-orm";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { binders } from "@/lib/db/schema";
-import { useTestDb } from "./helpers/db";
+import { useScratchTestDb } from "./helpers/db";
 import { inspectPdf, makeBinder, seedBinderCompany } from "./helpers/binder";
 
 // A big company: 500 employees, 50 vendors, 30 reports, all six documents. Proves the long tables
@@ -12,7 +12,8 @@ import { inspectPdf, makeBinder, seedBinderCompany } from "./helpers/binder";
 const EMPLOYEES = 500;
 const VENDORS = 50;
 
-let db: ReturnType<typeof useTestDb>;
+let db: Awaited<ReturnType<typeof useScratchTestDb>>["db"];
+let dropDb: () => Promise<void>;
 let rssBefore = 0;
 let rssPeak = 0;
 let wallMs = 0;
@@ -21,7 +22,7 @@ let row: typeof binders.$inferSelect;
 
 beforeAll(async () => {
   process.env.APP_URL = "http://localhost:3000";
-  db = useTestDb();
+  ({ db, drop: dropDb } = await useScratchTestDb());
   const s = await seedBinderCompany(db, {
     employees: EMPLOYEES,
     vendors: VENDORS,
@@ -47,6 +48,9 @@ beforeAll(async () => {
       `rss_before=${mb(rssBefore)} rss_peak=${mb(rssPeak)} rss_delta=${mb(rssPeak - rssBefore)}`,
   );
 }, 300_000);
+afterAll(async () => {
+  await dropDb();
+});
 
 describe("a 500-employee, 50-vendor company", () => {
   it("renders to ready within the ceilings", () => {

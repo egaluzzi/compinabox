@@ -2,12 +2,20 @@
 import { eq } from "drizzle-orm";
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { createHash } from "node:crypto";
 import { BINDER_DAILY_CAP } from "@/lib/binder/constants";
 import { binders, companies } from "@/lib/db/schema";
 import { LOCALES, getMessages } from "@/lib/i18n";
-import { useTestDb } from "./helpers/db";
+import { useScratchTestDb } from "./helpers/db";
 import { seedBinderCompany } from "./helpers/binder";
 
 // Only the admin session lookup and next/navigation are replaced; the gate, queries, the job
@@ -31,7 +39,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 type Seeded = Awaited<ReturnType<typeof seedBinderCompany>>;
-let db: ReturnType<typeof useTestDb>;
+let db: Awaited<ReturnType<typeof useScratchTestDb>>["db"];
+let dropDb: () => Promise<void>;
 let A: Seeded;
 let B: Seeded;
 const D = "@/app/(app)/dashboard";
@@ -39,9 +48,12 @@ const as = (s: Seeded | null) => {
   session.current = s && { userId: s.user.id, companyId: s.company.id };
 };
 
-beforeAll(() => {
-  db = useTestDb();
+beforeAll(async () => {
+  ({ db, drop: dropDb } = await useScratchTestDb());
   vi.stubEnv("APP_URL", "http://localhost:3000");
+});
+afterAll(async () => {
+  await dropDb();
 });
 beforeEach(async () => {
   A = await seedBinderCompany(db, { employees: 3, vendors: 2 });

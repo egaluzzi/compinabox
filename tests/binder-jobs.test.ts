@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { createHash } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   BINDER_COOLDOWN_MS,
   BINDER_CONCURRENCY,
@@ -21,10 +21,11 @@ import {
   listBinders,
 } from "@/lib/binder/queries";
 import { binders } from "@/lib/db/schema";
-import { useTestDb } from "./helpers/db";
+import { useScratchTestDb } from "./helpers/db";
 import { makeBinder, seedBinderCompany } from "./helpers/binder";
 
-let db: ReturnType<typeof useTestDb>;
+let db: Awaited<ReturnType<typeof useScratchTestDb>>["db"];
+let dropDb: () => Promise<void>;
 type Seeded = Awaited<ReturnType<typeof seedBinderCompany>>;
 const OPTS = { includeChannelStats: false };
 const fresh = () => seedBinderCompany(db, { employees: 2, vendors: 1 });
@@ -51,9 +52,12 @@ const insertRow = (s: Seeded, over: Partial<typeof binders.$inferInsert>) =>
     .values({ companyId: s.company.id, options: OPTS, ...over })
     .returning();
 
-beforeAll(() => {
+beforeAll(async () => {
   process.env.APP_URL = "http://localhost:3000";
-  db = useTestDb();
+  ({ db, drop: dropDb } = await useScratchTestDb());
+});
+afterAll(async () => {
+  await dropDb();
 });
 
 describe("one active job per company", () => {

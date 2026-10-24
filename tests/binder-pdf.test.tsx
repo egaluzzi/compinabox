@@ -1,10 +1,10 @@
 // @vitest-environment node
 import { eq } from "drizzle-orm";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { renderBinderPdf } from "@/lib/binder/pdf";
 import { takeSnapshot } from "@/lib/binder/snapshot";
 import { binders, employees, vendors } from "@/lib/db/schema";
-import { useTestDb } from "./helpers/db";
+import { useScratchTestDb } from "./helpers/db";
 import {
   inspectPdf,
   makeBinder,
@@ -12,7 +12,8 @@ import {
   seedBinderCompany,
 } from "./helpers/binder";
 
-let db: ReturnType<typeof useTestDb>;
+let db: Awaited<ReturnType<typeof useScratchTestDb>>["db"];
+let dropDb: () => Promise<void>;
 type Seeded = Awaited<ReturnType<typeof seedBinderCompany>>;
 let A: Seeded;
 let B: Seeded;
@@ -27,7 +28,7 @@ const pdfOf = async (id: string) => {
 
 beforeAll(async () => {
   process.env.APP_URL = "http://localhost:3000";
-  db = useTestDb();
+  ({ db, drop: dropDb } = await useScratchTestDb());
   // A carries a unique marker in EVERY excluded field; B is another tenant with its own names.
   A = await seedBinderCompany(db, {
     markers: true,
@@ -48,6 +49,9 @@ beforeAll(async () => {
   plain = await inspectPdf(await pdfOf(off.id));
   withStats = await inspectPdf(await pdfOf(on.id));
 }, 120_000);
+afterAll(async () => {
+  await dropDb();
+});
 
 const EXCLUDED = Object.values(MARKERS);
 
