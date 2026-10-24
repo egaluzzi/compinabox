@@ -207,7 +207,12 @@
       "binder": "Carpeta",
       "binderDownload": "Descargar carpeta",
       "sections": "Secciones",
-      "completionDetail": "{full} de {active} empleados con todo completo"
+      "completionDetail": "{full} de {active} empleados con todo completo",
+      "binderNone": "Aún no se generó ningún dosier.",
+      "binderReady": "Último dosier: posición al {date}",
+      "binderActive": "Se está generando un dosier.",
+      "binderFailed": "El último intento de generar el dosier falló.",
+      "binderOpen": "Abrir la página del dosier"
     },
     "employees": {
       "empty": "Todavía no hay empleados. Cuando se agregue al equipo, el estado de lectura y aceptación de cada persona aparecerá aquí.",
@@ -455,6 +460,49 @@
         "br": "Brasil",
         "mx": "México"
       }
+    },
+    "binder": {
+      "title": "Dosier",
+      "intro": "Genere un archivo PDF con los documentos y los registros de su cuenta, para entregar a un auditor o a un comprador. El dosier muestra lo que la plataforma había registrado al momento de generarlo; no es una auditoría, una certificación ni un dictamen jurídico.",
+      "notice": "El archivo contiene nombres de colaboradores y fechas; compártalo solo con quien lo necesite.",
+      "excluded": "Quedan fuera: correos y direcciones IP de colaboradores, contenido de las declaraciones, contenido y evidencias de las denuncias, códigos de seguimiento y respuestas de los cuestionarios de proveedores.",
+      "draftWarning": "Mientras haya documentos o textos en borrador, la portada del dosier lleva el aviso de borrador.",
+      "statsLabel": "Incluir estadísticas de uso del canal de denuncias (totales por estado, sin contenido)",
+      "generate": "Generar dosier",
+      "unavailable": "El dosier aún no está disponible en el idioma de su empresa.",
+      "current": "Dosier en curso",
+      "refreshHint": "Esta página se actualiza sola. Si no lo hace, use el enlace siguiente.",
+      "refresh": "Actualizar",
+      "status": {
+        "queued": "En cola",
+        "running": "Generando",
+        "ready": "Listo",
+        "failed": "Falló"
+      },
+      "error": {
+        "too_large": "El archivo quedó demasiado grande (límite de 25 MB).",
+        "snapshot_failed": "No se pudieron leer los datos de la cuenta. Inténtelo de nuevo.",
+        "render_failed": "No se pudo armar el PDF. Inténtelo de nuevo.",
+        "interrupted": "La generación se interrumpió. Inténtelo de nuevo."
+      },
+      "flash": {
+        "started": "Generación iniciada.",
+        "existing": "Ya hay un dosier en generación; sígalo aquí.",
+        "cooldown": "Espere unos segundos antes de generar otro dosier.",
+        "cap": "Límite diario de {cap} dosieres alcanzado (día en UTC). Inténtelo de nuevo mañana.",
+        "unavailable": "El dosier aún no está disponible en el idioma de su empresa."
+      },
+      "previous": "Dosieres anteriores",
+      "empty": "Aún no se generó ningún dosier.",
+      "colDate": "Posición al",
+      "colStatus": "Estado",
+      "colSize": "Tamaño",
+      "colPages": "Páginas",
+      "colHash": "SHA-256",
+      "colDownload": "Archivo",
+      "download": "Descargar PDF",
+      "hashHelp": "El resumen SHA-256 identifica el archivo exacto; indíquelo a quien reciba el dosier.",
+      "withStats": "con estadísticas del canal"
     }
   },
   "email": {
@@ -644,5 +692,126 @@
     "thanksBody": "Gracias. Sus respuestas se enviaron a la empresa que solicitó el cuestionario. Puede cerrar esta página.",
     "invalidTitle": "Este enlace ya no es válido",
     "invalidBody": "El enlace del cuestionario ya se usó, venció o fue reemplazado. Pida a la empresa que lo invitó que le envíe un enlace nuevo."
+  },
+  "binder": {
+    "pdf": {
+      "title": "Dosier de integridad",
+      "coverSubtitle": "Compilación de los registros de la plataforma",
+      "taxId": "CNPJ",
+      "asOf": "Posición al",
+      "binderId": "Identificador del dosier",
+      "timezoneNote": "Fechas y horas en horario de Brasilia.",
+      "draftNote": "Este dosier incluye documentos o textos en borrador, pendientes de revisión jurídica. No los presente como versión final.",
+      "howTitle": "Cómo leer este dosier",
+      "how1": "Este dosier es una compilación de los registros mantenidos en la plataforma hasta la fecha indicada en la portada. Muestra lo que se había generado, enviado, aceptado y completado hasta ese momento.",
+      "how2": "No es una auditoría, una certificación ni un dictamen jurídico, y no afirma que la empresa cumpla ley o exigencia alguna. Quien lo reciba debe hacer su propia evaluación.",
+      "how3": "Los datos provienen de los registros de la propia empresa en la plataforma y no fueron verificados de forma independiente. Este dosier no constituye asesoramiento jurídico.",
+      "contents": "Índice",
+      "headerTitle": "Dosier de integridad",
+      "footerId": "Dosier {id}",
+      "section": {
+        "legal": "Contexto legal",
+        "documents": "Código de conducta y políticas",
+        "training": "Informe de capacitación",
+        "acknowledgments": "Registro de lectura y aceptación",
+        "disclosures": "Declaraciones de conflicto de intereses",
+        "channel": "Canal de denuncias",
+        "vendors": "Evaluación preliminar de proveedores",
+        "notes": "Notas sobre los datos"
+      },
+      "legal": {
+        "intro": "Esta sección resume el contenido de base legal que la plataforma mantiene para el país de la empresa y que alimenta los documentos de este dosier. Es información general.",
+        "draftNote": "Este contenido es un borrador y está pendiente de revisión por un abogado.",
+        "references": "Referencias citadas",
+        "required": "Elementos de programa citados como exigidos",
+        "recommended": "Elementos de programa citados como recomendados"
+      },
+      "documents": {
+        "intro": "Versiones vigentes del código de conducta y de las cinco políticas a la fecha de la posición, tal como las generó la plataforma. Cada documento comienza en una página nueva.",
+        "meta": "Versión {version} · generado el {date}",
+        "missing": "Este documento no existía en la fecha de la posición."
+      },
+      "counts": {
+        "active": "Colaboradores activos: {count}"
+      },
+      "empty": {
+        "employees": "Ningún colaborador activo en la fecha de la posición."
+      },
+      "col": {
+        "name": "Nombre",
+        "status": "Situación",
+        "date": "Fecha",
+        "score": "Nota",
+        "document": "Documento",
+        "version": "Versión"
+      },
+      "state": {
+        "done": "Completado",
+        "pending": "Pendiente",
+        "outdated": "Desactualizado"
+      },
+      "training": {
+        "intro": "Resultado del módulo de capacitación por colaborador activo. La plataforma registra solo las finalizaciones que alcanzaron la nota mínima.",
+        "module": "Módulo de capacitación anticorrupción (identificador {id}): {lessons} lecciones y cuestionario de {questions} preguntas. Nota mínima: {pass}%.",
+        "draft": "El contenido de este módulo es un borrador pendiente de revisión.",
+        "counts": "Invitados: {invited} · Completaron: {completed} · Colaboradores activos: {active}",
+        "note": "Los intentos que no alcanzaron la nota mínima no se registran; \"Pendiente\" incluye a quien aún no lo intentó y a quien aún no alcanzó la nota.",
+        "unavailable": "La capacitación no está disponible en el idioma de la empresa."
+      },
+      "acks": {
+        "intro": "Para cada colaborador activo, la fecha en que aceptó la versión vigente de cada documento. Constan solo nombres y fechas; las direcciones de correo y de IP no forman parte de este dosier.",
+        "versions": "Versiones vigentes",
+        "legend": "Fecha: aceptó la versión vigente · Desactualizado: aceptó solo una versión anterior · Pendiente: sin aceptación."
+      },
+      "disclosures": {
+        "intro": "Declaración anual de conflicto de intereses, período {year}. Constan solo el nombre y la fecha de envío; el contenido de las declaraciones no forma parte de este dosier.",
+        "counts": "Enviadas: {submitted} de {total} colaboradores activos",
+        "submitted": "Enviada"
+      },
+      "channel": {
+        "intro": "El canal de denuncias es una página pública, sin necesidad de cuenta, publicada en la dirección siguiente.",
+        "url": "Dirección pública",
+        "since": "Disponible desde",
+        "how": "Cómo funciona",
+        "how1": "Cualquier persona puede enviar un relato por la página pública del canal, sin crear una cuenta.",
+        "how2": "El relato puede ser anónimo; el formulario solo recibe datos de contacto si la persona decide darlos.",
+        "how3": "Al enviar, la persona recibe un código de seguimiento para consultar el estado del relato sin identificarse.",
+        "how4": "Los relatos son visibles solo para la administración de la empresa en la plataforma, que registra el estado y las notas de cada caso.",
+        "how5": "El texto de los relatos, los contactos opcionales y las evidencias se guardan cifrados en el servidor de la plataforma.",
+        "how6": "La plataforma no guarda la dirección IP ni el navegador de quien envía un relato junto al registro del relato. Los servicios de infraestructura pueden mantener sus propios registros técnicos.",
+        "limits": "Este dosier no muestra el contenido de los relatos y no comprueba que el canal haya sido usado o respondido.",
+        "stats": "Estadísticas de uso (opcional)",
+        "statsTotal": "Relatos recibidos hasta la fecha de la posición: {count}",
+        "statsNote": "Solo totales; ningún contenido de relatos.",
+        "status": {
+          "new": "Nuevos",
+          "under_review": "En análisis",
+          "closed": "Cerrados"
+        }
+      },
+      "vendors": {
+        "intro": "Proveedores activos registrados en la plataforma, con el estado del cuestionario y el resultado de la última evaluación. La evaluación es una herramienta de evaluación preliminar, no una investigación de debida diligencia.",
+        "empty": "Ningún proveedor registrado en la fecha de la posición.",
+        "count": "Proveedores activos: {count}",
+        "colVendor": "Proveedor",
+        "colCountry": "País",
+        "colQuestionnaire": "Cuestionario",
+        "colScreening": "Evaluación",
+        "lists": "Listas: {dataset}",
+        "matches": "{count, plural, one {# posible coincidencia} other {# posibles coincidencias}}",
+        "noAnswers": "Las respuestas de los cuestionarios no forman parte de este dosier."
+      },
+      "notes": {
+        "asOf": "Todos los datos se leyeron en un único instante, {date}; los cambios posteriores no aparecen en este dosier.",
+        "employees": "Colaboradores: constan solo los colaboradores activos en la fecha de la posición, con nombre y fechas. Los colaboradores desactivados no se listan.",
+        "excluded": "Dejados fuera a propósito: correos y direcciones IP de colaboradores; el contenido de las declaraciones de conflicto de intereses; el contenido de los relatos, las evidencias y los códigos de seguimiento del canal de denuncias; las respuestas de los cuestionarios de proveedores.",
+        "documents": "Documentos: son las versiones vigentes en la fecha de la posición, tal como las generó la plataforma a partir de los datos de la empresa.",
+        "vendors": "Proveedores: la evaluación consulta listas públicas en la fecha indicada y registra lo consultado y lo devuelto. No es una conclusión sobre el proveedor.",
+        "statsOn": "Estadísticas de uso del canal de denuncias: incluidas en esta edición, por elección de quien generó el dosier.",
+        "statsOff": "Estadísticas de uso del canal de denuncias: no incluidas en esta edición.",
+        "personalData": "Este archivo contiene nombres de colaboradores y fechas. Compártalo solo con quien lo necesite.",
+        "integrity": "La plataforma guarda el resumen SHA-256 de este archivo y lo muestra en la lista de dosieres; úselo para identificar el archivo exacto."
+      }
+    }
   }
 }
