@@ -145,7 +145,7 @@ describe("a 500-employee, 50-vendor company", () => {
       );
   });
 
-  it("the row is stored and immutable", async () => {
+  it("the row is stored as ready", async () => {
     const [r] = await db
       .select({ s: binders.status })
       .from(binders)
