@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireTenant } from "@/lib/auth/require-tenant";
 import { BinderPoller } from "@/components/BinderPoller";
 import {
@@ -86,9 +87,9 @@ export default async function BinderPage({
           <p className="text-sm text-slate-700">
             {t("dashboard.binder.refreshHint")}
           </p>
-          <a className="text-sm underline" href="/dashboard/binder">
+          <Link className="text-sm underline" href="/dashboard/binder">
             {t("dashboard.binder.refresh")}
-          </a>
+          </Link>
           <BinderPoller id={active.id} />
         </section>
       ) : (

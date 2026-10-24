@@ -17,7 +17,6 @@ import {
 import type { DocumentType } from "@/lib/documents/types";
 import { TYPE_KEY } from "@/lib/employee/labels";
 import { getT, type T } from "@/lib/i18n";
-import { questionnaireState } from "@/lib/vendors/queries";
 import { BINDER_TZ } from "./constants";
 import type { BinderSnapshot, StepView } from "./snapshot";
 
@@ -179,11 +178,18 @@ const st = StyleSheet.create({
   url: { fontSize: 10.5, fontFamily: "Courier", marginBottom: 8 },
 });
 
-export type PageCollector = {
-  /** section id -> page it started on, recorded while laying out */
-  starts: Record<string, number>;
-  total: number;
-};
+/** Records, while react-pdf lays the document out, where each section really starts. */
+export class PageCollector {
+  /** section id -> page it started on */
+  starts: Record<string, number> = {};
+  total = 0;
+  start(id: string, page: number) {
+    this.starts[id] = page;
+  }
+  setTotal(total: number) {
+    this.total = total;
+  }
+}
 
 type Ctx = {
   snap: BinderSnapshot;
@@ -264,7 +270,7 @@ function Footer({ c }: { c: Ctx }) {
           style={st.pageNumber}
           render={({ pageNumber, totalPages }) => {
             // react-pdf calls this once before the total is known; ICU would throw on undefined
-            if (totalPages) collector.total = totalPages;
+            if (totalPages) collector.setTotal(totalPages);
             return t("documents.pageOf", {
               page: pageNumber ?? 1,
               total: totalPages ?? pageNumber ?? 1,
@@ -307,7 +313,7 @@ function DossierPage({
             // zero-height probe: records the page this section really starts on
             style={{ height: 0, fontSize: 1 }}
             render={({ pageNumber }) => {
-              if (pageNumber) c.collector.starts[id] = pageNumber;
+              if (pageNumber) c.collector.start(id, pageNumber);
               return " ";
             }}
           />
@@ -949,7 +955,7 @@ async function renderPasses(
   const t = getT(snap.locale);
   let pages: Record<string, number> | null = null;
   for (let pass = 0; pass < 3; pass++) {
-    const collector: PageCollector = { starts: {}, total: 0 };
+    const collector = new PageCollector();
     const buffer = await renderToBuffer(
       <BinderDocument c={{ snap, t, logo, pages, collector }} />,
     );
