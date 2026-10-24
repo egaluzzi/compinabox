@@ -652,8 +652,10 @@ rm -rf "$STUBDIR" "$P7_HTML" "$P7_HDR"
 # ---------------------------------------------------------------------------------------------
 P8_DL=$(mktemp); P8_HDR=$(mktemp); P8_HTML=$(mktemp); P8_TXT=$(mktemp); P8A=$(mktemp); P8B=$(mktemp)
 ( curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' -b "$JAR5" -F stats=on -X POST "$B/dashboard/binder/generate" >"$P8A" ) &
+P8_PID1=$!
 ( curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' -b "$JAR5" -F stats=on -X POST "$B/dashboard/binder/generate" >"$P8B" ) &
-wait
+P8_PID2=$!
+wait "$P8_PID1" "$P8_PID2"   # NOT a bare `wait`: that would also wait for the server process
 t "two simultaneous clicks: both 303, one 'started' and one 'existing', exactly ONE binder row" bash -c "cat '$P8A' '$P8B' | grep -c '^303 ' | grep -q '^2\$' && cat '$P8A' '$P8B' | grep -q 'generate=started' && cat '$P8A' '$P8B' | grep -q 'generate=existing' && [ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from binders where company_id='$CID'\")\" = 1 ]"
 BID=$(SQL "select id from binders where company_id='$CID' order by created_at limit 1")
 P8_ST=$(curl -s -b "$JAR5" "$B/dashboard/binder/status?id=$BID")
