@@ -43,6 +43,13 @@
       "when": 1792061300245,
       "tag": "0005_employee_portal",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792146529658,
+      "tag": "0006_vendor_screening",
+      "breakpoints": true
     }
   ]
 }

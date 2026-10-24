@@ -145,7 +145,11 @@ const PAGES: { name: string; mod: string; props?: Record<string, unknown> }[] =
     },
     { name: "training", mod: `${D}/training/page` },
     { name: "whistleblower", mod: `${D}/whistleblower/page` },
-    { name: "vendors", mod: `${D}/vendors/page` },
+    {
+      name: "vendors",
+      mod: `${D}/vendors/page`,
+      props: { searchParams: Promise.resolve({}) },
+    },
     { name: "billing", mod: `${D}/billing/page` },
     {
       name: "settings",

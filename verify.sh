@@ -151,7 +151,7 @@ fi
 # 4d. Forbidden claims in copy (CLAUDE.md §8)
 # A *negated* guarantee ("does not guarantee compliance", "no garantiza el cumplimiento", "não garante a conformidade")
 # is the approved footer disclaimer (CONTENT.md §1), not a claim — those lines are exempt.
-BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cumplimiento|garante (a )?conformidade|ISO ?3730[12]|certif(ied|icado|icada) (by|por) (la )?ley|em conformidade com a lei|atende (integralmente )?(a|às) exigências' app messages lib/content lib/documents lib/training lib/employee components 2>/dev/null | grep -viE '(^|[^[:alpha:]])(does not|do not|doesn.t|no|não|nao|never|nunca) +(guarantee|garantiza|garante)' || true)
+BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cumplimiento|garante (a )?conformidade|ISO ?3730[12]|certif(ied|icado|icada) (by|por) (la )?ley|em conformidade com a lei|atende (integralmente )?(a|às) exigências' app messages lib/content lib/documents lib/training lib/employee lib/screening lib/vendors components 2>/dev/null | grep -viE '(^|[^[:alpha:]])(does not|do not|doesn.t|no|não|nao|never|nunca) +(guarantee|garantiza|garante)' || true)
 if [ -n "$BANNED" ]; then echo "$BANNED" | head; bad "forbidden claims" "copy implies guaranteed compliance or ISO certification"; else note "forbidden claims" "none"; fi
 
 # 4e. Second geo mechanism must not exist (CLAUDE.md §4)
@@ -235,6 +235,21 @@ if [ -d lib/employee ]; then
   else
     note "training copy" "no 'certificate' wording"
   fi
+fi
+
+# 4k. Vendor questionnaire + screening (phase 7). The public tokenized vendor paths read no request
+# metadata and log nothing (scripts/check-vendor-privacy.sh, same rule as the anonymous intake);
+# the screening client logs nothing and the API key is read in exactly one file
+# (lib/screening/index.ts), so it cannot travel into an error, a log or the database.
+if [ -d lib/screening ]; then
+  if VENDOR_OUT=$(./scripts/check-vendor-privacy.sh 2>&1); then note "vendor public paths" "no request metadata, no logging"; else echo "$VENDOR_OUT" | head -20; bad "vendor public paths" "request metadata or console output in app/vendor, components/vendor or the public lib/vendors files"; fi
+  if grep -rnE 'console\.' lib/screening >/dev/null 2>&1; then
+    grep -rnE 'console\.' lib/screening | head; bad "screening logging" "lib/screening must log nothing (request/response bodies and the key stay out of logs)"
+  else
+    note "screening logging" "nothing logged"
+  fi
+  KEYFILES=$(grep -rlE 'SCREENING_API_KEY' app lib components --include='*.ts' --include='*.tsx' 2>/dev/null | grep -vE '\.test\.' | sort || true)
+  if [ "$KEYFILES" = "lib/screening/index.ts" ]; then note "screening key" "SCREENING_API_KEY read only in lib/screening/index.ts"; else echo "$KEYFILES"; bad "screening key" "SCREENING_API_KEY must be read in exactly one file (lib/screening/index.ts)"; fi
 fi
 
 # 4g. KNOWN_ISSUES.md must exist (baseline)

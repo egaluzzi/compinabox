@@ -11,6 +11,7 @@ export default function robots(): MetadataRoute.Robots {
       disallow: [
         "/dashboard",
         "/employee",
+        "/vendor",
         "/checkout",
         "/onboarding",
         "/login",

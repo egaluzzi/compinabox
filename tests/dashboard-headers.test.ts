@@ -9,7 +9,8 @@ describe("security headers for authenticated pages (next.config)", () => {
       (r) =>
         !r.source.startsWith("/report") &&
         !r.source.startsWith("/api/report") &&
-        !r.source.startsWith("/employee"), // the employee portal: tests/employee-gate.test.ts
+        !r.source.startsWith("/employee") && // the employee portal: tests/employee-gate.test.ts
+        !r.source.startsWith("/vendor"), // the vendor questionnaire: tests/vendors-public.test.ts
     );
     expect(rules.map((r) => r.source).sort()).toEqual(
       [

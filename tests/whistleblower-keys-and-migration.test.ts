@@ -17,6 +17,8 @@ import {
   companies,
   disclosures,
   employees,
+  vendorResponses,
+  vendors,
   whistleblowerEvidence,
   whistleblowerNotes,
   whistleblowerReports,
@@ -29,6 +31,7 @@ import { storeReport } from "@/lib/whistleblower/intake";
 import { addNote } from "@/lib/whistleblower/queries";
 import { submitDisclosure } from "@/lib/employee/disclosure";
 import { rotate } from "@/lib/whistleblower/rotate";
+import { decryptAnswers, encryptAnswers } from "@/lib/vendors/answers";
 import { slugify } from "@/lib/whistleblower/slug";
 import { scratchDb, seedCompany, uid, useTestDb } from "./helpers/db";
 import { pngWithMarker } from "./helpers/whistleblower";
@@ -57,7 +60,7 @@ describe("key rotation script (library function)", () => {
     await scratch.drop();
   });
 
-  it("re-encrypts reports, notes, employee disclosures and evidence files under the new first key; idempotent; dry run writes nothing; counts only", async () => {
+  it("re-encrypts reports, notes, employee disclosures, vendor answers and evidence files under the new first key; idempotent; dry run writes nothing; counts only", async () => {
     const { db: sdb, client } = scratch;
     const k1 = randomBytes(32).toString("base64");
     const k2 = randomBytes(32).toString("base64");
@@ -88,6 +91,29 @@ describe("key rotation script (library function)", () => {
       { companyId: s.company.id, employeeId: emp.id },
       { hasConflict: true, details: "Divulgação única 7f3a" },
     );
+    // phase 7: one vendor questionnaire answer, all five encrypted columns filled
+    const [vendor] = await sdb
+      .insert(vendors)
+      .values({ companyId: s.company.id, name: "Rot Vendor" })
+      .returning();
+    const answers = {
+      respondentName: "Respondente 1a",
+      respondentRole: "Diretor 2b",
+      ownershipText: "Controlada por 3c",
+      pepExposure: true,
+      pepDetails: "PEP 4d",
+      priorSanctions: true,
+      sanctionsDetails: "Sanção 5e",
+      antibriberyPolicy: true,
+    };
+    await sdb.insert(vendorResponses).values({
+      companyId: s.company.id,
+      vendorId: vendor.id,
+      ...encryptAnswers(s.company.id, answers),
+      pepExposure: true,
+      priorSanctions: true,
+      antibriberyPolicy: true,
+    });
     const [ev] = await sdb
       .select()
       .from(whistleblowerEvidence)
@@ -101,9 +127,15 @@ describe("key rotation script (library function)", () => {
     vi.stubEnv("REPORT_ENCRYPTION_KEYS", `b:${k2},a:${k1}`);
     const dry = await rotate(client, { apply: false });
     expect(dry).toEqual({
-      seen: { reports: 1, notes: 1, disclosures: 1, evidence: 1 },
+      seen: {
+        reports: 1,
+        notes: 1,
+        disclosures: 1,
+        vendorResponses: 1,
+        evidence: 1,
+      },
       current: 0,
-      rewritten: 5, // description, contact, note body, disclosure, file
+      rewritten: 10, // description, contact, note body, disclosure, file, 5 vendor answer fields
       failed: 0,
     });
     const [afterDry] = await sdb
@@ -154,8 +186,14 @@ describe("key rotation script (library function)", () => {
 
     // idempotent: a second run has nothing left to do
     expect(await rotate(client, { apply: true })).toEqual({
-      seen: { reports: 1, notes: 1, disclosures: 1, evidence: 1 },
-      current: 5,
+      seen: {
+        reports: 1,
+        notes: 1,
+        disclosures: 1,
+        vendorResponses: 1,
+        evidence: 1,
+      },
+      current: 10,
       rewritten: 0,
       failed: 0,
     });
@@ -175,6 +213,26 @@ describe("key rotation script (library function)", () => {
         .update(whistleblowerNotes)
         .set({ body: "x" })
         .where(eq(whistleblowerNotes.id, noteRow.id)),
+    ).rejects.toThrow();
+    // vendor answers: now under key b, still decrypting to the same text, and still append-only
+    const [vr] = await sdb
+      .select()
+      .from(vendorResponses)
+      .where(eq(vendorResponses.vendorId, vendor.id));
+    expect(keyIdOf(vr.respondentName)).toBe("b");
+    expect(keyIdOf(vr.sanctionsDetails!)).toBe("b");
+    expect(decryptAnswers(s.company.id, vr)).toEqual({
+      respondentName: answers.respondentName,
+      respondentRole: answers.respondentRole,
+      ownershipText: answers.ownershipText,
+      pepDetails: answers.pepDetails,
+      sanctionsDetails: answers.sanctionsDetails,
+    });
+    await expect(
+      sdb
+        .update(vendorResponses)
+        .set({ pepDetails: "x" })
+        .where(eq(vendorResponses.id, vr.id)),
     ).rejects.toThrow();
     // ... and so are the disclosures
     await expect(

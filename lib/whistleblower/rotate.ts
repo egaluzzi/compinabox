@@ -20,11 +20,12 @@ import { evidenceDir, evidenceField } from "./evidence.ts";
 // see scripts/rotate-report-key.ts.
 
 export type RotateCounts = {
-  /** Values found per kind: reports (description + contact), notes, employee disclosures, evidence files. */
+  /** Values found per kind: reports (description + contact), notes, employee disclosures, vendor questionnaire answers, evidence files. */
   seen: {
     reports: number;
     notes: number;
     disclosures: number;
+    vendorResponses: number;
     evidence: number;
   };
   /** Values already under the current key. */
@@ -41,7 +42,13 @@ export async function rotate(
 ): Promise<RotateCounts> {
   const now = currentKeyId();
   const counts: RotateCounts = {
-    seen: { reports: 0, notes: 0, disclosures: 0, evidence: 0 },
+    seen: {
+      reports: 0,
+      notes: 0,
+      disclosures: 0,
+      vendorResponses: 0,
+      evidence: 0,
+    },
     current: 0,
     rewritten: 0,
     failed: 0,
@@ -138,6 +145,53 @@ export async function rotate(
         );
       await db.query(
         "ALTER TABLE disclosures ENABLE TRIGGER disclosures_no_update_delete",
+      );
+    }
+
+    // Vendor questionnaire answers (phase 7): append-only too, same sanctioned pattern. Five
+    // encrypted columns per row; the booleans are plain and never touched.
+    const vendorCols = [
+      "respondent_name",
+      "respondent_role",
+      "ownership_text",
+      "pep_details",
+      "sanctions_details",
+    ] as const;
+    const responses = await db.query(
+      `SELECT id, company_id, ${vendorCols.join(", ")} FROM vendor_responses`,
+    );
+    const responseUpdates: {
+      id: string;
+      companyId: string;
+      set: Record<string, string>;
+    }[] = [];
+    for (const r of responses.rows) {
+      counts.seen.vendorResponses++;
+      const set: Record<string, string> = {};
+      for (const col of vendorCols) {
+        if (r[col] === null) continue;
+        const next = redo(
+          r[col],
+          aadFor(AAD_TABLES.vendorResponses, r.company_id, col),
+        );
+        if (next) set[col] = next;
+      }
+      if (Object.keys(set).length > 0)
+        responseUpdates.push({ id: r.id, companyId: r.company_id, set });
+    }
+    if (opts.apply && responseUpdates.length > 0) {
+      await db.query(
+        "ALTER TABLE vendor_responses DISABLE TRIGGER vendor_responses_no_update_delete",
+      );
+      for (const u of responseUpdates) {
+        const cols = Object.keys(u.set); // fixed column names from vendorCols, never user input
+        await db.query(
+          `UPDATE vendor_responses SET ${cols.map((c, i) => `${c} = $${i + 1}`).join(", ")} WHERE id = $${cols.length + 1} AND company_id = $${cols.length + 2}`,
+          [...cols.map((c) => u.set[c]), u.id, u.companyId],
+        );
+      }
+      await db.query(
+        "ALTER TABLE vendor_responses ENABLE TRIGGER vendor_responses_no_update_delete",
       );
     }
 
