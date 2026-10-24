@@ -8,7 +8,7 @@ launch (CLAUDE.md §11); the footer disclaimer and the "does this certify…?" F
 Source column: the locale/key the text was translated from, or "new UI string" where CONTENT.md has no source at all
 (the worker wrote the English and translated it faithfully).
 
-Row counts: en=198, es-AR=185, pt-BR=207, es-MX=195
+Row counts: en=273, es-AR=260, pt-BR=282, es-MX=270
 
 | locale | key | translated from |
 | :- | :- | :- |
@@ -797,3 +797,303 @@ Row counts: en=198, es-AR=185, pt-BR=207, es-MX=195
 | es-MX | dashboard.settings.countries.ar | en |
 | es-MX | dashboard.settings.countries.br | en |
 | es-MX | dashboard.settings.countries.mx | en |
+| en | report.title | es-AR (CONTENT.md §5, adapted) |
+| en | report.intro | es-AR (CONTENT.md §5, adapted) |
+| en | report.logoAlt | new UI string (no CONTENT.md source) |
+| en | report.categoryLabel | es-AR (CONTENT.md §5, adapted) |
+| en | report.categoryPlaceholder | new UI string (no CONTENT.md source) |
+| en | report.categories.corruption_bribery | es-AR (CONTENT.md §5, adapted) |
+| en | report.categories.conflict_of_interest | es-AR (CONTENT.md §5, adapted) |
+| en | report.categories.fraud | es-AR (CONTENT.md §5, adapted) |
+| en | report.categories.harassment | es-AR (CONTENT.md §5, adapted) |
+| en | report.categories.other | es-AR (CONTENT.md §5, adapted) |
+| en | report.descriptionLabel | es-AR (CONTENT.md §5, adapted) |
+| en | report.descriptionHelp | new UI string (no CONTENT.md source) |
+| en | report.evidenceLabel | es-AR (CONTENT.md §5, adapted) |
+| en | report.evidenceHelp | new UI string (no CONTENT.md source) |
+| en | report.contactQuestion | es-AR (CONTENT.md §5, adapted) |
+| en | report.contactYes | es-AR (CONTENT.md §5, adapted) |
+| en | report.contactNo | es-AR (CONTENT.md §5, adapted) |
+| en | report.contactLabel | new UI string (no CONTENT.md source) |
+| en | report.contactHelp | new UI string (no CONTENT.md source) |
+| en | report.submit | new UI string (no CONTENT.md source) |
+| en | report.submitting | new UI string (no CONTENT.md source) |
+| en | report.confirmed | es-AR (CONTENT.md §5, adapted) |
+| en | report.saveCode | new UI string (no CONTENT.md source) |
+| en | report.statusLink | new UI string (no CONTENT.md source) |
+| en | report.errors.category | new UI string (no CONTENT.md source) |
+| en | report.errors.description | new UI string (no CONTENT.md source) |
+| en | report.errors.contact | new UI string (no CONTENT.md source) |
+| en | report.errors.too_many_files | new UI string (no CONTENT.md source) |
+| en | report.errors.file_too_large | new UI string (no CONTENT.md source) |
+| en | report.errors.file_type | new UI string (no CONTENT.md source) |
+| en | report.errors.file_invalid | new UI string (no CONTENT.md source) |
+| en | report.errors.rate_limited | new UI string (no CONTENT.md source) |
+| en | report.errors.server_error | new UI string (no CONTENT.md source) |
+| en | report.errors.network | new UI string (no CONTENT.md source) |
+| en | report.status.title | new UI string (no CONTENT.md source) |
+| en | report.status.intro | new UI string (no CONTENT.md source) |
+| en | report.status.codeLabel | new UI string (no CONTENT.md source) |
+| en | report.status.submit | new UI string (no CONTENT.md source) |
+| en | report.status.checking | new UI string (no CONTENT.md source) |
+| en | report.status.resultStatus | new UI string (no CONTENT.md source) |
+| en | report.status.resultDate | new UI string (no CONTENT.md source) |
+| en | report.status.notFound | new UI string (no CONTENT.md source) |
+| en | report.status.back | new UI string (no CONTENT.md source) |
+| en | report.statuses.new | new UI string (no CONTENT.md source) |
+| en | report.statuses.under_review | new UI string (no CONTENT.md source) |
+| en | report.statuses.closed | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.channelTitle | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.channelHelp | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.channelLabel | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.copy | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.copied | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.colReceived | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.colCategory | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.colStatus | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.colAction | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.view | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.back | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.resolvedOn | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.contact | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.anonymous | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.description | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.changeStatus | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.apply | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.evidence | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.evidenceNone | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.download | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.timeline | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.noNotes | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.noteLabel | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.addNote | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.statusMoved | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.cannotDecrypt | new UI string (no CONTENT.md source) |
+| en | dashboard.whistleblower.error | new UI string (no CONTENT.md source) |
+| en | email.reportSubject | new UI string (no CONTENT.md source) |
+| en | email.reportBody | new UI string (no CONTENT.md source) |
+| es-AR | report.title | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.intro | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.logoAlt | en |
+| es-AR | report.categoryLabel | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.categoryPlaceholder | en |
+| es-AR | report.categories.corruption_bribery | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.categories.conflict_of_interest | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.categories.fraud | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.categories.harassment | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.categories.other | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.descriptionLabel | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.descriptionHelp | en |
+| es-AR | report.evidenceLabel | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.evidenceHelp | en |
+| es-AR | report.contactQuestion | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.contactYes | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.contactNo | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.contactLabel | en |
+| es-AR | report.contactHelp | en |
+| es-AR | report.submit | en |
+| es-AR | report.submitting | en |
+| es-AR | report.confirmed | CONTENT.md §5 (with company-name placeholder) |
+| es-AR | report.saveCode | en |
+| es-AR | report.statusLink | en |
+| es-AR | report.errors.category | en |
+| es-AR | report.errors.description | en |
+| es-AR | report.errors.contact | en |
+| es-AR | report.errors.too_many_files | en |
+| es-AR | report.errors.file_too_large | en |
+| es-AR | report.errors.file_type | en |
+| es-AR | report.errors.file_invalid | en |
+| es-AR | report.errors.rate_limited | en |
+| es-AR | report.errors.server_error | en |
+| es-AR | report.errors.network | en |
+| es-AR | report.status.title | en |
+| es-AR | report.status.intro | en |
+| es-AR | report.status.codeLabel | en |
+| es-AR | report.status.submit | en |
+| es-AR | report.status.checking | en |
+| es-AR | report.status.resultStatus | en |
+| es-AR | report.status.resultDate | en |
+| es-AR | report.status.notFound | en |
+| es-AR | report.status.back | en |
+| es-AR | report.statuses.new | en |
+| es-AR | report.statuses.under_review | en |
+| es-AR | report.statuses.closed | en |
+| es-AR | dashboard.whistleblower.channelTitle | en |
+| es-AR | dashboard.whistleblower.channelHelp | en |
+| es-AR | dashboard.whistleblower.channelLabel | en |
+| es-AR | dashboard.whistleblower.copy | en |
+| es-AR | dashboard.whistleblower.copied | en |
+| es-AR | dashboard.whistleblower.colReceived | en |
+| es-AR | dashboard.whistleblower.colCategory | en |
+| es-AR | dashboard.whistleblower.colStatus | en |
+| es-AR | dashboard.whistleblower.colAction | en |
+| es-AR | dashboard.whistleblower.view | en |
+| es-AR | dashboard.whistleblower.back | en |
+| es-AR | dashboard.whistleblower.resolvedOn | en |
+| es-AR | dashboard.whistleblower.contact | en |
+| es-AR | dashboard.whistleblower.anonymous | en |
+| es-AR | dashboard.whistleblower.description | en |
+| es-AR | dashboard.whistleblower.changeStatus | en |
+| es-AR | dashboard.whistleblower.apply | en |
+| es-AR | dashboard.whistleblower.evidence | en |
+| es-AR | dashboard.whistleblower.evidenceNone | en |
+| es-AR | dashboard.whistleblower.download | en |
+| es-AR | dashboard.whistleblower.timeline | en |
+| es-AR | dashboard.whistleblower.noNotes | en |
+| es-AR | dashboard.whistleblower.noteLabel | en |
+| es-AR | dashboard.whistleblower.addNote | en |
+| es-AR | dashboard.whistleblower.statusMoved | en |
+| es-AR | dashboard.whistleblower.cannotDecrypt | en |
+| es-AR | dashboard.whistleblower.error | en |
+| es-AR | email.reportSubject | en |
+| es-AR | email.reportBody | en |
+| pt-BR | report.title | es-AR (CONTENT.md §5) |
+| pt-BR | report.intro | es-AR (CONTENT.md §5) |
+| pt-BR | report.logoAlt | en |
+| pt-BR | report.categoryLabel | es-AR (CONTENT.md §5) |
+| pt-BR | report.categoryPlaceholder | en |
+| pt-BR | report.categories.corruption_bribery | es-AR (CONTENT.md §5) |
+| pt-BR | report.categories.conflict_of_interest | es-AR (CONTENT.md §5) |
+| pt-BR | report.categories.fraud | es-AR (CONTENT.md §5) |
+| pt-BR | report.categories.harassment | es-AR (CONTENT.md §5) |
+| pt-BR | report.categories.other | es-AR (CONTENT.md §5) |
+| pt-BR | report.descriptionLabel | es-AR (CONTENT.md §5) |
+| pt-BR | report.descriptionHelp | en |
+| pt-BR | report.evidenceLabel | es-AR (CONTENT.md §5) |
+| pt-BR | report.evidenceHelp | en |
+| pt-BR | report.contactQuestion | es-AR (CONTENT.md §5) |
+| pt-BR | report.contactYes | es-AR (CONTENT.md §5) |
+| pt-BR | report.contactNo | es-AR (CONTENT.md §5) |
+| pt-BR | report.contactLabel | en |
+| pt-BR | report.contactHelp | en |
+| pt-BR | report.submit | en |
+| pt-BR | report.submitting | en |
+| pt-BR | report.confirmed | es-AR (CONTENT.md §5) |
+| pt-BR | report.saveCode | en |
+| pt-BR | report.statusLink | en |
+| pt-BR | report.errors.category | en |
+| pt-BR | report.errors.description | en |
+| pt-BR | report.errors.contact | en |
+| pt-BR | report.errors.too_many_files | en |
+| pt-BR | report.errors.file_too_large | en |
+| pt-BR | report.errors.file_type | en |
+| pt-BR | report.errors.file_invalid | en |
+| pt-BR | report.errors.rate_limited | en |
+| pt-BR | report.errors.server_error | en |
+| pt-BR | report.errors.network | en |
+| pt-BR | report.status.title | en |
+| pt-BR | report.status.intro | en |
+| pt-BR | report.status.codeLabel | en |
+| pt-BR | report.status.submit | en |
+| pt-BR | report.status.checking | en |
+| pt-BR | report.status.resultStatus | en |
+| pt-BR | report.status.resultDate | en |
+| pt-BR | report.status.notFound | en |
+| pt-BR | report.status.back | en |
+| pt-BR | report.statuses.new | en |
+| pt-BR | report.statuses.under_review | en |
+| pt-BR | report.statuses.closed | en |
+| pt-BR | dashboard.whistleblower.channelTitle | en |
+| pt-BR | dashboard.whistleblower.channelHelp | en |
+| pt-BR | dashboard.whistleblower.channelLabel | en |
+| pt-BR | dashboard.whistleblower.copy | en |
+| pt-BR | dashboard.whistleblower.copied | en |
+| pt-BR | dashboard.whistleblower.colReceived | en |
+| pt-BR | dashboard.whistleblower.colCategory | en |
+| pt-BR | dashboard.whistleblower.colStatus | en |
+| pt-BR | dashboard.whistleblower.colAction | en |
+| pt-BR | dashboard.whistleblower.view | en |
+| pt-BR | dashboard.whistleblower.back | en |
+| pt-BR | dashboard.whistleblower.resolvedOn | en |
+| pt-BR | dashboard.whistleblower.contact | en |
+| pt-BR | dashboard.whistleblower.anonymous | en |
+| pt-BR | dashboard.whistleblower.description | en |
+| pt-BR | dashboard.whistleblower.changeStatus | en |
+| pt-BR | dashboard.whistleblower.apply | en |
+| pt-BR | dashboard.whistleblower.evidence | en |
+| pt-BR | dashboard.whistleblower.evidenceNone | en |
+| pt-BR | dashboard.whistleblower.download | en |
+| pt-BR | dashboard.whistleblower.timeline | en |
+| pt-BR | dashboard.whistleblower.noNotes | en |
+| pt-BR | dashboard.whistleblower.noteLabel | en |
+| pt-BR | dashboard.whistleblower.addNote | en |
+| pt-BR | dashboard.whistleblower.statusMoved | en |
+| pt-BR | dashboard.whistleblower.cannotDecrypt | en |
+| pt-BR | dashboard.whistleblower.error | en |
+| pt-BR | email.reportSubject | en |
+| pt-BR | email.reportBody | en |
+| es-MX | report.title | es-AR (CONTENT.md §5) |
+| es-MX | report.intro | es-AR (CONTENT.md §5) |
+| es-MX | report.logoAlt | en |
+| es-MX | report.categoryLabel | es-AR (CONTENT.md §5) |
+| es-MX | report.categoryPlaceholder | en |
+| es-MX | report.categories.corruption_bribery | es-AR (CONTENT.md §5) |
+| es-MX | report.categories.conflict_of_interest | es-AR (CONTENT.md §5) |
+| es-MX | report.categories.fraud | es-AR (CONTENT.md §5) |
+| es-MX | report.categories.harassment | es-AR (CONTENT.md §5) |
+| es-MX | report.categories.other | es-AR (CONTENT.md §5) |
+| es-MX | report.descriptionLabel | es-AR (CONTENT.md §5) |
+| es-MX | report.descriptionHelp | en |
+| es-MX | report.evidenceLabel | es-AR (CONTENT.md §5) |
+| es-MX | report.evidenceHelp | en |
+| es-MX | report.contactQuestion | es-AR (CONTENT.md §5) |
+| es-MX | report.contactYes | es-AR (CONTENT.md §5) |
+| es-MX | report.contactNo | es-AR (CONTENT.md §5) |
+| es-MX | report.contactLabel | en |
+| es-MX | report.contactHelp | en |
+| es-MX | report.submit | en |
+| es-MX | report.submitting | en |
+| es-MX | report.confirmed | es-AR (CONTENT.md §5) |
+| es-MX | report.saveCode | en |
+| es-MX | report.statusLink | en |
+| es-MX | report.errors.category | en |
+| es-MX | report.errors.description | en |
+| es-MX | report.errors.contact | en |
+| es-MX | report.errors.too_many_files | en |
+| es-MX | report.errors.file_too_large | en |
+| es-MX | report.errors.file_type | en |
+| es-MX | report.errors.file_invalid | en |
+| es-MX | report.errors.rate_limited | en |
+| es-MX | report.errors.server_error | en |
+| es-MX | report.errors.network | en |
+| es-MX | report.status.title | en |
+| es-MX | report.status.intro | en |
+| es-MX | report.status.codeLabel | en |
+| es-MX | report.status.submit | en |
+| es-MX | report.status.checking | en |
+| es-MX | report.status.resultStatus | en |
+| es-MX | report.status.resultDate | en |
+| es-MX | report.status.notFound | en |
+| es-MX | report.status.back | en |
+| es-MX | report.statuses.new | en |
+| es-MX | report.statuses.under_review | en |
+| es-MX | report.statuses.closed | en |
+| es-MX | dashboard.whistleblower.channelTitle | en |
+| es-MX | dashboard.whistleblower.channelHelp | en |
+| es-MX | dashboard.whistleblower.channelLabel | en |
+| es-MX | dashboard.whistleblower.copy | en |
+| es-MX | dashboard.whistleblower.copied | en |
+| es-MX | dashboard.whistleblower.colReceived | en |
+| es-MX | dashboard.whistleblower.colCategory | en |
+| es-MX | dashboard.whistleblower.colStatus | en |
+| es-MX | dashboard.whistleblower.colAction | en |
+| es-MX | dashboard.whistleblower.view | en |
+| es-MX | dashboard.whistleblower.back | en |
+| es-MX | dashboard.whistleblower.resolvedOn | en |
+| es-MX | dashboard.whistleblower.contact | en |
+| es-MX | dashboard.whistleblower.anonymous | en |
+| es-MX | dashboard.whistleblower.description | en |
+| es-MX | dashboard.whistleblower.changeStatus | en |
+| es-MX | dashboard.whistleblower.apply | en |
+| es-MX | dashboard.whistleblower.evidence | en |
+| es-MX | dashboard.whistleblower.evidenceNone | en |
+| es-MX | dashboard.whistleblower.download | en |
+| es-MX | dashboard.whistleblower.timeline | en |
+| es-MX | dashboard.whistleblower.noNotes | en |
+| es-MX | dashboard.whistleblower.noteLabel | en |
+| es-MX | dashboard.whistleblower.addNote | en |
+| es-MX | dashboard.whistleblower.statusMoved | en |
+| es-MX | dashboard.whistleblower.cannotDecrypt | en |
+| es-MX | dashboard.whistleblower.error | en |
+| es-MX | email.reportSubject | en |
+| es-MX | email.reportBody | en |

@@ -47,11 +47,29 @@ async function seedTenantRows(who: "A" | "B", companyId: string) {
     type: "gift",
     content: `d ${label}`,
   });
-  await db.insert(schema.whistleblowerReports).values({
+  const [report] = await db
+    .insert(schema.whistleblowerReports)
+    .values({
+      companyId,
+      trackingCode: `T-${label}`,
+      category: "fraud",
+      description: `secret ${label}`,
+    })
+    .returning();
+  await db.insert(schema.whistleblowerEvidence).values({
     companyId,
-    trackingCode: `T-${label}`,
-    category: "fraud",
-    description: `secret ${label}`,
+    reportId: report.id,
+    fileName: `${label}.enc`,
+    contentType: "image/png",
+    sizeBytes: 10,
+  });
+  await db.insert(schema.whistleblowerNotes).values({
+    companyId,
+    reportId: report.id,
+    kind: "status_change",
+    fromStatus: "new",
+    toStatus: "under_review",
+    authorUserId: (who === "A" ? A : B).user.id,
   });
   await db
     .insert(schema.vendors)

@@ -38,7 +38,7 @@ describe("requireTenant coverage", () => {
     expect(ungated(EXTRA_TENANT_ROUTES)).toEqual([]);
   });
 
-  it("the scan sees the eight sections, the document pages and the settings route (not vacuous)", () => {
+  it("the scan sees the eight sections, the document pages, the whistleblower case routes and the settings route (not vacuous)", () => {
     const entries = walk(path.join(root, DASHBOARD))
       .filter(isEntry)
       .map((f) => path.relative(path.join(root, DASHBOARD), f))
@@ -55,6 +55,10 @@ describe("requireTenant coverage", () => {
         "settings/save/route.ts",
         "training/page.tsx",
         "vendors/page.tsx",
+        "whistleblower/[id]/evidence/[evidenceId]/route.ts",
+        "whistleblower/[id]/note/route.ts",
+        "whistleblower/[id]/page.tsx",
+        "whistleblower/[id]/status/route.ts",
         "whistleblower/page.tsx",
       ].sort(),
     );
