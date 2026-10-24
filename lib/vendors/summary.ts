@@ -31,10 +31,9 @@ export async function summarizeVendors(
   companyId: string,
   now = new Date(),
 ): Promise<VendorSummary[]> {
-  const [vs, latest] = await Promise.all([
-    listVendors(db, companyId),
-    latestScreenings(db, companyId),
-  ]);
+  // sequential: the binder calls this inside a single-connection transaction
+  const vs = await listVendors(db, companyId);
+  const latest = await latestScreenings(db, companyId);
   return vs.map((v) => {
     const s = latest.get(v.id);
     return {

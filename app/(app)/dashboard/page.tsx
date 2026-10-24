@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { requireTenant } from "@/lib/auth/require-tenant";
+import { listBinders } from "@/lib/binder/queries";
 import { companyCompletion } from "@/lib/dashboard/completion";
+import { formatDate } from "@/lib/dashboard/format";
 import { getDb } from "@/lib/db/client";
 import { countEmployees, countOpenReports } from "@/lib/db/tenant";
 import { parseDocument } from "@/lib/documents/generate";
@@ -34,6 +36,15 @@ export default async function Overview() {
     (r) => parseDocument(r.content).reviewStatus === "draft",
   ).length;
   const completionInfo = await companyCompletion(db, tenant.companyId, locale);
+  // latest binder state for the card (the PDF bytes are never loaded here)
+  const binders = await listBinders(db, tenant.companyId, 10);
+  const binder = {
+    active: binders.some(
+      (b) => b.status === "queued" || b.status === "running",
+    ),
+    ready: binders.find((b) => b.status === "ready"),
+    failedLast: binders[0]?.status === "failed",
+  };
   const completion = completionInfo.percent;
 
   const card = "rounded border border-slate-200 p-4";
@@ -89,16 +100,33 @@ export default async function Overview() {
         </li>
         <li className={`${card} sm:col-span-2`}>
           <h2 className={label}>{t("dashboard.overview.binder")}</h2>
-          <button
-            type="button"
-            disabled
-            className="mt-2 cursor-not-allowed rounded border border-slate-300 px-3 py-1 text-sm text-slate-500"
-          >
-            {t("dashboard.overview.binderDownload")}
-          </button>
-          <p className="mt-1 text-sm text-slate-600">
-            {t("dashboard.unavailable")}
+          <p className="mt-1 text-sm text-slate-700">
+            {binder.active
+              ? t("dashboard.overview.binderActive")
+              : binder.ready
+                ? t("dashboard.overview.binderReady", {
+                    date: formatDate(
+                      binder.ready.asOf ?? binder.ready.createdAt,
+                      locale,
+                    ),
+                  })
+                : binder.failedLast
+                  ? t("dashboard.overview.binderFailed")
+                  : t("dashboard.overview.binderNone")}
           </p>
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+            <Link className="underline" href="/dashboard/binder">
+              {t("dashboard.overview.binderOpen")}
+            </Link>
+            {binder.ready && (
+              <a
+                className="underline"
+                href={`/dashboard/binder/${binder.ready.id}/pdf`}
+              >
+                {t("dashboard.overview.binderDownload")}
+              </a>
+            )}
+          </div>
         </li>
       </ul>
       <section aria-labelledby="sections-h" className="space-y-2">
