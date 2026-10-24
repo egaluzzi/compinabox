@@ -100,6 +100,12 @@ async function seedTenantRows(who: "A" | "B", companyId: string) {
     nameScreened: vendor.name,
     status: "no_match",
   });
+  await db.insert(schema.binders).values({
+    companyId,
+    status: "failed",
+    errorCode: "interrupted",
+    options: { includeChannelStats: false },
+  });
   await db.insert(schema.billingRecords).values({
     companyId,
     amountCents: 1000,
