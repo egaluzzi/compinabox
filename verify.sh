@@ -151,7 +151,7 @@ fi
 # 4d. Forbidden claims in copy (CLAUDE.md §8)
 # A *negated* guarantee ("does not guarantee compliance", "no garantiza el cumplimiento", "não garante a conformidade")
 # is the approved footer disclaimer (CONTENT.md §1), not a claim — those lines are exempt.
-BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cumplimiento|garante (a )?conformidade|ISO ?3730[12]|certif(ied|icado|icada) (by|por) (la )?ley|em conformidade com a lei|atende (integralmente )?(a|às) exigências' app messages lib/content lib/documents lib/training lib/employee lib/screening lib/vendors lib/binder components content/blog 2>/dev/null | grep -viE '(^|[^[:alpha:]])(does not|do not|doesn.t|no|não|nao|never|nunca) +(guarantee|garantiza|garante)' || true)
+BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cumplimiento|garante (a )?conformidade|ISO ?3730[12]|certif(ied|icado|icada) (by|por) (la )?ley|em conformidade com a lei|atende (integralmente )?(a|às) exigências' app messages lib/content lib/documents lib/training lib/employee lib/screening lib/vendors lib/binder lib/legal components content/blog 2>/dev/null | grep -viE '(^|[^[:alpha:]])(does not|do not|doesn.t|no|não|nao|never|nunca) +(guarantee|garantiza|garante)' || true)
 if [ -n "$BANNED" ]; then echo "$BANNED" | head; bad "forbidden claims" "copy implies guaranteed compliance or ISO certification"; else note "forbidden claims" "none"; fi
 
 # 4e. Second geo mechanism must not exist (CLAUDE.md §4)
@@ -259,6 +259,13 @@ fi
 # test (tests/binder-pdf.test.tsx) proves the output; this is the tripwire on the source.
 if [ -d lib/binder ]; then
   if BINDER_OUT=$(./scripts/check-binder-privacy.sh 2>&1); then note "binder privacy" "no excluded import or field in lib/binder"; else echo "$BINDER_OUT" | head -20; bad "binder privacy" "lib/binder touches data the dossier must exclude"; fi
+fi
+
+# 4m. Ops hygiene (phase 9): every ops/ and scripts/ shell script parses (and passes shellcheck when it
+# is installed); no weakened SSH host-key checking, ssh-keyscan, private key or `changeme` placeholder in
+# ops/ or .github/ (scripts/check-ops-hygiene.sh).
+if [ -d ops ]; then
+  if HYG_OUT=$(./scripts/check-ops-hygiene.sh 2>&1); then note "ops hygiene" "scripts parse; no weakened host-key checking, key or placeholder in ops/ .github/"; else echo "$HYG_OUT" | head -20; bad "ops hygiene" "see above"; fi
 fi
 
 # 4g. KNOWN_ISSUES.md must exist (baseline)

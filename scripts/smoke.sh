@@ -48,6 +48,9 @@ check "redirect carries cache-control: no-store" "curl -sI -H 'CF-IPCountry: BR'
 check "invalid country cookie ignored, header decides" "curl -sI -H 'CF-IPCountry: AR' -H 'Cookie: country=zz' $B/ | grep -i 'location: .*/ar'"
 check "/checkout -> 200" "curl -sI $B/checkout | grep -E '^HTTP/.* 200'"
 check "/legal/terms -> 200" "curl -sI $B/legal/terms | grep -E '^HTTP/.* 200'"
+check "/api/health -> 200 {ok:true, db:true, env:development}" "curl -s $B/api/health | grep -q '\"ok\":true' && curl -s $B/api/health | grep -q '\"db\":true' && curl -s $B/api/health | grep -q '\"env\":\"development\"'"
+check "development: no staging banner, no X-Robots-Tag" "! curl -s $B/br | grep -q data-staging-banner && ! curl -sI $B/br | grep -qi '^x-robots-tag'"
+check "/dev-outbox is a 404 outside staging" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' $B/dev-outbox)\" = 404 ]"
 check "/zz -> 404" "curl -sI $B/zz | grep -E '^HTTP/.* 404'"
 check "/pt-BR -> 404" "curl -sI $B/pt-BR | grep -E '^HTTP/.* 404'"
 for d in /dashboard /employee /checkout /onboarding; do
@@ -71,6 +74,8 @@ if [ -z "${DATABASE_URL:-}" ]; then
 else
 JQ() { node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{const v=JSON.parse(d)["'"$1"'"];console.log(v===undefined?"":v)}catch{console.log("")}})'; }
 SQL() { psql "$DATABASE_URL" -Atc "$1"; }
+TV=$(sed -n 's/.*TERMS_VERSION = "\(.*\)";/\1/p' lib/legal/version.ts) # the checkout checkbox (phase 9)
+TERMS_JSON="\"termsAccepted\":true,\"termsVersion\":\"$TV\""
 SECRET=smoke-fake-secret-$(date +%s)-0123456789
 ASEC=smoke-auth-secret-$(date +%s)-0123456789
 OUTBOX=$(mktemp -d); UPLOADS=$(mktemp -d); EVIDENCE=$(mktemp -d); JAR=$(mktemp); JAR_SAVED=$(mktemp); JAR2=$(mktemp)
@@ -107,12 +112,14 @@ check "/checkout?c=ar refused (not in ENABLED_COUNTRIES): no form" "! curl -s '$
 check "/dashboard without a session redirects to /login" "curl -sI $B/dashboard | grep -iE '^location: .*/login'"
 check "/onboarding without a session redirects to /login" "curl -sI $B/onboarding | grep -iE '^location: .*/login'"
 
-R=$(curl -s -c "$JAR" -X POST -H 'content-type: application/json' --data "{\"country\":\"br\",\"companyName\":\"Smoke Ltda\",\"taxId\":\"11.222.333/0001-81\",\"billingEmail\":\"$EMAIL\"}" "$B/api/checkout")
+R=$(curl -s -c "$JAR" -X POST -H 'content-type: application/json' --data "{\"country\":\"br\",\"companyName\":\"Smoke Ltda\",\"taxId\":\"11.222.333/0001-81\",\"billingEmail\":\"$EMAIL\",$TERMS_JSON}" "$B/api/checkout")
 ATT=$(echo "$R" | JQ attemptId); REDIR=$(echo "$R" | JQ redirectUrl)
 check "POST /api/checkout -> attempt id + hosted-checkout URL" "[ -n '$ATT' ] && echo '$REDIR' | grep -q '/checkout/fake/$ATT'"
 check "return_token cookie is httpOnly" "grep -q '#HttpOnly_.*return_token' '$JAR'"
 check "DB: attempt is pending, 0 companies for that email" "[ \"\$(psql \"$DATABASE_URL\" -Atc \"select status from checkout_attempt where id='$ATT'\")\" = pending ] && [ \"\$(psql \"$DATABASE_URL\" -Atc \"select count(*) from users where email='$EMAIL'\")\" = 0 ]"
 check "invalid CNPJ -> 422 invalid_tax_id" "curl -s -X POST -H 'content-type: application/json' --data '{\"country\":\"br\",\"companyName\":\"X Ltda\",\"taxId\":\"11222333000182\",\"billingEmail\":\"bad-$EMAIL\"}' $B/api/checkout | grep -q invalid_tax_id"
+check "POST /api/checkout without the terms box -> 422 terms_not_accepted" "curl -s -X POST -H 'content-type: application/json' --data '{\"country\":\"br\",\"companyName\":\"X Ltda\",\"taxId\":\"11222333000181\",\"billingEmail\":\"nt-$EMAIL\"}' $B/api/checkout | grep -q terms_not_accepted"
+check "DB: the attempt stored the terms version and time" "[ \"\$(psql \"$DATABASE_URL\" -Atc \"select terms_version from checkout_attempt where id='$ATT' and terms_accepted_at is not null\")\" = '$TV' ]"
 check "simulator page renders Pay/Fail buttons" "curl -s $B/checkout/fake/$ATT | grep -q 'value=\"pay\"'"
 
 # return URL alone never provisions
@@ -194,7 +201,7 @@ check "documents routes without a session: view -> /login, PDF -> 401" "curl -s 
 # a second company's session must get 404 (not 403, not the content) for the first company's document
 JAR3=$(mktemp)
 EMAIL3="smoke3-$(date +%s)-$$@example.test"
-R3=$(curl -s -c "$JAR3" -X POST -H 'content-type: application/json' --data "{\"country\":\"br\",\"companyName\":\"Other Ltda\",\"taxId\":\"11222333000181\",\"billingEmail\":\"$EMAIL3\"}" "$B/api/checkout"); ATT3=$(echo "$R3" | JQ attemptId)
+R3=$(curl -s -c "$JAR3" -X POST -H 'content-type: application/json' --data "{\"country\":\"br\",\"companyName\":\"Other Ltda\",\"taxId\":\"11222333000181\",\"billingEmail\":\"$EMAIL3\",$TERMS_JSON}" "$B/api/checkout"); ATT3=$(echo "$R3" | JQ attemptId)
 curl -s -o /dev/null -X POST -d 'outcome=pay' "$B/api/fake-payments/$ATT3"
 curl -s -b "$JAR3" -c "$JAR3" "$B/api/checkout/status?attempt=$ATT3" -o /tmp/st3.out
 check "second company is provisioned and signed in" "grep -q '\"signedIn\":true' /tmp/st3.out"
@@ -709,7 +716,7 @@ rm -f "$JAR4" "$SO_HDR" "$JAR_OLD" "$JAR5"
 rm -f "$JAR3" /tmp/pdf.hdr /tmp/doc1.pdf /tmp/st3.out
 
 # failed payment path
-R=$(curl -s -c "$JAR" -X POST -H 'content-type: application/json' --data "{\"country\":\"br\",\"companyName\":\"Fail Ltda\",\"taxId\":\"11222333000181\",\"billingEmail\":\"fail-$EMAIL\"}" "$B/api/checkout"); FATT=$(echo "$R" | JQ attemptId)
+R=$(curl -s -c "$JAR" -X POST -H 'content-type: application/json' --data "{\"country\":\"br\",\"companyName\":\"Fail Ltda\",\"taxId\":\"11222333000181\",\"billingEmail\":\"fail-$EMAIL\",$TERMS_JSON}" "$B/api/checkout"); FATT=$(echo "$R" | JQ attemptId)
 curl -s -o /dev/null -X POST -d 'outcome=fail' "$B/api/fake-payments/$FATT"
 check "simulator Fail -> attempt failed, nothing provisioned, status endpoint says failed" "curl -s -b '$JAR' '$B/api/checkout/status?attempt=$FATT' | grep -q '\"status\":\"failed\"' && [ \"\$(SQL \"select count(*) from users where email='fail-$EMAIL'\")\" = 0 ]"
 

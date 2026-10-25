@@ -1,0 +1,46 @@
+Valid configuration
+=== check-caddy-logs.sh, app up
+ok    canary CANARYEMP… absent from the log
+ok    canary CANARYVEN… absent from the log
+ok    canary CANARYWEL… absent from the log
+ok    canary CANARYREPORTSLUG… absent from the log
+ok    canary CANARYAPIREPORT… absent from the log
+ok    canary CANARYQUERY… absent from the log
+ok    canary CANARYCOOKIE… absent from the log
+ok    canary 203.0.113.77… absent from the log
+ok    /br is logged with its query removed
+ok    /employee/… is logged as /employee/[redacted]
+ok    /vendor/… is logged as /vendor/[redacted]
+ok    /api/welcome is logged as /api/welcome/[redacted]
+ok    no log line mentions /report or /api/report
+check-caddy-logs: PASS
+
+=== body cap on /api/report/* (21 MB refused, 1 MB accepted; no cap elsewhere)
+small.bin -> HTTP 200
+big.bin -> HTTP 413
+
+=== app down: requests that fail with 502 must not leak either
+ok    /api/welcome is logged as /api/welcome/[redacted]
+ok    no log line mentions /report or /api/report
+check-caddy-logs: PASS
+
+=== the access-log lines themselves (JSON, abbreviated to the interesting fields)
+http.log.access.log0     200  /br                        client_ip=127.0.0.1 cookie=- xff=-
+http.log.access.employee 200  /employee/[redacted]       client_ip=- cookie=- xff=-
+http.log.access.vendor   200  /vendor/[redacted]         client_ip=- cookie=- xff=-
+http.log.access.welcome  200  /api/welcome/[redacted]    client_ip=- cookie=- xff=-
+http.log.access.log0     502  /br                        client_ip=127.0.0.1 cookie=- xff=-
+http.log.access.employee 502  /employee/[redacted]       client_ip=- cookie=- xff=-
+http.log.access.vendor   502  /vendor/[redacted]         client_ip=- cookie=- xff=-
+http.log.access.welcome  502  /api/welcome/[redacted]    client_ip=- cookie=- xff=-
+
+=== error-log lines (app down)
+http.log.error.log0        uri=[redacted] headers=absent client_ip=-
+http.log.error.employee    uri=[redacted] headers=absent client_ip=-
+http.log.error.vendor      uri=[redacted] headers=absent client_ip=-
+http.log.error.welcome     uri=[redacted] headers=absent client_ip=-
+http.log.error.log0        uri=[redacted] headers=absent client_ip=-
+http.log.error.log0        uri=[redacted] headers=absent client_ip=-
+
+=== a report-channel request left no access line:
+0

@@ -33,7 +33,8 @@
     "disclaimer": "A ComplyStart fornece os componentes documentados que reguladores, compradores governamentais e auditores corporativos costumam exigir. É informação geral, não aconselhamento jurídico, e não garante a conformidade com nenhuma lei ou auditoria específica.",
     "terms": "Termos de serviço",
     "privacy": "Política de privacidade",
-    "disclaimerLink": "Isenção de responsabilidade"
+    "disclaimerLink": "Isenção de responsabilidade",
+    "cookies": "Configurações de cookies"
   },
   "nav": {
     "pricing": "Preços",
@@ -45,7 +46,10 @@
     "language": "Idioma"
   },
   "legal": {
-    "draft": "RASCUNHO — pendente de revisão"
+    "draft": "RASCUNHO — pendente de revisão",
+    "version": "Versão",
+    "ptOnly": "O texto completo está disponível apenas em português (o Brasil é o primeiro mercado).",
+    "placeholders": "Os itens destacados entre [colchetes] ainda não foram preenchidos."
   },
   "consent": {
     "text": "Usamos cookies para lembrar seu país, seu idioma e sua escolha sobre cookies. Com a sua permissão, também podemos usar cookies de análise.",
@@ -140,7 +144,10 @@
     "fakeTitle": "Processador de pagamentos de teste",
     "fakeNote": "Simulador de desenvolvimento — nenhum pagamento real é feito.",
     "fakePay": "Pagar",
-    "fakeFail": "Fazer o pagamento falhar"
+    "fakeFail": "Fazer o pagamento falhar",
+    "acceptPrefix": "Li e aceito os",
+    "acceptAnd": "e a",
+    "errTerms": "Aceite os termos de uso e a política de privacidade para continuar."
   },
   "login": {
     "title": "Entrar",

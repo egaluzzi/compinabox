@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { trackEvent } from "@/lib/tracking";
 
 type Labels = {
   pending: string;
@@ -11,7 +12,31 @@ type Labels = {
   retry: string;
   generic: string;
 };
-type State = { status: string; country?: string; signedIn?: boolean };
+type State = {
+  status: string;
+  country?: string;
+  signedIn?: boolean;
+  amountCents?: number;
+  currency?: string;
+};
+
+/** The conversion event, once per browser tab. Only value + currency: nothing identifying. */
+function firePurchase(s: State) {
+  if (typeof s.amountCents !== "number" || !s.currency) return;
+  try {
+    if (sessionStorage.getItem("purchase_sent")) return;
+    if (
+      trackEvent({
+        event: "purchase",
+        value: s.amountCents / 100,
+        currency: s.currency,
+      })
+    )
+      sessionStorage.setItem("purchase_sent", "1");
+  } catch {
+    // storage unavailable: skip the dedupe, never block the page
+  }
+}
 
 /** Polls the attempt status (the webhook may land after the browser). Never provisions anything. */
 export function ReturnStatus({
@@ -36,6 +61,7 @@ export function ReturnStatus({
         const body = (await res.json()) as State;
         if (stop) return;
         setState(body);
+        if (body.status === "paid") firePurchase(body);
         if (body.status === "paid" && body.signedIn) {
           router.replace("/onboarding");
           return;

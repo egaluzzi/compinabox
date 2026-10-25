@@ -1,0 +1,14 @@
+[Unit]
+Description=ComplyStart nightly backup (Postgres dump + evidence/uploads archive)
+After=postgresql.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# /opt/compinabox/.env holds DATABASE_URL, BACKUP_DEST, BACKUP_KEEP_DAYS, EVIDENCE_DIR, UPLOADS_DIR (never committed)
+EnvironmentFile=/opt/compinabox/.env
+ExecStart=/opt/compinabox/current/scripts/backup.sh
+# Run as the app's service user (owns the data directories and ~/.s3cfg once Spaces is configured)
+User=complystart
+Group=complystart
+Nice=10

@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { TERMS_VERSION } from "@/lib/legal/version";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -35,6 +36,8 @@ const checkoutCall = (email = `x-${uid()}@example.test`) =>
         companyName: "Acme",
         taxId: "11222333000181",
         billingEmail: email,
+        termsAccepted: true,
+        termsVersion: TERMS_VERSION,
       }),
     }),
   );
@@ -119,6 +122,8 @@ describe("with the fake provider enabled", () => {
           companyName: "Acme",
           taxId: "123",
           billingEmail: "a@b.test",
+          termsAccepted: true,
+          termsVersion: TERMS_VERSION,
         }),
       }),
     );

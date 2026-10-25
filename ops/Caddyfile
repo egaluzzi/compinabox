@@ -1,0 +1,140 @@
+# managed-by: complystart-bootstrap
+# Caddyfile for the STAGING server (no domain, no Cloudflare). bootstrap-server.sh fills in the site
+# address (https://<server ip>) and the app's port (3000) where the two double-underscore words
+# below stand, and installs the result as /etc/caddy/Caddyfile.
+#
+# TLS: `tls internal` = a certificate signed by Caddy's own local CA. Browsers show a warning ONCE
+# ("not private") because nobody trusted that CA; accept it for this server. This is expected on a bare IP.
+# README "Staging server setup" shows the change to a real certificate once a domain exists:
+#   - replace the site address line below with `staging.example.com`, and
+#   - delete the `tls internal` line (Caddy then gets a public certificate by itself).
+#
+# LOGGING (this file is the evidence for the privacy statements in lib/legal and the README):
+#   * Access log: JSON, query strings removed from every logged URL.
+#   * /employee/*, /vendor/* and /api/welcome carry a secret in the path or query: their log lines
+#     keep the prefix only ("/employee/[redacted]"), via a separate logger each (log_name).
+#   * /report/* and /api/report/* (the anonymous whistleblower channel) are NOT access-logged at
+#     all (log_skip): no path, no client address. Chosen over "log without the IP" because the
+#     request time + path alone would still be a record of who used the channel and when.
+#   * Client address: kept in the general access log (client_ip, useful against abuse), removed from
+#     the /employee, /vendor and /api/welcome lines and from the error log.
+#   * The error log ("upstream refused", etc.) carries the whole request, so it logs the URL as
+#     "[redacted]" and drops headers and client addresses entirely, on every path.
+#   * Cookies, Authorization, Referer, Set-Cookie and X-Forwarded-For are never logged.
+# Caddy owns ports 80/443; the app listens on 127.0.0.1:__APP_PORT__ only. Caddy never serves files:
+# there is no file_server, so the evidence and uploads directories cannot be reached from the web.
+{
+	admin off
+	__GLOBAL_PORTS__
+
+	# Runtime/error log (e.g. "upstream refused connection"): an error entry carries the whole
+	# request, so here the URL, the headers and every client address are removed entirely.
+	log {
+		exclude http.log.error
+		output stderr
+		format json
+	}
+	log errors {
+		include http.log.error
+		output stderr
+		format filter {
+			wrap json
+			fields {
+				request>uri replace [redacted]
+				request>headers delete
+				request>tls delete
+				request>remote_ip delete
+				request>remote_port delete
+				request>client_ip delete
+			}
+		}
+	}
+}
+
+# Access-log fields removed everywhere (cookies, tokens in headers, proxies' view of the client).
+(access_filters) {
+	request>remote_ip delete
+	request>remote_port delete
+	request>headers>Cookie delete
+	request>headers>Authorization delete
+	request>headers>X-Forwarded-For delete
+	request>headers>Referer delete
+	resp_headers>Set-Cookie delete
+}
+
+__SITE_ADDRESS__ {
+	tls internal
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		# Staging is never indexed (the app says so too; this covers static files).
+		X-Robots-Tag "noindex, nofollow"
+		-Server
+	}
+
+	# The anonymous channel: no access log at all (see above).
+	@report path /report/* /api/report/*
+	log_skip @report
+
+	# Whistleblower intake: 3 files x 5 MB + text; refuse anything much larger before it reaches the app.
+	request_body /api/report/* {
+		max_size 20MB
+	}
+
+	@employee path /employee /employee/*
+	log_name @employee employee
+	@vendor path /vendor /vendor/*
+	log_name @vendor vendor
+	@welcome path /api/welcome /api/welcome/*
+	log_name @welcome welcome
+
+	log {
+		output stderr
+		format filter {
+			wrap json
+			fields {
+				import access_filters
+				request>uri regexp ^([^?]*).*$ $1
+			}
+		}
+	}
+	log employee {
+		no_hostname
+		output stderr
+		format filter {
+			wrap json
+			fields {
+				import access_filters
+				request>client_ip delete
+				request>uri replace /employee/[redacted]
+			}
+		}
+	}
+	log vendor {
+		no_hostname
+		output stderr
+		format filter {
+			wrap json
+			fields {
+				import access_filters
+				request>client_ip delete
+				request>uri replace /vendor/[redacted]
+			}
+		}
+	}
+	log welcome {
+		no_hostname
+		output stderr
+		format filter {
+			wrap json
+			fields {
+				import access_filters
+				request>client_ip delete
+				request>uri replace /api/welcome/[redacted]
+			}
+		}
+	}
+
+	reverse_proxy 127.0.0.1:__APP_PORT__
+}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { TrackOnMount } from "@/components/Tracking";
 import { Waitlist } from "@/components/Waitlist";
 import {
   countryMetadata,
@@ -18,6 +19,7 @@ export default async function Pricing({ params }: CountryParams) {
   const { country, t, enabled } = await loadCountry(params);
   return (
     <div className="max-w-3xl space-y-6">
+      <TrackOnMount event={{ event: "view_pricing" }} />
       <h1 className="text-3xl font-bold">{t("pricing.planHeader")}</h1>
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">{t("pricing.includedTitle")}</h2>

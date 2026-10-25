@@ -1,0 +1,36 @@
+#!/bin/bash
+# /usr/local/sbin/complystart-migrate <git-sha> — runs the database migrations of ONE release as the
+# app user. Installed by bootstrap-server.sh, owned by root, and the only thing (besides restarting
+# and checking the service) the deploy user may run with sudo. It validates its argument strictly so
+# the sudoers entry can be a plain `complystart-migrate *`.
+#
+# Why a wrapper: the deploy user cannot read /opt/compinabox/.env (mode 600, owned by the app user),
+# so the migration has to run as the app user, which can.
+# shellcheck disable=SC2015
+set -euo pipefail
+
+ROOT=${COMPINABOX_ROOT:-/opt/compinabox}
+[ "$#" -eq 1 ] && [[ "$1" =~ ^[0-9a-f]{7,40}$ ]] || { echo "usage: complystart-migrate <git-sha>" >&2; exit 2; }
+REL="$ROOT/releases/$1"
+[ -d "$REL" ] && [ ! -L "$REL" ] || { echo "complystart-migrate: no such release: $1" >&2; exit 3; }
+[ -f "$REL/scripts/migrate.mjs" ] || { echo "complystart-migrate: release has no scripts/migrate.mjs" >&2; exit 3; }
+
+# The .env file is KEY=value lines (systemd EnvironmentFile format). Read it as data, never source it.
+env_args=()
+while IFS= read -r line || [ -n "$line" ]; do
+  case "$line" in ''|'#'*) continue ;; esac
+  [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] && env_args+=("$line")
+done < <(cat "$ROOT/.env")
+
+# Migrations run automatically ONLY on a staging server (test data). On anything else they are a
+# deliberate manual step with the owner in the loop (CLAUDE.md §4), so this wrapper refuses.
+printf '%s\n' "${env_args[@]}" | grep -qx 'APP_ENV=staging' || { echo "complystart-migrate: refused: APP_ENV is not staging in $ROOT/.env; run migrations by hand" >&2; exit 4; }
+
+cd "$REL"
+# Production: called through sudo, so root, and it drops to the app user. The local rehearsal has no
+# such user and sets COMPLYSTART_RUN_AS_SELF=1 to run as whoever it is.
+if [ "$(id -u)" -eq 0 ] && [ "${COMPLYSTART_RUN_AS_SELF:-0}" != 1 ]; then
+  exec runuser -u complystart -- env -i PATH=/usr/local/bin:/usr/bin:/bin "${env_args[@]}" /usr/bin/node scripts/migrate.mjs
+else
+  exec env -i PATH=/usr/local/bin:/usr/bin:/bin "${env_args[@]}" node scripts/migrate.mjs
+fi

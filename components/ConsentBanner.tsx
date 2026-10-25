@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { captureUtmFromUrl, getCookie, setCookie } from "@/lib/cookies";
+import { CONSENT_CHANGED, OPEN_CONSENT } from "@/lib/tracking";
 
 type Props = { text: string; accept: string; reject: string };
 
-/** Non-blocking bottom bar. Records the choice only; loads nothing (tracking is phase 9). */
+/** Non-blocking bottom bar. Records the choice only; loads nothing itself (components/Tracking.tsx reacts to the choice). */
 export function ConsentBanner({ text, accept, reject }: Props) {
   const [visible, setVisible] = useState(false);
 
@@ -15,11 +16,19 @@ export function ConsentBanner({ text, accept, reject }: Props) {
     if (choice !== "accepted" && choice !== "rejected") setVisible(true);
   }, []);
 
+  // The footer's "Cookie settings" control re-opens the choice (a way to withdraw consent).
+  useEffect(() => {
+    const open = () => setVisible(true);
+    window.addEventListener(OPEN_CONSENT, open);
+    return () => window.removeEventListener(OPEN_CONSENT, open);
+  }, []);
+
   if (!visible) return null;
 
   const choose = (value: "accepted" | "rejected") => {
     setCookie("consent", value);
     if (value === "accepted") captureUtmFromUrl(); // the proxy could not set it before consent
+    window.dispatchEvent(new Event(CONSENT_CHANGED)); // the analytics loader reacts to it
     setVisible(false);
   };
 

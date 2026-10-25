@@ -1,0 +1,152 @@
+
+======== package A, B (scripts/package-release.sh on the real build) ========
+package-release: /tmp/<rehearsal-tree>/pkg/aaaaaaa1111111111111111111111111111111a.tar.gz (27M), sha256 c743bc077b77ae133e46cd53f7f3689343ace2c86dd316a4c3afcc3bc57b7e50
+package-release: /tmp/<rehearsal-tree>/pkg/bbbbbbb2222222222222222222222222222222b.tar.gz (27M), sha256 74438a0386d9df7b8ebf1cb52485ab5f23379c892e985ad6d88bda281a9d50f1
+
+======== 1. DEPLOY A (first release, migrations from scratch) ========
+[deploy aaaaaaa] archive verified
+[deploy aaaaaaa] extracted to releases/aaaaaaa1111111111111111111111111111111a
+[deploy aaaaaaa] running migrations (MIGRATE=auto)
+migrate ok: 9 in journal, 9 applied now
+[deploy aaaaaaa] current -> releases/aaaaaaa1111111111111111111111111111111a; restarting
+[deploy aaaaaaa] new release is healthy (version aaaaaaa) after 1s
+[deploy aaaaaaa] DEPLOYED aaaaaaa1111111111111111111111111111111a
+deploy exit code: 0
+--- state: current -> releases/aaaaaaa1111111111111111111111111111111a
+--- releases/: aaaaaaa1111111111111111111111111111111a 
+--- /api/health: {"ok":true,"version":"aaaaaaa1111111111111111111111111111111a","db":true,"env":"staging"}
+--- applied migrations: 9
+
+======== 2. DEPLOY B (second release; A stays as the rollback target) ========
+[deploy bbbbbbb] archive verified
+[deploy bbbbbbb] extracted to releases/bbbbbbb2222222222222222222222222222222b
+[deploy bbbbbbb] running migrations (MIGRATE=auto)
+migrate ok: 9 in journal, 0 applied now
+[deploy bbbbbbb] current -> releases/bbbbbbb2222222222222222222222222222222b; restarting
+[deploy bbbbbbb] new release is healthy (version bbbbbbb) after 1s
+[deploy bbbbbbb] DEPLOYED bbbbbbb2222222222222222222222222222222b
+deploy exit code: 0
+--- state: current -> releases/bbbbbbb2222222222222222222222222222222b
+--- releases/: aaaaaaa1111111111111111111111111111111a bbbbbbb2222222222222222222222222222222b 
+--- /api/health: {"ok":true,"version":"bbbbbbb2222222222222222222222222222222b","db":true,"env":"staging"}
+--- applied migrations: 9
+
+======== 3. DEPLOY C (APP_ENV=production forced onto the staging .env: the guard refuses to start; expect AUTOMATIC ROLLBACK to B) ========
+[deploy ccccccc] archive verified
+[deploy ccccccc] extracted to releases/ccccccc3333333333333333333333333333333c
+[deploy ccccccc] running migrations (MIGRATE=auto)
+migrate ok: 9 in journal, 0 applied now
+[deploy ccccccc] current -> releases/ccccccc3333333333333333333333333333333c; restarting
+deploy: release ccccccc3333333333333333333333333333333c did not become healthy within 25s
+[deploy ccccccc] ROLLING BACK to bbbbbbb2222222222222222222222222222222b (code only: migrations already applied stay applied)
+[deploy ccccccc] previous release is healthy (version bbbbbbb) after 1s
+deploy: ROLLED BACK to bbbbbbb2222222222222222222222222222222b; the failed release is kept as releases/ccccccc3333333333333333333333333333333c.failed for inspection
+deploy exit code: 1  (expected 1)
+--- state: current -> releases/bbbbbbb2222222222222222222222222222222b
+--- releases/: aaaaaaa1111111111111111111111111111111a bbbbbbb2222222222222222222222222222222b ccccccc3333333333333333333333333333333c.failed 
+--- /api/health: {"ok":true,"version":"bbbbbbb2222222222222222222222222222222b","db":true,"env":"staging"}
+--- applied migrations: 9
+--- why C never turned healthy (app.log, the environment guard):
+Failed to prepare server Error: An error occurred while loading instrumentation hook: ENVIRONMENT GUARD (APP_ENV=production): allow_fake_payments_set, payment_provider_fake, email_dev_sink_set, app_url_not_https, auth_url_not_https — refusing to start
+⨯ Failed to preload entries: Error: An error occurred while loading instrumentation hook: ENVIRONMENT GUARD (APP_ENV=production): allow_fake_payments_set, payment_provider_fake, email_dev_sink_set, app_url_not_https, auth_url_not_https — refusing to start
+
+======== 4. DEPLOY D (a broken migration: expect abort BEFORE the switch, B untouched and still serving) ========
+[deploy ddddddd] archive verified
+[deploy ddddddd] extracted to releases/ddddddd4444444444444444444444444444444d
+[deploy ddddddd] running migrations (MIGRATE=auto)
+migrate failed (error): Failed query: this is not sql;
+deploy: migrations failed; nothing was switched, the running release is untouched
+deploy exit code: 1  (expected 1)
+--- state: current -> releases/bbbbbbb2222222222222222222222222222222b
+--- releases/: aaaaaaa1111111111111111111111111111111a bbbbbbb2222222222222222222222222222222b ccccccc3333333333333333333333333333333c.failed ddddddd4444444444444444444444444444444d.failed 
+--- /api/health: {"ok":true,"version":"bbbbbbb2222222222222222222222222222222b","db":true,"env":"staging"}
+--- applied migrations: 9
+
+======== 4b. DEPLOY E (healthy again: expect the failed C and D directories and the oldest release to be pruned) ========
+[deploy eeeeeee] archive verified
+[deploy eeeeeee] extracted to releases/eeeeeee5555555555555555555555555555555e
+[deploy eeeeeee] running migrations (MIGRATE=auto)
+migrate ok: 9 in journal, 0 applied now
+[deploy eeeeeee] current -> releases/eeeeeee5555555555555555555555555555555e; restarting
+[deploy eeeeeee] new release is healthy (version eeeeeee) after 1s
+[deploy eeeeeee] removing ccccccc3333333333333333333333333333333c.failed
+[deploy eeeeeee] removing ddddddd4444444444444444444444444444444d.failed
+[deploy eeeeeee] DEPLOYED eeeeeee5555555555555555555555555555555e
+deploy exit code: 0  (expected 0)
+--- state: current -> releases/eeeeeee5555555555555555555555555555555e
+--- releases/: aaaaaaa1111111111111111111111111111111a bbbbbbb2222222222222222222222222222222b eeeeeee5555555555555555555555555555555e 
+--- /api/health: {"ok":true,"version":"eeeeeee5555555555555555555555555555555e","db":true,"env":"staging"}
+--- applied migrations: 9
+
+======== 5. scripts/remote-smoke.sh against the final state (E, after the rollback and the aborted D) ========
+== remote smoke against http://127.0.0.1:34737 (env expected: staging) ==
+ok    health: HTTP 200
+ok    health: ok:true and db:true
+ok    health: env is staging
+ok    health: version is the deployed sha (eeeeeee)
+ok    health: nothing but ok/version/db/env in the body
+ok    /br: 200
+ok    /br: staging banner on the page
+ok    /br: X-Robots-Tag noindex on the response
+ok    robots.txt disallows everything
+ok    sitemap.xml has no URLs
+ok    a legal page shows the banner too (privacy, DRAFT)
+ok    /dashboard (signed out): redirect to /login
+ok    /dashboard: Cache-Control private, no-store
+ok    /dashboard: X-Frame-Options DENY
+ok    /dashboard: frame-ancestors 'none'
+ok    /dashboard: Referrer-Policy same-origin
+ok    geo (simulated CF-IPCountry: BR) -> / redirects to /br
+ok    geo (simulated AR) -> / redirects to /ar
+ok    no header -> / is the generic page (200)
+ok    checkout without the terms box is refused (422)
+ok    checkout with the terms box: attempt created
+ok    simulator page renders
+ok    before payment the status is pending and signs nobody in
+ok    simulator Pay -> 303 back to the return page
+ok    after payment: paid and signed in (return token used once)
+ok    the status carries amount + currency for the conversion event, nothing identifying
+ok    the status does not echo the e-mail
+ok    return token is single-use (second poll: paid, not signed in)
+ok    onboarding completes (redirects to /dashboard)
+ok    documents list shows the generated documents
+ok    document PDF starts with %PDF
+ok    document PDF is application/pdf
+ok    binder: generate answers at once with a redirect
+ok    binder: a job id is visible on the page
+ok    binder: the job reaches ready (polled)
+ok    binder: download starts with %PDF
+ok    binder: download is an attachment
+ok    sign-out form found on the dashboard
+ok    sign-out: 303
+ok    sign-out: goes to /login
+ok    REPLAY of the pre-sign-out cookie: /dashboard -> /login
+ok    REPLAY of the pre-sign-out cookie: the PDF route -> 401
+ok    /dev-outbox without the password: 401
+ok    /dev-outbox with a wrong password: 401
+ok    /dev-outbox with the password: 200 and the viewer page
+ok    /dev-outbox is noindex
+ok    the welcome e-mail is in the outbox with a link
+ok    welcome link, first use: signs in
+ok    welcome link, second use: refused (no session cookie)
+ok    a sign-in link arrived in the outbox
+ok    sign-in link, first use: session cookie
+ok    sign-in link, second use: refused
+ok    employees: CSV import answers with a redirect
+ok    employees: invite-pending answers with a redirect
+ok    the employee invitation is in the outbox with a personal link
+ok    employee link: opening it (GET) shows the start page
+ok    employee link: a GET sets no session cookie
+ok    employee pages carry noindex and no-store
+
+remote-smoke: PASS (http://127.0.0.1:34737)
+
+======== 6. maintenance + backup scripts from the release, against the rehearsal database ========
+employee_sessions deleted: 0
+verification_tokens deleted: 0
+backup ok: complystart-20261025T173414Z.sql.gz (84688 bytes) + complystart-data-20261025T173414Z.tar.gz (131 bytes) -> local:/tmp/<rehearsal-tree>/backups
+complystart-20261025T173414Z.sql.gz
+complystart-data-20261025T173414Z.tar.gz
+
+======== result ========
+REHEARSAL PASS
