@@ -178,4 +178,4 @@ Full copy-paste text with explanations is in **README → "Staging server setup"
 - The 9c worker also edits `verify.sh` (same `BANNED=` line) and the sitemap; expect a trivial conflict there.
 
 ## CI / verify (final)
-`./verify.sh` after the supervisor-update rework: see the "Final run" block below.
+`./verify.sh` ran on **7e6bd2a** (code identical to this file's commit; only HANDOFF.md differs): **PASS, exit 0** — `counts total=835 pass=835 fail=0 skip=0`, `build ok`, `smoke ok`, `ops hygiene` ok, `verify.sh: PASS (HEAD 7e6bd2a)`. The local rehearsal was re-run after the rework: `REHEARSAL PASS` (transcript refreshed). The first section's numbers (818 tests, commit 76b01b2) are from before the supervisor update. Note: the maintenance test was made independent of other test files' rows after a flake in my own first version (global row counts raced with parallel tests); three consecutive full runs passed afterwards.
