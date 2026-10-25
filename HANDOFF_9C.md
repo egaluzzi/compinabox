@@ -42,7 +42,7 @@ Screenshots (`docs/phase9c-samples/`, Chromium, standalone build, viewed by me):
 What I saw: clear hierarchy (h1 ≈ 30px bold, h2 section headings, body ~16px); article column ≈ 65 characters wide (`max-w-prose`), comfortable; amber "RASCUNHO — pendente de revisão" / "DRAFT — pending review" badge above the title in both languages; back link above; date + reading time under the title; index shows one badge, title, description, "3 min de leitura · Ler o artigo" per article; header shows the new "Blog" link. At 360 px the text wraps cleanly, headings wrap, lists readable, `scrollWidth - innerWidth = 0` on all three pages (no horizontal overflow). The cookie banner overlaps text in full-page captures only because it is fixed-position — an artifact of the capture, not a layout bug.
 
 ## CI
-(see PR; run id and head SHA added below once seen)
+PR #11, head `2d36bb8`: check `verify` run 40213931728 was **in progress** when I stopped (not yet seen green). Supervisor: confirm it at https://github.com/egaluzzi/compinabox/actions/runs/40213931728 .
 
 ## Judgment calls
 - **Markdown, not MDX** (notes' decision): no dependency, no code in content, unknown syntax fails tests.
