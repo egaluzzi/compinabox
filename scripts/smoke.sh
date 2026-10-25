@@ -723,6 +723,15 @@ check "ALLOW_FAKE_PAYMENTS unset: /checkout?c=br shows 'unavailable', no form" "
 start_server
 check "PAYMENT_PROVIDER unset (default none): /checkout?c=br unavailable too" "curl -s '$B/checkout?c=br' | grep -q 'ainda não está disponível'"
 
+# --- phase 9c: blog (seven draft articles) ---
+start_server
+check "/br/blog -> 200 and lists the draft label" "[ \"\$(code $B/br/blog)\" = 200 ] && curl -s $B/br/blog | grep -q 'RASCUNHO'"
+BLOG_SLUG=lei-14133-o-que-muda-para-fornecedores
+check "/br/blog/<article> -> 200 with Article JSON-LD and the draft noindex" "curl -s $B/br/blog/$BLOG_SLUG | grep -q '\"@type\":\"Article\"' && curl -s $B/br/blog/$BLOG_SLUG | grep -iq 'name=\"robots\" content=\"noindex'"
+check "/blog -> 200 (English, generic)" "[ \"\$(code $B/blog)\" = 200 ]"
+check "/ar/blog -> 404 (no articles yet)" "[ \"\$(code $B/ar/blog)\" = 404 ]"
+check "sitemap.xml has no /blog/ URL while every article is a draft" "! curl -s $B/sitemap.xml | grep -q '/blog'"
+
 kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null
 rm -rf "$OUTBOX" "$UPLOADS" "$EVIDENCE" "$JAR" "$JAR_SAVED" "$JAR2" "$PNG" "$SVG" /tmp/wh.out /tmp/st.out
 fi

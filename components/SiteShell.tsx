@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { ChangeCountry } from "./ChangeCountry";
 import { ConsentBanner } from "./ConsentBanner";
 import { LanguageToggle } from "./LanguageToggle";
+import { blogAvailable } from "@/lib/blog";
 import type { Country } from "@/lib/countries";
 import { getT, type Lang, type Locale } from "@/lib/i18n";
 
@@ -43,6 +44,11 @@ export function SiteShell({ locale, country, lang, children }: Props) {
               <Link className={link} href={`${base}/legal-basis`}>
                 {t("nav.legalBasis")}
               </Link>
+              {blogAvailable(country) && (
+                <Link className={link} href={`${base}/blog`}>
+                  {t("nav.blog")}
+                </Link>
+              )}
             </nav>
           )}
           <div className="flex items-center gap-4">
@@ -60,6 +66,9 @@ export function SiteShell({ locale, country, lang, children }: Props) {
         <div className="mx-auto max-w-5xl space-y-3 px-4 py-6 pb-24 text-sm text-slate-600">
           <p>{t("footer.disclaimer")}</p>
           <p className="flex flex-wrap gap-x-4">
+            {!country && blogAvailable("generic") && (
+              <Link href="/blog">{t("nav.blog")}</Link>
+            )}
             <Link href="/legal/terms">{t("footer.terms")}</Link>
             <Link href="/legal/privacy">{t("footer.privacy")}</Link>
             <Link href="/legal/disclaimer">{t("footer.disclaimerLink")}</Link>
