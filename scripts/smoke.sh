@@ -48,6 +48,9 @@ check "redirect carries cache-control: no-store" "curl -sI -H 'CF-IPCountry: BR'
 check "invalid country cookie ignored, header decides" "curl -sI -H 'CF-IPCountry: AR' -H 'Cookie: country=zz' $B/ | grep -i 'location: .*/ar'"
 check "/checkout -> 200" "curl -sI $B/checkout | grep -E '^HTTP/.* 200'"
 check "/legal/terms -> 200" "curl -sI $B/legal/terms | grep -E '^HTTP/.* 200'"
+check "/api/health -> 200 {ok:true, db:true, env:development}" "curl -s $B/api/health | grep -q '\"ok\":true' && curl -s $B/api/health | grep -q '\"db\":true' && curl -s $B/api/health | grep -q '\"env\":\"development\"'"
+check "development: no staging banner, no X-Robots-Tag" "! curl -s $B/br | grep -q data-staging-banner && ! curl -sI $B/br | grep -qi '^x-robots-tag'"
+check "/dev-outbox is a 404 outside staging" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' $B/dev-outbox)\" = 404 ]"
 check "/zz -> 404" "curl -sI $B/zz | grep -E '^HTTP/.* 404'"
 check "/pt-BR -> 404" "curl -sI $B/pt-BR | grep -E '^HTTP/.* 404'"
 for d in /dashboard /employee /checkout /onboarding; do
