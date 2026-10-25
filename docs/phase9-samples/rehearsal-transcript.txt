@@ -1,7 +1,7 @@
 
 ======== package A, B (scripts/package-release.sh on the real build) ========
-package-release: /tmp/<rehearsal-tree>/pkg/aaaaaaa1111111111111111111111111111111a.tar.gz (27M), sha256 b220d2cfab96c68b8aa0be557497a28156c0492395395eee0ce23f4ec9a9f810
-package-release: /tmp/<rehearsal-tree>/pkg/bbbbbbb2222222222222222222222222222222b.tar.gz (27M), sha256 34144d6a4d5f00eed0746c4c92524389065ae0aa76cbd28b59d87655f8097fcf
+package-release: /tmp/<rehearsal-tree>/pkg/aaaaaaa1111111111111111111111111111111a.tar.gz (27M), sha256 c743bc077b77ae133e46cd53f7f3689343ace2c86dd316a4c3afcc3bc57b7e50
+package-release: /tmp/<rehearsal-tree>/pkg/bbbbbbb2222222222222222222222222222222b.tar.gz (27M), sha256 74438a0386d9df7b8ebf1cb52485ab5f23379c892e985ad6d88bda281a9d50f1
 
 ======== 1. DEPLOY A (first release, migrations from scratch) ========
 [deploy aaaaaaa] archive verified
@@ -79,7 +79,7 @@ deploy exit code: 0  (expected 0)
 --- applied migrations: 9
 
 ======== 5. scripts/remote-smoke.sh against the final state (E, after the rollback and the aborted D) ========
-== remote smoke against http://127.0.0.1:45669 (env expected: staging) ==
+== remote smoke against http://127.0.0.1:34737 (env expected: staging) ==
 ok    health: HTTP 200
 ok    health: ok:true and db:true
 ok    health: env is staging
@@ -139,14 +139,14 @@ ok    employee link: opening it (GET) shows the start page
 ok    employee link: a GET sets no session cookie
 ok    employee pages carry noindex and no-store
 
-remote-smoke: PASS (http://127.0.0.1:45669)
+remote-smoke: PASS (http://127.0.0.1:34737)
 
 ======== 6. maintenance + backup scripts from the release, against the rehearsal database ========
 employee_sessions deleted: 0
 verification_tokens deleted: 0
-backup ok: complystart-20261025T171612Z.sql.gz (84637 bytes) + complystart-data-20261025T171612Z.tar.gz (133 bytes) -> local:/tmp/<rehearsal-tree>/backups
-complystart-20261025T171612Z.sql.gz
-complystart-data-20261025T171612Z.tar.gz
+backup ok: complystart-20261025T173414Z.sql.gz (84688 bytes) + complystart-data-20261025T173414Z.tar.gz (131 bytes) -> local:/tmp/<rehearsal-tree>/backups
+complystart-20261025T173414Z.sql.gz
+complystart-data-20261025T173414Z.tar.gz
 
 ======== result ========
 REHEARSAL PASS
