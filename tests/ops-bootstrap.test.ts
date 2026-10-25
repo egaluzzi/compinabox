@@ -36,6 +36,7 @@ shift; for a in "$@"; do case "$a" in -*) ;; *) touch "$S/pkg/$a"
   if [ "$a" = caddy ]; then printf '#!/bin/sh\\nexit 0\\n' > "${bin}/caddy"; chmod +x "${bin}/caddy"; fi ;; esac; done`,
   );
   shim("curl", "echo FAKE-KEY");
+  shim("pg_lsclusters", "true"); // no clusters unless a test says so
   shim(
     "gpg",
     'while [ $# -gt 0 ]; do [ "$1" = -o ] && { shift; cat > "$1"; }; shift; done',
@@ -74,6 +75,8 @@ sql=""; while [ $# -gt 0 ]; do [ "$1" = -c ] && { sql=$2; shift; }; shift; done
 case "$sql" in
   *"from pg_roles"*) [ -e "$S/pg/role" ] && echo 1 ;;
   *"from pg_database"*) [ -e "$S/pg/db" ] && echo 1 ;;
+  *"server_version_num"*) cat "$S/pg/version" 2>/dev/null || echo 160002 ;;
+  "show port"*) echo 5432 ;;
   *"information_schema.tables"*) echo 0 ;;
   "create role"*) touch "$S/pg/role" ;;
   "alter role"*) true ;;
@@ -96,6 +99,7 @@ const run = (args: string[], env: Record<string, string> = {}) =>
       PATH: `${bin}:/usr/sbin:/usr/bin:/sbin:/bin`,
       BOOTSTRAP_ROOT: root,
       BS_RAM_MB: "4096",
+      BS_SKIP_PG_LOGIN_CHECK: "1",
       ...env,
     } as unknown as NodeJS.ProcessEnv,
   });
@@ -146,7 +150,7 @@ describe("preflight: refuses what it does not understand, and changes nothing", 
     const r = run(["203.0.113.5"]);
     expect(r.status).toBe(1);
     expect(r.stdout).toMatch(
-      /port 80 is already in use by something that is not Caddy.*nginx/,
+      /port 80 is already in use by nginx.*not our Caddy/,
     );
     expect(before()).toEqual(b);
     expect(fs.existsSync(path.join(root, "opt/compinabox"))).toBe(false);
@@ -165,7 +169,7 @@ describe("preflight: refuses what it does not understand, and changes nothing", 
     );
     const r = run(["203.0.113.5", "--check"]);
     expect(r.status, r.stdout + r.stderr).toBe(0);
-    expect(r.stdout).toContain("all checks passed");
+    expect(r.stdout).toContain("ready: nothing found");
   });
   it("another Node major", () => {
     fs.writeFileSync(
@@ -187,7 +191,7 @@ describe("preflight: refuses what it does not understand, and changes nothing", 
     );
     const r = run(["203.0.113.5"]);
     expect(r.status).toBe(1);
-    expect(r.stdout).toContain("another version exists");
+    expect(r.stdout).toContain("found an existing PostgreSQL");
   });
   it("a non-empty /opt/compinabox that is not ours", () => {
     fs.mkdirSync(path.join(root, "opt/compinabox"), { recursive: true });
@@ -200,17 +204,16 @@ describe("preflight: refuses what it does not understand, and changes nothing", 
     const b = before();
     const r = run(["203.0.113.5", "--check"]);
     expect(r.status, r.stdout + r.stderr).toBe(0);
-    expect(r.stdout).toContain("RAM found: 4096 MB -> Node heap limit 2048 MB");
+    expect(r.stdout).toContain("RAM / swap:    4096 MB");
     expect(before()).toEqual(b);
   });
   it("prints the RAM found and warns under 2 GB, with the heap limit bounded", () => {
     const small = run(["203.0.113.5", "--check"], { BS_RAM_MB: "1024" });
-    expect(small.stdout).toContain(
-      "RAM found: 1024 MB -> Node heap limit 614 MB",
-    );
+    expect(small.stdout).toContain("RAM / swap:    1024 MB");
+    expect(small.stdout).toContain("Node heap limit chosen: 409 MB");
     expect(small.stdout).toContain("under 2 GB");
     const tiny = run(["203.0.113.5", "--check"], { BS_RAM_MB: "512" });
-    expect(tiny.stdout).toContain("Node heap limit 384 MB");
+    expect(tiny.stdout).toContain("Node heap limit chosen: 384 MB");
   });
 });
 
@@ -220,7 +223,7 @@ describe("a full run, then a second run", () => {
   const env = { DEPLOY_PUBLIC_KEY: KEY };
 
   it("first run sets everything up; the second run changes nothing and says so", () => {
-    const first = run(["203.0.113.5"], env);
+    const first = run(["203.0.113.5", "--yes"], env);
     expect(first.status, first.stdout + first.stderr).toBe(0);
     expect(first.stdout).toMatch(/\d+ change\(s\) made/);
     const p = (f: string) => path.join(root, f);
@@ -246,6 +249,8 @@ describe("a full run, then a second run", () => {
     const envFile = fs.readFileSync(p("opt/compinabox/.env"), "utf8");
     expect(fs.statSync(p("opt/compinabox/.env")).mode & 0o777).toBe(0o600);
     expect(envFile).toContain("APP_ENV=staging");
+    expect(envFile).toContain("PORT=3100");
+    expect(envFile).toContain("HOSTNAME=127.0.0.1");
     expect(envFile).toContain("APP_URL=https://203.0.113.5");
     expect(envFile).toContain("ALLOW_FAKE_PAYMENTS=true");
     expect(envFile).toContain("BINDER_CONCURRENCY=1");
@@ -282,12 +287,12 @@ describe("a full run, then a second run", () => {
         p("etc/systemd/system/complystart.service.d/10-memory.conf"),
         "utf8",
       ),
-    ).toContain("--max-old-space-size=2048");
+    ).toContain("--max-old-space-size=1536");
     expect(fs.readFileSync(p("etc/caddy/Caddyfile"), "utf8")).toContain(
       "https://203.0.113.5 {",
     );
     expect(fs.readFileSync(p("etc/caddy/Caddyfile"), "utf8")).toContain(
-      "reverse_proxy 127.0.0.1:3000",
+      "reverse_proxy 127.0.0.1:3100",
     );
     expect(fs.readFileSync(p("etc/caddy/Caddyfile"), "utf8")).not.toContain(
       "__",
@@ -312,7 +317,7 @@ describe("a full run, then a second run", () => {
           .map((f) => [f, fs.readFileSync(f, "utf8")]),
       );
     const treeBefore = snapshot(root);
-    const second = run(["203.0.113.5"], env);
+    const second = run(["203.0.113.5", "--yes"], env);
     expect(second.status, second.stdout + second.stderr).toBe(0);
     expect(second.stdout).toContain(
       "no changes: this server was already set up.",
@@ -323,12 +328,12 @@ describe("a full run, then a second run", () => {
   });
 
   it("an existing .env is never regenerated, even if other things are missing", () => {
-    run(["203.0.113.5"], env);
+    run(["203.0.113.5", "--yes"], env);
     const envPath = path.join(root, "opt/compinabox/.env");
     const original = fs.readFileSync(envPath, "utf8");
     fs.rmSync(path.join(root, "etc/caddy/Caddyfile"));
     fs.rmSync(path.join(root, "etc/systemd/system/complystart.service"));
-    const again = run(["203.0.113.5"], env);
+    const again = run(["203.0.113.5", "--yes"], env);
     expect(again.status, again.stdout + again.stderr).toBe(0);
     expect(again.stdout).toContain("CHANGED");
     expect(again.stdout).toContain("etc/caddy/Caddyfile");
@@ -337,12 +342,239 @@ describe("a full run, then a second run", () => {
   });
 
   it("a malformed deploy key is rejected before anything is trusted", () => {
-    const r = run(["203.0.113.5"], {
+    const r = run(["203.0.113.5", "--yes"], {
       DEPLOY_PUBLIC_KEY: 'ssh-ed25519 AAAA\ncommand="rm -rf /" ssh-rsa BBBB',
     });
     expect(r.status).toBe(1);
     expect(r.stderr + r.stdout).toContain(
       "does not look like a single public key line",
     );
+  });
+});
+
+const KEY2 =
+  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeKeyForTestsOnly deploy@test";
+const ssFile = (lines: string) =>
+  fs.writeFileSync(path.join(state, "ss.txt"), lines);
+const L = (addr: string, proc: string) =>
+  `LISTEN 0 511 ${addr} 0.0.0.0:* users:(("${proc}",pid=7,fd=3))\n`;
+
+describe("supervisor update: a server that is not clean", () => {
+  it("without --yes it reports and changes nothing (exit 3)", () => {
+    const b = tree(root).sort();
+    const r = run(["203.0.113.5"]);
+    expect(r.status).toBe(3);
+    expect(r.stdout).toContain("What I found");
+    expect(r.stdout).toContain("changes need --yes");
+    expect(tree(root).sort()).toEqual(b);
+  });
+  it("Ubuntu 25.04 is refused with the end-of-life explanation", () => {
+    osRelease("ubuntu", "25.04", "plucky");
+    const r = run(["203.0.113.5", "--yes"]);
+    expect(r.status).toBe(1);
+    expect(r.stdout).toMatch(/past end of life.*24\.04 LTS/);
+  });
+  it("the report lists every listener with its owner, services, RAM and the verdict", () => {
+    ssFile(
+      L("0.0.0.0:80", "nginx") +
+        L("0.0.0.0:3000", "node") +
+        L("0.0.0.0:5432", "postgres") +
+        L("0.0.0.0:22", "sshd"),
+    );
+    const r = run(["203.0.113.5", "--check"]);
+    expect(r.stdout).toMatch(/0\.0\.0\.0:80 -> nginx/);
+    expect(r.stdout).toMatch(/0\.0\.0\.0:3000 -> node/);
+    expect(r.stdout).toMatch(/0\.0\.0\.0:5432 -> postgres/);
+    expect(r.stdout).toContain(
+      "WARNING: a PostgreSQL is listening on a PUBLIC address",
+    );
+    expect(r.stdout).toContain("services:");
+    expect(r.stdout).toContain("NOT READY");
+    expect(r.status).toBe(1);
+  });
+  it("a public port held by another service: abort, name the owner, print a rerun with another port", () => {
+    ssFile(L("0.0.0.0:443", "nginx"));
+    const r = run(["203.0.113.5", "--yes"]);
+    expect(r.status).toBe(1);
+    expect(r.stdout).toMatch(/port 443 is already in use by nginx/);
+    expect(r.stdout).toContain("--https-port 8443");
+    expect(fs.existsSync(path.join(root, "opt/compinabox"))).toBe(false);
+  });
+  it("the app port defaults to the first free port from 3100 and never 3000 or 8080", () => {
+    ssFile(
+      L("0.0.0.0:3000", "node") +
+        L("0.0.0.0:3100", "node") +
+        L("0.0.0.0:8080", "java"),
+    );
+    const r = run(["203.0.113.5", "--check"]);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("app 127.0.0.1:3101");
+  });
+  it("--app-port 3000 / 8080 / a port in use / a privileged port are refused", () => {
+    for (const p of ["3000", "8080", "443"]) {
+      const r = run(["203.0.113.5", "--check", "--app-port", p]);
+      expect(r.status, p).toBe(1);
+    }
+    ssFile(L("127.0.0.1:3300", "python3"));
+    expect(
+      run(["203.0.113.5", "--check", "--app-port", "3300"]).stdout,
+    ).toContain("already in use");
+    expect(run(["203.0.113.5", "--check", "--app-port", "abc"]).status).toBe(2);
+    expect(
+      run(["203.0.113.5", "--check", "--http-port", "81", "--no-http"]).status,
+    ).toBe(2);
+  });
+  it("non-default ports end up in the Caddyfile, .env, app-port file and firewall; a re-run without flags reuses them and changes nothing", () => {
+    const args = [
+      "203.0.113.5",
+      "--yes",
+      "--https-port",
+      "8443",
+      "--no-http",
+      "--app-port",
+      "3205",
+    ];
+    const first = run(args, { DEPLOY_PUBLIC_KEY: KEY2 });
+    expect(first.status, first.stdout + first.stderr).toBe(0);
+    const p = (f: string) => path.join(root, f);
+    const caddy = fs.readFileSync(p("etc/caddy/Caddyfile"), "utf8");
+    expect(caddy).toContain("https_port 8443");
+    expect(caddy).toContain("auto_https disable_redirects");
+    expect(caddy).not.toContain("http_port");
+    expect(caddy).toContain("https://203.0.113.5:8443 {");
+    expect(caddy).toContain("reverse_proxy 127.0.0.1:3205");
+    expect(caddy).not.toContain("__");
+    expect(caddy).toContain("managed-by: complystart-bootstrap");
+    const envFile = fs.readFileSync(p("opt/compinabox/.env"), "utf8");
+    expect(envFile).toContain("APP_URL=https://203.0.113.5:8443");
+    expect(envFile).toContain("AUTH_URL=https://203.0.113.5:8443");
+    expect(envFile).toContain("PORT=3205");
+    expect(fs.readFileSync(p("opt/compinabox/app-port"), "utf8").trim()).toBe(
+      "3205",
+    );
+    const rules = fs.readFileSync(path.join(state, "ufw.rules"), "utf8");
+    expect(rules).toMatch(/8443\/tcp/);
+    expect(rules).not.toMatch(/(^|\n)(80|443)\/tcp/);
+    expect(first.stdout).toContain(
+      "DEPLOY_BASE_URL = https://203.0.113.5:8443",
+    );
+    const second = run(["203.0.113.5", "--yes"], { DEPLOY_PUBLIC_KEY: KEY2 });
+    expect(second.status, second.stdout + second.stderr).toBe(0);
+    expect(second.stdout).toContain(
+      "no changes: this server was already set up.",
+    );
+  });
+  it("default ports with http on: nothing extra in the Caddyfile global block", () => {
+    run(["203.0.113.5", "--yes"], { DEPLOY_PUBLIC_KEY: KEY2 });
+    const caddy = fs.readFileSync(
+      path.join(root, "etc/caddy/Caddyfile"),
+      "utf8",
+    );
+    expect(caddy).not.toMatch(/https_port|http_port|disable_redirects/);
+    expect(caddy).toContain("https://203.0.113.5 {");
+  });
+  it("a custom http port is configured", () => {
+    run([
+      "203.0.113.5",
+      "--yes",
+      "--http-port",
+      "8081",
+      "--https-port",
+      "8443",
+    ]);
+    const caddy = fs.readFileSync(
+      path.join(root, "etc/caddy/Caddyfile"),
+      "utf8",
+    );
+    expect(caddy).toContain("http_port 8081");
+    expect(caddy).toContain("https_port 8443");
+  });
+  it("an existing PostgreSQL: abort by default", () => {
+    ssFile(L("0.0.0.0:5432", "postgres"));
+    const r = run(["203.0.113.5", "--yes"]);
+    expect(r.status).toBe(1);
+    expect(r.stdout).toContain("found an existing PostgreSQL");
+    expect(r.stdout).toContain("--use-existing-postgres");
+    expect(fs.existsSync(path.join(root, "opt/compinabox"))).toBe(false);
+  });
+  it("--use-existing-postgres: only our role and database, no package, no config file; remembered on re-run", () => {
+    ssFile(L("0.0.0.0:5432", "postgres"));
+    const r = run(["203.0.113.5", "--yes", "--use-existing-postgres"], {
+      DEPLOY_PUBLIC_KEY: KEY2,
+    });
+    expect(r.status, r.stdout + r.stderr).toBe(0);
+    expect(fs.existsSync(path.join(state, "pkg/postgresql-16"))).toBe(false);
+    expect(fs.existsSync(path.join(root, "etc/postgresql"))).toBe(false);
+    expect(fs.existsSync(path.join(state, "pg/role"))).toBe(true);
+    expect(fs.existsSync(path.join(state, "pg/db"))).toBe(true);
+    expect(
+      fs.readFileSync(
+        path.join(root, "opt/compinabox/.compinabox-bootstrap"),
+        "utf8",
+      ),
+    ).toContain("postgres=existing");
+    expect(
+      fs.readFileSync(path.join(root, "opt/compinabox/.env"), "utf8"),
+    ).toMatch(
+      /DATABASE_URL=postgres:\/\/complystart:[0-9a-f]+@127\.0\.0\.1:5432\/complystart/,
+    );
+    expect(r.stdout).toMatch(/using the existing cluster/);
+    const again = run(["203.0.113.5", "--yes"], { DEPLOY_PUBLIC_KEY: KEY2 });
+    expect(again.status, again.stdout).toBe(0);
+    expect(again.stdout).toContain(
+      "no changes: this server was already set up.",
+    );
+  });
+  it("--use-existing-postgres needs version 15 or newer", () => {
+    ssFile(L("0.0.0.0:5432", "postgres"));
+    fs.writeFileSync(path.join(state, "pg/version"), "140005");
+    const r = run(["203.0.113.5", "--yes", "--use-existing-postgres"]);
+    expect(r.status).toBe(1);
+    expect(r.stdout).toContain("needs 15 or newer");
+  });
+  it("ufw inactive while other services listen: not enabled, warned", () => {
+    ssFile(L("0.0.0.0:9000", "someapp") + L("0.0.0.0:22", "sshd"));
+    const r = run(["203.0.113.5", "--yes"]);
+    expect(r.status, r.stdout + r.stderr).toBe(0);
+    expect(r.stdout).toContain("did NOT enable it");
+    expect(fs.existsSync(path.join(state, "ufw.on"))).toBe(false);
+    expect(fs.existsSync(path.join(state, "ufw.rules"))).toBe(false);
+  });
+  it("ufw active: only our rules are added, and it stays active", () => {
+    fs.writeFileSync(path.join(state, "ufw.on"), "");
+    fs.writeFileSync(
+      path.join(state, "ufw.rules"),
+      "22/tcp ALLOW Anywhere\n9000/tcp ALLOW Anywhere\n",
+    );
+    ssFile(L("0.0.0.0:9000", "someapp") + L("0.0.0.0:22", "sshd"));
+    const r = run(["203.0.113.5", "--yes"]);
+    expect(r.status, r.stdout + r.stderr).toBe(0);
+    const rules = fs.readFileSync(path.join(state, "ufw.rules"), "utf8");
+    expect(rules).toContain("9000/tcp");
+    expect(rules).toMatch(/80\/tcp/);
+    expect(rules).toMatch(/443\/tcp/);
+  });
+  it("an existing Caddy configuration that is not ours is never replaced; the stock one may be", () => {
+    fs.mkdirSync(path.join(root, "etc/caddy"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "etc/caddy/Caddyfile"),
+      "example.com {\n\treverse_proxy 127.0.0.1:9\n}\n",
+    );
+    const r = run(["203.0.113.5", "--yes"]);
+    expect(r.status).toBe(1);
+    expect(r.stdout).toContain("existing Caddy configuration");
+    expect(
+      fs.readFileSync(path.join(root, "etc/caddy/Caddyfile"), "utf8"),
+    ).toContain("example.com");
+    fs.writeFileSync(
+      path.join(root, "etc/caddy/Caddyfile"),
+      ":80 {\n\troot * /usr/share/caddy\n\tfile_server\n}\n",
+    );
+    expect(run(["203.0.113.5", "--check"]).status).toBe(0);
+  });
+  it("Caddy is installed without being started on its stock port (policy-rc.d is removed afterwards)", () => {
+    const r = run(["203.0.113.5", "--yes"]);
+    expect(r.status, r.stdout + r.stderr).toBe(0);
+    expect(fs.existsSync(path.join(root, "usr/sbin/policy-rc.d"))).toBe(false);
   });
 });

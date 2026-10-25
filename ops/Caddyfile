@@ -1,3 +1,4 @@
+# managed-by: complystart-bootstrap
 # Caddyfile for the STAGING server (no domain, no Cloudflare). bootstrap-server.sh fills in the site
 # address (https://<server ip>) and the app's port (3000) where the two double-underscore words
 # below stand, and installs the result as /etc/caddy/Caddyfile.
@@ -24,6 +25,7 @@
 # there is no file_server, so the evidence and uploads directories cannot be reached from the web.
 {
 	admin off
+	__GLOBAL_PORTS__
 
 	# Runtime/error log (e.g. "upstream refused connection"): an error entry carries the whole
 	# request, so here the URL, the headers and every client address are removed entirely.

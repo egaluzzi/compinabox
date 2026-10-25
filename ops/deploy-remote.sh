@@ -10,7 +10,7 @@
 #   COMPINABOX_ROOT  default /opt/compinabox
 #   MIGRATE          auto | manual (default manual). The workflow passes auto for staging only.
 #                    Migrations are FORWARD-ONLY: a rollback restores the previous code, never the schema.
-#   HEALTH_URL       default http://127.0.0.1:3000/api/health
+#   HEALTH_URL       default http://127.0.0.1:<port in $ROOT/app-port, written by bootstrap>/api/health
 #   HEALTH_TIMEOUT   seconds to wait for a healthy new release (default 60) and for a rollback
 #   KEEP_RELEASES    default 3
 #   RESTART_CMD / MIGRATE_CMD  default `sudo ... systemctl restart complystart` and
@@ -25,7 +25,10 @@ SHA=${1:-}
 
 ROOT=${COMPINABOX_ROOT:-/opt/compinabox}
 MIGRATE=${MIGRATE:-manual}
-HEALTH_URL=${HEALTH_URL:-http://127.0.0.1:3000/api/health}
+if [ -z "${HEALTH_URL:-}" ]; then
+  [ -s "$ROOT/app-port" ] || { echo "deploy: $ROOT/app-port is missing (written by bootstrap-server.sh)" >&2; exit 1; }
+  HEALTH_URL="http://127.0.0.1:$(tr -dc '0-9' < "$ROOT/app-port")/api/health"
+fi
 HEALTH_TIMEOUT=${HEALTH_TIMEOUT:-60}
 KEEP_RELEASES=${KEEP_RELEASES:-3}
 RESTART_CMD=${RESTART_CMD:-sudo /usr/bin/systemctl restart complystart}

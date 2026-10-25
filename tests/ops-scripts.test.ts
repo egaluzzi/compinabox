@@ -388,3 +388,19 @@ describe("ops/complystart-migrate (the only migration path of the deploy user)",
     expect(fs.existsSync(marker)).toBe(false);
   });
 });
+
+describe("ops/deploy-remote.sh health URL", () => {
+  it("needs the app-port file written by the bootstrap when HEALTH_URL is not given", () => {
+    const r = fs.mkdtempSync(path.join(os.tmpdir(), "dep-"));
+    const out = spawnSync(
+      "bash",
+      [path.join(root, "ops/deploy-remote.sh"), "abc1234"],
+      {
+        env: cleanEnv({ COMPINABOX_ROOT: r }, false),
+        encoding: "utf8",
+      },
+    );
+    expect(out.status).toBe(1);
+    expect(out.stderr).toContain("app-port is missing");
+  });
+});

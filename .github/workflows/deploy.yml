@@ -5,7 +5,8 @@ name: Deploy staging
 # gate, and this workflow refuses to deploy a commit whose pull request did not pass it.
 #
 # Secrets (repository secrets, or secrets of the `staging` environment):
-#   DEPLOY_HOST          the server address, e.g. 138.197.70.66
+#   DEPLOY_HOST          the server address for SSH only, e.g. 138.197.70.66
+#   DEPLOY_BASE_URL      the public address of the site, e.g. https://138.197.70.66 or https://138.197.70.66:8443
 #   DEPLOY_USER          complystart-deploy
 #   DEPLOY_SSH_KEY       the PRIVATE half of the deploy key (the public half is on the server)
 #   DEPLOY_KNOWN_HOSTS   the server's SSH host key line(s), pinned (README shows how to get them safely)
@@ -147,8 +148,8 @@ jobs:
           EXPECT_VERSION: ${{ github.sha }}
           EXPECT_ENV: staging
           # The staging site is a bare IP with a certificate Caddy made for itself (`tls internal`), which
-          # no runner trusts. -k is therefore set in THIS step only and only for the host in DEPLOY_HOST.
+          # no runner trusts. -k is therefore set in THIS step only and only for the address in DEPLOY_BASE_URL.
           # It goes away when the site gets a real certificate (README "Staging server setup").
           CURL_K: "1"
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-        run: scripts/remote-smoke.sh "https://${DEPLOY_HOST}"
+          DEPLOY_BASE_URL: ${{ secrets.DEPLOY_BASE_URL }}
+        run: scripts/remote-smoke.sh "${DEPLOY_BASE_URL}"

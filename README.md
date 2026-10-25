@@ -39,6 +39,18 @@ The supervisor audits `HANDOFF.md` against the evidence and accepts or rejects t
 
 **You need:** (1) to be able to log in to the server as `root` over SSH; (2) admin access to the GitHub repository (to add secrets); (3) a terminal on your own computer (Mac: Terminal; Windows: PowerShell with OpenSSH, or WSL).
 
+### 0. Decide which server first (A or B) — send the check output before anything else
+The server `138.197.70.66` is **not empty**: it runs Ubuntu 25.04 (an interim release that no longer receives security updates), has about 2 GB of memory, and already has other programs listening on ports 80, 443, 3000 and 8080 and a PostgreSQL database open on port 5432. Two ways forward:
+- **A. A fresh, dedicated Ubuntu 24.04 LTS droplet (recommended).** Nothing else runs there, so the setup uses the normal ports (80/443), the app is the only thing to look after, and a mistake cannot hurt anything else. Cost: one more small droplet.
+- **B. This server, next to what already runs.** No extra cost, but the setup must use other ports (for example `https://138.197.70.66:8443`), share 2 GB of memory with the other programs, and either create its database inside the existing PostgreSQL or stop. A mistake here could disturb whatever else lives on the server; the script will refuse to touch other services, but an unsupported Ubuntu release (25.04) is refused outright — B is only possible after the server is rebuilt on 22.04/24.04.
+Also check, whatever you decide: **PostgreSQL listening on `0.0.0.0:5432` is reachable from the whole internet unless a firewall (`ufw` or the DigitalOcean cloud firewall) blocks it.**
+
+Do this first, on the server (after step 2 below copies the folder), and **send the whole output to the supervisor**; continue only after the decision:
+```bash
+sudo bash /root/compinabox-ops/bootstrap-server.sh 138.197.70.66 --check
+```
+It prints "What I found" (OS, memory, every listening port with the program that owns it, installed web servers/PostgreSQL/Node, firewall state) and a verdict, and **changes nothing**.
+
 ### 1. Make the deploy key (on your computer)
 ```bash
 ssh-keygen -t ed25519 -N "" -C "complystart-deploy" -f ~/complystart-deploy-key
@@ -52,19 +64,14 @@ scp -r ops root@138.197.70.66:/root/compinabox-ops
 ```
 (No local copy of the repository? On GitHub press the green **Code** button → **Download ZIP**, unzip it, open a terminal in the unzipped folder and run the same command.)
 
-### 3. Check the server, then set it up
-Log in: `ssh root@138.197.70.66`. First a **dry run** that changes nothing and tells you whether this server is one the script understands:
-```bash
-bash /root/compinabox-ops/bootstrap-server.sh 138.197.70.66 --check
-```
-- If it ends with `all checks passed`, go on.
-- If it says `NOT CONTINUING … Reasons:` (another Ubuntu version, something already using ports 80/443, another PostgreSQL or Node version, …), **copy the whole message and send it to the supervisor**. Nothing was changed.
+### 3. Set the server up (only after the A/B decision)
+Log in: `ssh root@138.197.70.66`. Run the dry run again (step 0) on the server you chose; it must end with `ready: nothing found that this script cannot handle.` If it says `NOT READY … Reasons:`, **send the message to the supervisor** — nothing was changed. A busy port is answered with the exact rerun to use, for example `--https-port 8443`.
 
-Now the real run. On your computer show the public key (`cat ~/complystart-deploy-key.pub`), copy the whole line, and on the server run (paste your line between the quotes):
+Then the real run. On your computer show the public key (`cat ~/complystart-deploy-key.pub`), copy the whole line, and on the server run (paste your line between the quotes; add the port options the check suggested, if any — on a clean server there are none):
 ```bash
-DEPLOY_PUBLIC_KEY='ssh-ed25519 AAAA…paste the whole line…' bash /root/compinabox-ops/bootstrap-server.sh 138.197.70.66
+DEPLOY_PUBLIC_KEY='ssh-ed25519 AAAA…paste the whole line…' bash /root/compinabox-ops/bootstrap-server.sh 138.197.70.66 --yes
 ```
-It installs Node 22, PostgreSQL 16 (reachable from the server only), Caddy and the firewall (SSH, 80, 443), creates the two users, the folders, the database and `/opt/compinabox/.env` with random secrets generated on the server, and the scheduled backup and clean-up jobs. It prints each step and, at the end, **the dev-outbox password — shown only once; write it down** (it is also in `/opt/compinabox/.env`, readable by root). Running the script a second time is safe: it prints `no changes: this server was already set up.` and touches nothing (an existing `.env` is never rewritten).
+Options: `--https-port N` / `--http-port N` / `--no-http` (public ports; defaults 443/80), `--app-port N` (the app's private port; default: the first free port from 3100, never 3000 or 8080), `--use-existing-postgres` (create only our own role and database inside the PostgreSQL that already runs there; version 15 or newer). Without `--yes` the script only reports. It installs Node 22, PostgreSQL 16 on localhost (unless you chose the existing one), Caddy (started only after our own configuration is in place, on our ports), creates the two users, the folders, the database and `/opt/compinabox/.env` with random secrets generated on the server, and the scheduled backup and clean-up jobs. It never stops, reloads or edits another service, and it does not switch on the firewall on a server that runs other things (it warns instead; if the firewall is already on, it adds only its own rules). It prints each step and, at the end, **the dev-outbox password — shown only once; write it down** (it is also in `/opt/compinabox/.env`, readable by root) and the **site address** to use as `DEPLOY_BASE_URL`. Running the script a second time is safe: it reuses the ports it chose, prints `no changes: this server was already set up.` and touches nothing (an existing `.env` is never rewritten).
 
 ### 4. Get the server's identity line (so GitHub knows it is talking to your server)
 Still on the server:
@@ -73,23 +80,24 @@ echo "138.197.70.66 $(cut -d' ' -f1,2 /etc/ssh/ssh_host_ed25519_key.pub)"
 ```
 It prints one line starting with `138.197.70.66 ssh-ed25519 …`. Copy it. (This is read from the server itself — you are already logged in to it — not guessed from the network.)
 
-### 5. Add the five GitHub secrets
+### 5. Add the six GitHub secrets
 GitHub → the repository → **Settings → Secrets and variables → Actions → New repository secret**. Add exactly these names:
 
 | Name | Value |
 | :- | :- |
-| `DEPLOY_HOST` | `138.197.70.66` |
+| `DEPLOY_HOST` | `138.197.70.66` (used for SSH only) |
 | `DEPLOY_USER` | `complystart-deploy` |
 | `DEPLOY_SSH_KEY` | the **whole content** of `~/complystart-deploy-key` on your computer (`cat ~/complystart-deploy-key`; include the `-----BEGIN …` and `-----END …` lines) |
 | `DEPLOY_KNOWN_HOSTS` | the line from step 4 |
+| `DEPLOY_BASE_URL` | the site address printed by step 3, e.g. `https://138.197.70.66` (or `https://138.197.70.66:8443` if a non-default port was used) |
 | `DEV_OUTBOX_PASSWORD` | the password from step 3 |
 
 ### 6. Run the first deploy
 GitHub → **Actions → Deploy staging → Run workflow** (branch `main`). It also runs by itself on every merge to `main`. Three jobs run one after the other: **Build** (refuses to continue if the merged pull request did not pass its CI), **Deploy** (uploads, applies database changes, switches to the new version, checks `/api/health`, rolls back by itself if the new version does not become healthy) and **Remote smoke test** (a scripted tour of the live site). All three must be green.
 
 ### 7. Open it
-- **https://138.197.70.66/br** — your browser warns that the connection is not private. That is expected: the site uses a certificate the server made for itself, because there is no domain yet. Chrome: *Advanced → Proceed to 138.197.70.66*. Safari: *Show Details → visit this website*. You see the yellow test banner.
-- **https://138.197.70.66/dev-outbox** — user `outbox`, the password from step 3. Every e-mail the product "sends" (sign-in links, welcome, employee and vendor invitations) shows up here with clickable links.
+- **`<DEPLOY_BASE_URL>/br`** (for example https://138.197.70.66/br) — your browser warns that the connection is not private. That is expected: the site uses a certificate the server made for itself, because there is no domain yet. Chrome: *Advanced → Proceed to 138.197.70.66*. Safari: *Show Details → visit this website*. You see the yellow test banner.
+- **`<DEPLOY_BASE_URL>/dev-outbox`** — user `outbox`, the password from step 3. Every e-mail the product "sends" (sign-in links, welcome, employee and vendor invitations) shows up here with clickable links.
 - A full fake purchase: `/br` → pricing → checkout (tick the terms box) → the test payment page → **Pay** → follow the welcome link in the outbox.
 
 ### 8. What to send back
@@ -100,7 +108,7 @@ Each deploy keeps the last three versions in `/opt/compinabox/releases/`. On the
 ```bash
 ls -1t /opt/compinabox/releases                       # newest first; pick the one you want
 ln -sfn releases/<that-folder> /opt/compinabox/current && systemctl restart complystart
-curl -s http://127.0.0.1:3000/api/health              # "version" should now be that folder's name
+curl -s "http://127.0.0.1:$(cat /opt/compinabox/app-port)/api/health"   # "version" should now be that folder's name
 ```
 A rollback restores the **previous program code only**. Database changes (migrations) are forward-only and stay applied; if the older code cannot work with the newer database, the answer is a restore from a backup (see "Backups"), not a rollback.
 
@@ -112,7 +120,7 @@ A rollback restores the **previous program code only**. Database changes (migrat
 ### Check that the access log keeps secrets out
 After the first deploy, as root on the server:
 ```bash
-bash /opt/compinabox/current/scripts/check-caddy-logs.sh https://138.197.70.66
+bash /opt/compinabox/current/scripts/check-caddy-logs.sh <DEPLOY_BASE_URL>
 ```
 It makes a few requests with fake secrets in the address, the query and the cookie, then reads Caddy's log. It must end with `check-caddy-logs: PASS`. (`ops/Caddyfile` logs `/employee/…`, `/vendor/…` and `/api/welcome` with the secret part replaced by `[redacted]`, strips query strings, and does not log the whistleblower channel at all. Proven on a real Caddy 2.8.4 in `docs/phase9-samples/caddy-redaction-proof.txt`; the bare-IP certificate form (`tls internal` for an IP address) can only be proven on the server.)
 
