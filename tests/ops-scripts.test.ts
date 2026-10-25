@@ -212,7 +212,11 @@ describe("scripts/maintenance.mjs", () => {
 describe("scripts/backup.sh — database dump plus the data directories", () => {
   const backup = (env: Record<string, string>) =>
     spawnSync("bash", [path.join(root, "scripts/backup.sh")], {
-      env: { PATH: process.env.PATH as string, PGPASSWORD: "postgres", ...env },
+      env: {
+        PATH: process.env.PATH as string,
+        PGPASSWORD: "postgres",
+        ...env,
+      } as NodeJS.ProcessEnv,
       encoding: "utf8",
     });
   const mk = () => fs.mkdtempSync(path.join(os.tmpdir(), "bk-"));
