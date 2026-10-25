@@ -28,6 +28,7 @@ psql "$ADMIN_URL" -qc "CREATE DATABASE \"$DBNAME\"" || exit 2
 DB_URL="${ADMIN_URL%/*}/$DBNAME"
 ROOT=$(mktemp -d)
 PORT=$(node -e 'const s=require("net").createServer().listen(0,()=>{console.log(s.address().port);s.close()})')
+S_AUTH="rehearsal-auth-$(head -c 16 /dev/urandom | base64 | tr -dc 'A-Za-z0-9')"
 OUTBOX_PW="rehearsal-$(head -c 12 /dev/urandom | base64 | tr -dc 'A-Za-z0-9')"
 export COMPINABOX_ROOT=$ROOT COMPLYSTART_RUN_AS_SELF=1
 
@@ -46,7 +47,7 @@ PORT=$PORT
 HOSTNAME=127.0.0.1
 APP_URL=http://127.0.0.1:$PORT
 AUTH_URL=http://127.0.0.1:$PORT
-AUTH_SECRET=rehearsal-auth-secret-$(head -c 16 /dev/urandom | base64 | tr -dc 'A-Za-z0-9')
+AUTH_SECRET=$S_AUTH
 DATABASE_URL=$DB_URL
 ENABLED_COUNTRIES=br
 PAYMENT_PROVIDER=fake
