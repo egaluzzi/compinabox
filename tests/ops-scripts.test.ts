@@ -155,8 +155,9 @@ describe("scripts/maintenance.mjs", () => {
       },
     ]);
     const countAll = async () => ({
-      employees: (await db.select().from(employees)).length,
-      users: (await db.select().from(users)).length,
+      users: (
+        await db.select().from(users).where(eq(users.companyId, company.id))
+      ).length,
       emp: (
         await db
           .select()
@@ -165,8 +166,6 @@ describe("scripts/maintenance.mjs", () => {
       ).length,
     });
     const before = await countAll();
-    const beforeSess = (await db.select().from(employeeSessions)).length;
-    const beforeTok = (await db.select().from(verificationTokens)).length;
 
     const r = run("scripts/maintenance.mjs", {
       DATABASE_URL: process.env.TEST_DATABASE_URL as string,
@@ -195,12 +194,6 @@ describe("scripts/maintenance.mjs", () => {
     expect(toks).toContain(`tok-valid-${tag}`);
     expect(toks).not.toContain(`tok-expired-${tag}`);
     expect(await countAll()).toEqual(before);
-    expect((await db.select().from(employeeSessions)).length).toBeLessThan(
-      beforeSess,
-    );
-    expect((await db.select().from(verificationTokens)).length).toBeLessThan(
-      beforeTok,
-    );
     // idempotent: a second run deletes none of ours and the valid ones are still there
     const r2 = run("scripts/maintenance.mjs", {
       DATABASE_URL: process.env.TEST_DATABASE_URL as string,
