@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { TERMS_VERSION } from "@/lib/legal/version";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,6 +38,8 @@ async function paidAttempt() {
     taxId: "11222333000181",
     billingEmail: `r-${uid()}@example.test`,
     utm: null,
+    termsAccepted: true,
+    termsVersion: TERMS_VERSION,
   });
   if (!r.ok) throw new Error(r.error);
   const [attempt] = await db

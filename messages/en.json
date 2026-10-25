@@ -44,7 +44,10 @@
     "language": "Language"
   },
   "legal": {
-    "draft": "DRAFT — pending review"
+    "draft": "DRAFT — pending review",
+    "version": "Version",
+    "ptOnly": "The full text is available in Portuguese only (Brazil is the first market).",
+    "placeholders": "Highlighted [bracketed] items have not been filled in yet."
   },
   "consent": {
     "text": "We use cookies to remember your country, language and cookie choice. With your permission we may also use analytics cookies.",
@@ -139,7 +142,10 @@
     "fakeTitle": "Test payment processor",
     "fakeNote": "Development simulator — no real payment is made.",
     "fakePay": "Pay",
-    "fakeFail": "Fail the payment"
+    "fakeFail": "Fail the payment",
+    "acceptPrefix": "I have read and accept the",
+    "acceptAnd": "and the",
+    "errTerms": "Accept the terms of service and the privacy policy to continue."
   },
   "login": {
     "title": "Sign in",

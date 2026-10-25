@@ -26,6 +26,8 @@ export async function POST(request: Request) {
     companyName: body.companyName,
     taxId: body.taxId,
     billingEmail: body.billingEmail,
+    termsAccepted: body.termsAccepted,
+    termsVersion: body.termsVersion,
     utm: parseUtmCookie(requestCookie(request, UTM_COOKIE)),
   });
   if (!result.ok) {

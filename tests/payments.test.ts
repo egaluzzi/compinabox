@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { TERMS_VERSION } from "@/lib/legal/version";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { readdirSync, readFileSync, mkdtempSync } from "node:fs";
@@ -47,6 +48,8 @@ const newAttempt = async (over: Record<string, unknown> = {}) => {
     taxId: VALID_CNPJ,
     billingEmail: email,
     utm: null,
+    termsAccepted: true,
+    termsVersion: TERMS_VERSION,
     ...over,
   });
   if (!r.ok) throw new Error(`createAttempt failed: ${r.error}`);
@@ -214,6 +217,8 @@ describe("createAttempt", () => {
         taxId: VALID_CNPJ,
         billingEmail: `a-${uid()}@example.test`,
         utm: null,
+        termsAccepted: true,
+        termsVersion: TERMS_VERSION,
       });
       expect(r).toEqual({ ok: false, error: "country_unavailable" });
     }
@@ -227,6 +232,8 @@ describe("createAttempt", () => {
       taxId: "20123456786",
       billingEmail: email,
       utm: null,
+      termsAccepted: true,
+      termsVersion: TERMS_VERSION,
     });
     expect(r).toEqual({ ok: false, error: "country_unavailable" });
     expect(
@@ -243,6 +250,8 @@ describe("createAttempt", () => {
       taxId: VALID_CNPJ,
       billingEmail: `a-${uid()}@example.test`,
       utm: null,
+      termsAccepted: true,
+      termsVersion: TERMS_VERSION,
     };
     expect(
       await createAttempt(db, provider, { ...base, companyName: " " }),
@@ -265,6 +274,8 @@ describe("createAttempt", () => {
       taxId: VALID_CNPJ,
       billingEmail: `a-${uid()}@example.test`,
       utm: null,
+      termsAccepted: true,
+      termsVersion: TERMS_VERSION,
     });
     expect(r).toEqual({ ok: false, error: "unavailable" });
   });
@@ -279,6 +290,8 @@ describe("createAttempt", () => {
       taxId: VALID_CNPJ,
       billingEmail: a.email.toUpperCase(),
       utm: null,
+      termsAccepted: true,
+      termsVersion: TERMS_VERSION,
     });
     expect(r).toEqual({ ok: false, error: "email_in_use" });
     expect(email).toBeTruthy();
@@ -522,5 +535,45 @@ describe("webhook -> provisioning", () => {
     expect(res.body.outcome).toBe("provisioned");
     expect(await companiesFor(a.email)).toHaveLength(1);
     spy.mockRestore();
+  });
+});
+
+describe("terms acceptance at checkout (phase 9)", () => {
+  const base = () => ({
+    country: "br",
+    companyName: "Acme",
+    taxId: VALID_CNPJ,
+    billingEmail: `t-${uid()}@example.test`,
+    utm: null,
+  });
+  it("refuses without the box, with a false box, or with a stale version — and stores nothing", async () => {
+    const b = base();
+    for (const extra of [
+      {},
+      { termsAccepted: false, termsVersion: TERMS_VERSION },
+      { termsAccepted: "true", termsVersion: TERMS_VERSION },
+      { termsAccepted: true },
+      { termsAccepted: true, termsVersion: "old-version" },
+    ]) {
+      expect(await createAttempt(db, provider, { ...b, ...extra })).toEqual({
+        ok: false,
+        error: "terms_not_accepted",
+      });
+    }
+    expect(
+      await db
+        .select()
+        .from(checkoutAttempt)
+        .where(eq(checkoutAttempt.billingEmail, b.billingEmail)),
+    ).toHaveLength(0);
+  });
+  it("stores the acceptance time and the version on the attempt", async () => {
+    const before = Date.now();
+    const { attempt } = await newAttempt();
+    expect(attempt.termsVersion).toBe(TERMS_VERSION);
+    expect(attempt.termsAcceptedAt).toBeInstanceOf(Date);
+    expect(attempt.termsAcceptedAt!.getTime()).toBeGreaterThanOrEqual(
+      before - 1000,
+    );
   });
 });

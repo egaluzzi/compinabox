@@ -44,7 +44,10 @@
     "language": "Idioma"
   },
   "legal": {
-    "draft": "BORRADOR — pendiente de revisión"
+    "draft": "BORRADOR — pendiente de revisión",
+    "version": "Versión",
+    "ptOnly": "El texto completo está disponible solo en portugués (Brasil es el primer mercado).",
+    "placeholders": "Los elementos resaltados entre [corchetes] todavía no se han completado."
   },
   "consent": {
     "text": "Usamos cookies para recordar tu país, tu idioma y tu elección sobre cookies. Con tu permiso, también podemos usar cookies de análisis.",
@@ -139,7 +142,10 @@
     "fakeTitle": "Procesador de pagos de prueba",
     "fakeNote": "Simulador de desarrollo — no se realiza ningún pago real.",
     "fakePay": "Pagar",
-    "fakeFail": "Hacer que el pago falle"
+    "fakeFail": "Hacer que el pago falle",
+    "acceptPrefix": "He leído y acepto los",
+    "acceptAnd": "y la",
+    "errTerms": "Acepta los términos de servicio y la política de privacidad para continuar."
   },
   "login": {
     "title": "Iniciar sesión",

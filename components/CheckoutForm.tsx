@@ -10,15 +10,22 @@ type Labels = {
   button: string;
   processing: string;
   signIn: string;
+  acceptPrefix: string;
+  acceptAnd: string;
+  termsLink: string;
+  privacyLink: string;
   errors: Record<string, string>;
 };
 
 /** Posts to /api/checkout; every failure is shown in-page (SPEC §8: no human touches the order). */
 export function CheckoutForm({
   country,
+  termsVersion,
   labels,
 }: {
   country: string;
+  /** The text version the page links to; sent back so the server stores what was shown. */
+  termsVersion: string;
   labels: Labels;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +45,8 @@ export function CheckoutForm({
           companyName: data.get("companyName"),
           taxId: data.get("taxId"),
           billingEmail: data.get("billingEmail"),
+          termsAccepted: data.get("terms") === "on",
+          termsVersion,
         }),
       });
       const body = (await res.json()) as {
@@ -90,8 +99,30 @@ export function CheckoutForm({
           className={field}
         />
       </label>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          name="terms"
+          type="checkbox"
+          required
+          className="mt-1"
+          aria-describedby={
+            error === "terms_not_accepted" ? "terms-error" : undefined
+          }
+        />
+        <span>
+          {labels.acceptPrefix}{" "}
+          <Link className="underline" href="/legal/terms" target="_blank">
+            {labels.termsLink}
+          </Link>{" "}
+          {labels.acceptAnd}{" "}
+          <Link className="underline" href="/legal/privacy" target="_blank">
+            {labels.privacyLink}
+          </Link>
+          .
+        </span>
+      </label>
       {error && (
-        <p role="alert" className="text-sm text-red-700">
+        <p id="terms-error" role="alert" className="text-sm text-red-700">
           {labels.errors[error] ?? labels.errors.generic}
           {error === "email_in_use" && (
             <>

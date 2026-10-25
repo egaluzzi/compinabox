@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { isCountry, isCountryEnabled } from "@/lib/countries";
 import type { Db } from "@/lib/db/client";
 import { checkoutAttempt, users } from "@/lib/db/schema";
+import { TERMS_VERSION } from "@/lib/legal/version";
 import type { PaymentProvider } from "@/lib/payments/types";
 import { PRICING } from "@/lib/pricing";
 import { NotYetEnabled, validateTaxId } from "@/lib/tax-id";
@@ -18,6 +19,7 @@ export type AttemptError =
   | "invalid_name"
   | "invalid_tax_id"
   | "invalid_email"
+  | "terms_not_accepted"
   | "email_in_use"
   | "unavailable"
   | "provider_error";
@@ -31,6 +33,9 @@ export type AttemptInput = {
   companyName: unknown;
   taxId: unknown;
   billingEmail: unknown;
+  /** The checkbox, and the text version the form was rendered with. Both required. */
+  termsAccepted?: unknown;
+  termsVersion?: unknown;
   utm: Utm | null;
 };
 
@@ -78,6 +83,11 @@ export async function createAttempt(
   if (email.length > 254 || !EMAIL.test(email))
     return { ok: false, error: "invalid_email" };
 
+  // The terms checkbox: ticked, for the version currently in force (a form rendered before a text
+  // change is refused, so the stored version is always the one the buyer saw).
+  if (input.termsAccepted !== true || input.termsVersion !== TERMS_VERSION)
+    return { ok: false, error: "terms_not_accepted" };
+
   const [existing] = await db
     .select({ id: users.id })
     .from(users)
@@ -100,6 +110,8 @@ export async function createAttempt(
       utmMedium: utm?.medium ?? null,
       utmCampaign: utm?.campaign ?? null,
       returnTokenHash: hashToken(returnToken),
+      termsAcceptedAt: new Date(),
+      termsVersion: TERMS_VERSION,
     })
     .returning();
 
