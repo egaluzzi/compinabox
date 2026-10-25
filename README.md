@@ -21,30 +21,148 @@ The supervisor audits `HANDOFF.md` against the evidence and accepts or rejects t
 - Postgres 16. Create a database and set `DATABASE_URL` in `.env` (see `.env.example`).
 - `npm run db:migrate` applies the committed migrations in `lib/db/migrations/`; after a schema change in `lib/db/schema.ts` run `npm run db:generate` and commit the new migration. Never alter the live schema by hand.
 - Tests that touch the database need `TEST_DATABASE_URL` (a Postgres that may `CREATE DATABASE`). `./verify.sh` creates a fresh database there, migrates it from scratch, runs the suite and the live smoke flow against it, and drops it. If it is unset the DB-backed tests **fail** (they never skip).
-- Local checkout without Mercado Pago: set `PAYMENT_PROVIDER=fake`, `ALLOW_FAKE_PAYMENTS=true`, `FAKE_PAYMENTS_SECRET=<random>`, and `EMAIL_DEV_SINK=true` (emails are written to `.dev-outbox/`). **Never set `ALLOW_FAKE_PAYMENTS` on the droplet** — it provisions accounts without payment.
+- Local checkout without Mercado Pago: set `PAYMENT_PROVIDER=fake`, `ALLOW_FAKE_PAYMENTS=true`, `FAKE_PAYMENTS_SECRET=<random>`, and `EMAIL_DEV_SINK=true` (emails are written to `.dev-outbox/`). `ALLOW_FAKE_PAYMENTS` provisions accounts without payment: it is allowed in development and on **staging** only, and the app refuses to start with it when `APP_ENV=production` (see "Environments" below).
+
+## Environments (phase 9)
+
+`APP_ENV` is `development` (the default when unset), `staging` or `production`. One tested function, `checkEnvironment()` in `lib/env.ts`, is used three times: at startup (`instrumentation.ts`), by `GET /api/health`, and — through the health check — by every deploy.
+
+- **production** refuses to run with: `ALLOW_FAKE_PAYMENTS` switched on, `PAYMENT_PROVIDER=fake`, `EMAIL_DEV_SINK=true`, a missing or `changeme` `AUTH_SECRET` / `REPORT_ENCRYPTION_KEYS` / `APP_URL` / `AUTH_URL` / `DATABASE_URL`, or an `APP_URL` / `AUTH_URL` that is not https. At startup it throws (the service does not come up); `/api/health` answers 503 with the violation **codes** (never values); a deploy then rolls back. An unknown `APP_ENV` (a typo such as `prod`) is treated as production and reported as `app_env_invalid`. `PAYMENT_PROVIDER=none` is allowed (checkout unavailable). The placeholder price is refused by the existing checkout guard.
+- **staging** shows a banner on every page (Portuguese: "Ambiente de teste — dados fictícios"; also en/es), answers `robots.txt` with `Disallow: /`, sends `X-Robots-Tag: noindex, nofollow` on every response, has an empty sitemap, loads no analytics, and allows fake payments and the e-mail sink. It must hold **fictitious data only**.
+- **development**: nothing changes.
+
+`GET /api/health` → `{"ok":true,"version":"<git sha>","db":true,"env":"staging"}` (503 when the database does not answer within 2 s or the guard is violated). No authentication, no secrets. `/dev-outbox` (staging only, with `EMAIL_DEV_SINK=true` and `DEV_OUTBOX_PASSWORD` set; user `outbox`) lists the newest 50 e-mails the sink wrote, with their links clickable; in every other configuration it is a plain 404.
+
+## Staging server setup (Esteban: copy and paste, in this order)
+
+**What this is.** A test copy of the product on your server `138.197.70.66`, in the folder `/opt/compinabox`. It has a "test environment" banner on every page, fake payments, no real e-mail (messages appear on a page, `/dev-outbox`, instead) and no search-engine indexing. **Put no real customer, employee or whistleblower data in it.** Nothing in this section was run on the server by the person who wrote it: the first time you follow it is the first time it runs there. If something looks different from what is written here, stop and send the output.
+
+**You need:** (1) to be able to log in to the server as `root` over SSH; (2) admin access to the GitHub repository (to add secrets); (3) a terminal on your own computer (Mac: Terminal; Windows: PowerShell with OpenSSH, or WSL).
+
+### 1. Make the deploy key (on your computer)
+```bash
+ssh-keygen -t ed25519 -N "" -C "complystart-deploy" -f ~/complystart-deploy-key
+```
+This creates two files: `~/complystart-deploy-key` (the **private** half — it goes into GitHub only, nowhere else, and is never e-mailed or pasted into a chat) and `~/complystart-deploy-key.pub` (the **public** half — it goes to the server). It has no passphrase because GitHub uses it without anyone present.
+
+### 2. Copy the `ops` folder to the server
+In a terminal on your computer, in the folder where you have the repository (on the `main` branch, after the pull request is merged):
+```bash
+scp -r ops root@138.197.70.66:/root/compinabox-ops
+```
+(No local copy of the repository? On GitHub press the green **Code** button → **Download ZIP**, unzip it, open a terminal in the unzipped folder and run the same command.)
+
+### 3. Check the server, then set it up
+Log in: `ssh root@138.197.70.66`. First a **dry run** that changes nothing and tells you whether this server is one the script understands:
+```bash
+bash /root/compinabox-ops/bootstrap-server.sh 138.197.70.66 --check
+```
+- If it ends with `all checks passed`, go on.
+- If it says `NOT CONTINUING … Reasons:` (another Ubuntu version, something already using ports 80/443, another PostgreSQL or Node version, …), **copy the whole message and send it to the supervisor**. Nothing was changed.
+
+Now the real run. On your computer show the public key (`cat ~/complystart-deploy-key.pub`), copy the whole line, and on the server run (paste your line between the quotes):
+```bash
+DEPLOY_PUBLIC_KEY='ssh-ed25519 AAAA…paste the whole line…' bash /root/compinabox-ops/bootstrap-server.sh 138.197.70.66
+```
+It installs Node 22, PostgreSQL 16 (reachable from the server only), Caddy and the firewall (SSH, 80, 443), creates the two users, the folders, the database and `/opt/compinabox/.env` with random secrets generated on the server, and the scheduled backup and clean-up jobs. It prints each step and, at the end, **the dev-outbox password — shown only once; write it down** (it is also in `/opt/compinabox/.env`, readable by root). Running the script a second time is safe: it prints `no changes: this server was already set up.` and touches nothing (an existing `.env` is never rewritten).
+
+### 4. Get the server's identity line (so GitHub knows it is talking to your server)
+Still on the server:
+```bash
+echo "138.197.70.66 $(cut -d' ' -f1,2 /etc/ssh/ssh_host_ed25519_key.pub)"
+```
+It prints one line starting with `138.197.70.66 ssh-ed25519 …`. Copy it. (This is read from the server itself — you are already logged in to it — not guessed from the network.)
+
+### 5. Add the five GitHub secrets
+GitHub → the repository → **Settings → Secrets and variables → Actions → New repository secret**. Add exactly these names:
+
+| Name | Value |
+| :- | :- |
+| `DEPLOY_HOST` | `138.197.70.66` |
+| `DEPLOY_USER` | `complystart-deploy` |
+| `DEPLOY_SSH_KEY` | the **whole content** of `~/complystart-deploy-key` on your computer (`cat ~/complystart-deploy-key`; include the `-----BEGIN …` and `-----END …` lines) |
+| `DEPLOY_KNOWN_HOSTS` | the line from step 4 |
+| `DEV_OUTBOX_PASSWORD` | the password from step 3 |
+
+### 6. Run the first deploy
+GitHub → **Actions → Deploy staging → Run workflow** (branch `main`). It also runs by itself on every merge to `main`. Three jobs run one after the other: **Build** (refuses to continue if the merged pull request did not pass its CI), **Deploy** (uploads, applies database changes, switches to the new version, checks `/api/health`, rolls back by itself if the new version does not become healthy) and **Remote smoke test** (a scripted tour of the live site). All three must be green.
+
+### 7. Open it
+- **https://138.197.70.66/br** — your browser warns that the connection is not private. That is expected: the site uses a certificate the server made for itself, because there is no domain yet. Chrome: *Advanced → Proceed to 138.197.70.66*. Safari: *Show Details → visit this website*. You see the yellow test banner.
+- **https://138.197.70.66/dev-outbox** — user `outbox`, the password from step 3. Every e-mail the product "sends" (sign-in links, welcome, employee and vendor invitations) shows up here with clickable links.
+- A full fake purchase: `/br` → pricing → checkout (tick the terms box) → the test payment page → **Pay** → follow the welcome link in the outbox.
+
+### 8. What to send back
+The address of the green **Actions run** (the page you land on after clicking the run in the Actions tab).
+
+### Roll back by hand
+Each deploy keeps the last three versions in `/opt/compinabox/releases/`. On the server:
+```bash
+ls -1t /opt/compinabox/releases                       # newest first; pick the one you want
+ln -sfn releases/<that-folder> /opt/compinabox/current && systemctl restart complystart
+curl -s http://127.0.0.1:3000/api/health              # "version" should now be that folder's name
+```
+A rollback restores the **previous program code only**. Database changes (migrations) are forward-only and stay applied; if the older code cannot work with the newer database, the answer is a restore from a backup (see "Backups"), not a rollback.
+
+### If something fails
+- The deploy rolled itself back: the failed version is kept as `/opt/compinabox/releases/<sha>.failed`; `journalctl -u complystart -n 100 --no-pager` shows why (for example `ENVIRONMENT GUARD … refusing to start`).
+- Site does not answer: `systemctl status complystart caddy` and `journalctl -u caddy -n 50 --no-pager`.
+- A sentence in these steps does not match what you see: send the screen to the supervisor; do not improvise on the server.
+
+### Check that the access log keeps secrets out
+After the first deploy, as root on the server:
+```bash
+bash /opt/compinabox/current/scripts/check-caddy-logs.sh https://138.197.70.66
+```
+It makes a few requests with fake secrets in the address, the query and the cookie, then reads Caddy's log. It must end with `check-caddy-logs: PASS`. (`ops/Caddyfile` logs `/employee/…`, `/vendor/…` and `/api/welcome` with the secret part replaced by `[redacted]`, strips query strings, and does not log the whistleblower channel at all. Proven on a real Caddy 2.8.4 in `docs/phase9-samples/caddy-redaction-proof.txt`; the bare-IP certificate form (`tls internal` for an IP address) can only be proven on the server.)
+
+### Later: a real certificate once there is a domain
+In `/etc/caddy/Caddyfile` (and in `ops/Caddyfile`) change two things: put the domain where `https://138.197.70.66` is, and delete the line `tls internal`. Caddy then gets a public certificate by itself; then remove `CURL_K` from the smoke step of `.github/workflows/deploy.yml`. Production (Phase 9d) also needs Cloudflare in front, the origin reachable from Cloudflare only, a real e-mail provider and `APP_ENV=production`; none of that is part of staging.
+
+### What lives where on the server
+```
+/opt/compinabox/.env             secrets and settings (mode 600, owner complystart; never in git; never printed)
+/opt/compinabox/releases/<sha>/  one folder per version (last 3 kept);  current -> the live one
+/opt/compinabox/incoming/        the upload area of the deploy
+/opt/compinabox/data/{uploads,evidence,outbox}   files the app writes (not served by Caddy)
+/opt/compinabox/backups/         nightly dumps + data archives (14 days)
+```
+`complystart.service` runs the app as the unprivileged user `complystart`; `complystart-deploy` can log in only with the deploy key and may run, as root, only `systemctl restart/is-active complystart` and the migration wrapper `/usr/local/sbin/complystart-migrate <sha>` (which refuses unless `.env` says `APP_ENV=staging`). Timers: `complystart-backup.timer` (03:15 UTC) and `complystart-maintenance.timer` (04:10 UTC, deletes expired employee sessions and sign-in tokens; prints counts only).
+
+## Legal pages and terms acceptance (phase 9)
+
+`/legal/privacy` and `/legal/terms` render **pt-BR drafts** written from what the product actually does (`lib/legal/privacy.ts`, `lib/legal/terms.ts`), marked DRAFT and `noindex`. They name the LGPD and nothing else (no articles, decrees or other laws), make no compliance claim, and show visible highlighted placeholders (`[CNPJ — a preencher]`, …) where facts or lawyer wording are still missing. `lib/legal/REVIEW.md` lists every placeholder and every assumption for the lawyer. A test fails if the text changes without a new version label (`lib/legal/version.ts`).
+
+`/checkout` has a required checkbox linking both documents. `POST /api/checkout` is refused (`terms_not_accepted`) without it; the attempt stores `terms_accepted_at` and `terms_version` (migration `0008`).
+
+## Analytics (phase 9)
+
+`GTM_ID` (a real `GTM-XXXX` id) enables Google Tag Manager — **only** after the visitor accepted cookies, only outside `/report`, `/dashboard`, `/employee`, `/vendor`, `/login`, `/onboarding`, `/dev-outbox`, and never when `APP_ENV=staging`. Events through `dataLayer`: `view_pricing`, `begin_checkout`, `purchase` (`value`, `currency` only — no e-mail, name, tax id or ids) and `lead_generic_country_waitlist`. The footer's "Cookie settings" re-opens the choice; withdrawing consent stops further pushes (`lib/tracking.ts`, `tests/tracking.test.tsx`).
+
+## Local rehearsal of the deploy (phase 9)
+
+`scripts/rehearse-deploy.sh` (needs a finished `npm run build` and `TEST_DATABASE_URL`) runs the real `ops/deploy-remote.sh`, `ops/complystart-migrate` and `scripts/package-release.sh` against a temp tree and a real Postgres and node process: deploy A, deploy B, a deploy C that cannot start (rolled back automatically), a deploy D with a broken migration (aborted before the switch), a healthy deploy E (old and failed releases pruned), then `scripts/remote-smoke.sh` against the result. The transcript from the phase is in `docs/phase9-samples/rehearsal-transcript.txt`. What it does not cover: users and file permissions, systemd, Caddy, the real network (see `HANDOFF.md`).
 
 ## Backups
 
-Whistleblower data lives in this database; backups must exist and a restore must have been tested **before the first real customer** (CLAUDE.md §4, gated in phase 9).
+Whistleblower data lives in this database; backups must exist and a restore must have been tested **before the first real customer** (CLAUDE.md §4, Phase 9d). On staging the data is fictitious, but the same scripts run for real so the production step is a configuration change.
 
-**What runs:** `scripts/backup.sh` does `pg_dump` → gzip → integrity check → upload to DigitalOcean Spaces with `s3cmd` → prune dumps older than `BACKUP_KEEP_DAYS` (default 30). A failed dump exits nonzero and uploads nothing. A systemd timer (`ops/backup/complystart-backup.{service,timer}`) runs it nightly at ~03:15 UTC.
+**What runs:** `scripts/backup.sh` does `pg_dump` → gzip → integrity check → copy to the destination → prune files older than `BACKUP_KEEP_DAYS` (default 30; 14 on staging). If `EVIDENCE_DIR` and/or `UPLOADS_DIR` are set it also writes `complystart-data-<same timestamp>.tar.gz` with those directories (the evidence files are already encrypted), delivered and pruned the same way; a set directory that does not exist fails the run. A failed dump exits nonzero. The systemd timer `complystart-backup.timer` (`ops/systemd/`) runs it nightly at ~03:15 UTC. **Staging:** the bootstrap script installs and enables it with `BACKUP_DEST=local:/opt/compinabox/backups`, so dumps stay on the same server (that protects against a bad deploy, not against losing the server — the off-server copy is Phase 9d).
 
-**Install on the droplet (Esteban / phase 9):**
-1. `sudo apt-get install -y s3cmd postgresql-client` and, as the `complystart` user, `s3cmd --configure` with a Spaces key limited to the backup bucket (credentials stay in that user's `~/.s3cfg`, never in the repo).
-2. Add to `/opt/compinabox/.env`: `BACKUP_DEST=s3://<space>/complystart-backups` and optionally `BACKUP_KEEP_DAYS=30` (`DATABASE_URL` is already there).
-3. `sudo cp ops/backup/complystart-backup.* /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now complystart-backup.timer`
-4. Run it once by hand: `sudo systemctl start complystart-backup.service && journalctl -u complystart-backup.service -n 20` — expect `backup ok: …`. Check the object exists: `s3cmd ls s3://<space>/complystart-backups/`.
-5. Turn on Spaces versioning/lifecycle if you want retention beyond the script's pruning.
+**Run it by hand (staging):** `sudo systemctl start complystart-backup.service && journalctl -u complystart-backup.service -n 20` — expect `backup ok: …`; the files are in `/opt/compinabox/backups/`.
+
+**Off-server copy for production (Phase 9d, Esteban):** `sudo apt-get install -y s3cmd`, as the `complystart` user `s3cmd --configure` with a Spaces key limited to the backup bucket (credentials stay in that user's `~/.s3cfg`), then in `/opt/compinabox/.env` set `BACKUP_DEST=s3://<space>/complystart-backups`. The script uploads with `s3cmd put` and prunes with `s3cmd del`.
 
 **Restore (and the monthly restore test):**
-1. Fetch a dump: `s3cmd get s3://<space>/complystart-backups/complystart-<stamp>.sql.gz`
-2. Run the restore test: `SCRATCH_ADMIN_URL=<url of a role that may create databases, ending /postgres> scripts/restore-test.sh complystart-<stamp>.sql.gz` (no `DATABASE_URL` needed). It restores the dump into a scratch database, compares each table's restored row count with the number of rows recorded **in the dump itself** (its `COPY` blocks), prints a per-table `in dump` / `restored` table, and drops the scratch database. It works on a dump of any age; the live database is never touched.
+1. Get a dump (`/opt/compinabox/backups/complystart-<stamp>.sql.gz`, or `s3cmd get …`).
+2. Run the restore test: `SCRATCH_ADMIN_URL=<url of a role that may create databases, ending /postgres> scripts/restore-test.sh complystart-<stamp>.sql.gz` (no `DATABASE_URL` needed; on the server the script is in `/opt/compinabox/current/scripts/`). It restores the dump into a scratch database, compares each table's restored row count with the number of rows recorded **in the dump itself** (its `COPY` blocks), prints a per-table `in dump` / `restored` table, and drops the scratch database. It works on a dump of any age; the live database is never touched.
    - **PASS means:** the dump is a valid gzip, restores with no SQL error, and every table in it (including `drizzle.__drizzle_migrations`) came back with exactly the rows the dump contains and no table is missing.
    - **FAIL means:** a bad gzip, a SQL/COPY error (truncated or damaged dump), or a missing/mismatching table — the table is named in the output.
    - **PASS does not mean:** that the dump is complete relative to the live database (rows deleted from the file consistently are invisible to it), or that the dump is recent — check the timestamp in the file name against the nightly schedule.
-3. Real recovery: stop the app (`sudo systemctl stop complystart`), create an empty database, `gunzip -c complystart-<stamp>.sql.gz | psql <new database url>`, point `DATABASE_URL` at it, start the app. Note: a dump holds everything up to its timestamp; anything written since is lost.
+3. Real recovery: stop the app (`sudo systemctl stop complystart`), create an empty database, `gunzip -c complystart-<stamp>.sql.gz | psql <new database url>`, point `DATABASE_URL` at it, start the app. A dump holds everything up to its timestamp; anything written since is lost.
+4. **The data directories:** `tar -xzf complystart-data-<same stamp>.tar.gz -C /opt/compinabox/data` restores `evidence/` and `uploads/` (stop the app first; run as the `complystart` user or fix the owner afterwards: `chown -R complystart:complystart /opt/compinabox/data`). Use the data archive that has the **same timestamp** as the dump, so database rows and files match. The evidence is useless without `REPORT_ENCRYPTION_KEYS`, which is deliberately not in any backup (see "Report encryption key").
 
-To exercise the scripts without Spaces: `BACKUP_DEST=local:/some/dir scripts/backup.sh`.
+To exercise the scripts without a server: `BACKUP_DEST=local:/some/dir scripts/backup.sh` (tests: `tests/ops-scripts.test.ts`).
 
 ## Whistleblower channel (phase 5)
 
@@ -55,8 +173,8 @@ Public intake at `/report/<company slug>` (pages `/report/<slug>` and `/report/<
 - The intake handlers and pages read **only** the submitted form (or JSON body) and the slug in the URL. They do not read or store the visitor's IP address, `X-Forwarded-For`, `CF-Connecting-IP`, the browser identifier, the referrer, language headers or cookies, and they set **no cookie**. `is_anonymous = !wants_contact`; the contact is stored (encrypted) only if the reporter opts in. The `whistleblower_reports` table has no IP/user-agent column.
 - `scripts/check-anonymity.sh` (run by `./verify.sh`) fails the build if anything under `app/report`, `app/api/report` or `lib/whistleblower` mentions request headers, forwarded/client addresses, the browser identifier, cookies or `console.*`. Error paths log nothing there; the notification email (outside that tree) logs one fixed string on failure.
 - `created_at` is a full timestamp (it is audit evidence). Evidence images are stripped of EXIF/XMP/ICC/text metadata before they are encrypted.
-- **Outside the app's control:** Caddy, Cloudflare, the OS and Next.js itself can still log request metadata (access logs, platform telemetry). Configure those for the channel's paths in phase 9; do not describe the channel to reporters as untraceable.
-- Rate limiting is in-process and per company slug (status lookups 10/minute, submissions 20/hour; HTTP 429) because no client address is read. A per-IP limit is a Cloudflare rule (phase 9). The 12-character tracking code (~59 bits) is what prevents enumeration.
+- **Outside the app's control:** Caddy, Cloudflare, the OS and Next.js itself can still log request metadata (access logs, platform telemetry). On staging, `ops/Caddyfile` does not access-log `/report/*` or `/api/report/*` at all, and its error log drops URLs and client addresses (proof: `scripts/check-caddy-logs.sh`); Cloudflare, once it is in front, still sees addresses (Phase 9d). Do not describe the channel to reporters as untraceable.
+- Rate limiting is in-process and per company slug (status lookups 10/minute, submissions 20/hour; HTTP 429) because no client address is read. A per-IP limit is a Cloudflare rule (Phase 9d). The 12-character tracking code (~59 bits) is what prevents enumeration.
 
 ### Report encryption key: generate, rotate, back up
 
@@ -86,7 +204,7 @@ Employees never get accounts. The admin imports a roster (`/dashboard/employees`
 
 **What is logged.** Accepting a document stores `accepted_at` and the client IP in `acknowledgments.ip_address` — the audit trail the customer wants (SPEC §5.5) and the **only** place a client IP is stored. The IP is read from Cloudflare's `cf-connecting-ip` header in exactly one file, `lib/employee/client-ip.ts` (validated with `net.isIP`; absent or invalid → NULL; `x-forwarded-for` is never read). The employee is told before accepting. No user agent, no other header, no console logging in the portal. Training attempts are not recorded (only a pass, with its score). The annual conflict-of-interest disclosure is stored **encrypted** (`disclosures.content`, same `REPORT_ENCRYPTION_KEYS` ring as the whistleblower data; the key-rotation script covers it). `acknowledgments`, `training_completions` and `disclosures` are append-only at the database level.
 
-**Deploy note.** `cf-connecting-ip` is only trustworthy if the origin accepts traffic from Cloudflare alone (firewall / Caddy allow-list of Cloudflare ranges) — carried to phase 9. Migration `0005` is a migration against live data: Esteban's call (CLAUDE.md §4).
+**Deploy note.** `cf-connecting-ip` is only trustworthy if the origin accepts traffic from Cloudflare alone (firewall / Caddy allow-list of Cloudflare ranges) — carried to Phase 9d; on staging there is no Cloudflare, the header is whatever the client sends, and the acknowledgment IP is therefore not evidence there.
 
 The training module (pt-BR only; other languages show "not yet available" and are left out of completion) is a **draft**: see `lib/training/REVIEW.md`.
 
@@ -98,7 +216,7 @@ An admin adds a vendor under `/dashboard/vendors` (name required; country, tax i
 
 The free-text answers (respondent name and role, ownership, PEP and sanctions details) are encrypted with the `REPORT_ENCRYPTION_KEYS` ring (see "Report encryption key"; rotation covers `vendor_responses`). `vendor_responses` and `vendor_screenings` are append-only at the database level: a resubmission after a resend is a new row, the newest is the current answer.
 
-**What is logged: nothing identifying.** The public vendor paths (`app/vendor`, `components/vendor`, `lib/vendors/submit.ts`, `lib/vendors/answers.ts`) read no header, no client address, no user agent, no cookie, and write no log line; `scripts/check-vendor-privacy.sh` (run by `verify.sh`) fails on any of that. Ops: keep `/vendor/*` out of the Caddy access log like `/employee/*` (the token is in the URL path).
+**What is logged: nothing identifying.** The public vendor paths (`app/vendor`, `components/vendor`, `lib/vendors/submit.ts`, `lib/vendors/answers.ts`) read no header, no client address, no user agent, no cookie, and write no log line; `scripts/check-vendor-privacy.sh` (run by `verify.sh`) fails on any of that. Ops: `ops/Caddyfile` logs `/vendor/*` and `/employee/*` as `/vendor/[redacted]` / `/employee/[redacted]` (the token is in the URL path).
 
 ### Sanctions screening: what is sent, what is stored
 
@@ -115,7 +233,7 @@ Screening is an explicit admin click per vendor (`POST /dashboard/vendors/<id>/s
 `/dashboard/binder` generates one PDF (the "dossiê") of what the platform recorded for the company as of a date: cover, contents with bookmarks and real page numbers, legal context, the six documents, training report, acknowledgment roster, disclosure status, whistleblower-channel description, vendor-screening summary and a data-notes appendix. It is a compilation, never a statement that the company is compliant; the fixed texts are listed for the lawyer in `lib/binder/REVIEW.md`.
 
 - **Left out on purpose:** employee e-mail and IP addresses, disclosure contents, whistleblower report content/evidence/tracking codes, vendor questionnaire answers. Enforced by `tests/binder-pdf.test.tsx` (a marker planted in every excluded field must not appear) and `scripts/check-binder-privacy.sh` (run by `verify.sh`).
-- **Generation is asynchronous and in-process** (no queue service): a click inserts a `binders` row (one queued/running job per company), the work runs in the same Node process behind a semaphore (`BINDER_CONCURRENCY`, 2), the page polls `/dashboard/binder/status`. All numbers (size cap 25 MB, cooldown 30 s, 20 per UTC day, 10-minute stuck timeout) are in `lib/binder/constants.ts`. A job whose process died is marked `failed: interrupted` by the next page load, poll or click; the customer retries.
+- **Generation is asynchronous and in-process** (no queue service): a click inserts a `binders` row (one queued/running job per company), the work runs in the same Node process behind a semaphore (`BINDER_CONCURRENCY`, default 1, from the environment), the page polls `/dashboard/binder/status`. All numbers (size cap 25 MB, cooldown 30 s, 20 per UTC day, 10-minute stuck timeout) are in `lib/binder/constants.ts`. A job whose process died is marked `failed: interrupted` by the next page load, poll or click; the customer retries.
 - **Snapshot:** all data is read in one `REPEATABLE READ` read-only transaction at the start of the job and rendered from memory.
 - **Ready binders are immutable and never deleted** (trigger in migration 0007). The PDF bytes live in Postgres (`binders.pdf`), so the nightly dump grows by one file per generation: check the dump size at the monthly restore test. The SHA-256 shown on the dashboard is the hash of those bytes.
-- **Cost of a render:** a typical company (tens of employees) takes a few seconds; the largest case tested (500 employees, 50 vendors, 67 pages) took about 20 s and grew the process by about 550 MB at Node's default heap settings (about 300 MB when V8 was capped at 450 MB, so most of that is collectable garbage). On a small droplet lower `BINDER_CONCURRENCY` (`lib/binder/constants.ts`) to 1 and consider `NODE_OPTIONS=--max-old-space-size=…` in the systemd unit (phase 9). Measured by `tests/binder-large.test.tsx`.
+- **Cost of a render:** a typical company (tens of employees) takes a few seconds; the largest case tested (500 employees, 50 vendors, 67 pages) took about 20 s and grew the process by about 550 MB at Node's default heap settings (about 300 MB when V8 was capped at 450 MB, so most of that is collectable garbage). On a small server keep `BINDER_CONCURRENCY=1` (the default; the staging `.env` sets it) — the systemd unit also caps the Node heap with `--max-old-space-size` sized from the server's RAM by the bootstrap script. Measured by `tests/binder-large.test.tsx`.

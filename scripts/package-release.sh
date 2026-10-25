@@ -3,7 +3,7 @@
 # the server needs:  <out-dir>/<sha>.tar.gz  +  <sha>.tar.gz.sha256
 #
 # Contents: the standalone server, .next/static, public/, the migrations, the small runtime scripts
-# (migrate.mjs, maintenance.mjs, backup.sh, restore-test.sh), node_modules/drizzle-orm (the standalone
+# (migrate.mjs, maintenance.mjs, backup.sh, restore-test.sh, check-caddy-logs.sh), node_modules/drizzle-orm (the standalone
 # trace bundles it into chunks, so migrate.mjs needs the package itself), VERSION (= the sha, read by
 # the systemd unit) and manifest.json. Everything that is only for developers (tests, docs, the
 # markdown files, verify.sh, configs) is left out. No secret can be inside: none is available to a build.
@@ -33,8 +33,8 @@ cp -r .next/static "$STAGE/.next/static"
 mkdir -p "$STAGE/lib/db"
 rm -rf "$STAGE/lib/db/migrations"
 cp -r lib/db/migrations "$STAGE/lib/db/migrations"
-cp scripts/migrate.mjs scripts/maintenance.mjs scripts/backup.sh scripts/restore-test.sh "$STAGE/scripts/"
-chmod +x "$STAGE/scripts/backup.sh" "$STAGE/scripts/restore-test.sh"
+cp scripts/migrate.mjs scripts/maintenance.mjs scripts/backup.sh scripts/restore-test.sh scripts/check-caddy-logs.sh "$STAGE/scripts/"
+chmod +x "$STAGE/scripts/backup.sh" "$STAGE/scripts/restore-test.sh" "$STAGE/scripts/check-caddy-logs.sh"
 
 # drizzle-orm: runtime files only (no source maps, no type declarations)
 rm -rf "$STAGE/node_modules/drizzle-orm"
