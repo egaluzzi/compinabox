@@ -42,6 +42,8 @@ const VENDOR_HEADERS = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Blog articles are read from disk at request time; make sure the standalone build ships them.
+  outputFileTracingIncludes: { "/**": ["./content/blog/**/*.md"] },
   async headers() {
     return [
       ...["/dashboard/:path*", "/onboarding", "/login"].map((source) => ({

@@ -38,7 +38,8 @@
   },
   "nav": {
     "pricing": "Preços",
-    "legalBasis": "Base legal"
+    "legalBasis": "Base legal",
+    "blog": "Blog"
   },
   "common": {
     "changeCountry": "Mudar de país",
@@ -820,5 +821,14 @@
         "integrity": "A plataforma guarda o resumo SHA-256 deste arquivo e o exibe na lista de dossiês; use-o para identificar o arquivo exato."
       }
     }
+  },
+  "blog": {
+    "title": "Blog",
+    "intro": "Artigos em linguagem simples sobre exigências de compliance para fornecedores. Informação geral, não aconselhamento jurídico.",
+    "readMore": "Ler o artigo",
+    "minRead": "{minutes} min de leitura",
+    "draft": "RASCUNHO — pendente de revisão",
+    "back": "Voltar ao blog",
+    "empty": "Ainda não há artigos."
   }
 }

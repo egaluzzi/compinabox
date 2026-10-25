@@ -38,7 +38,8 @@
   },
   "nav": {
     "pricing": "Precios",
-    "legalBasis": "Marco legal"
+    "legalBasis": "Marco legal",
+    "blog": "Blog"
   },
   "common": {
     "changeCountry": "Cambiar de país",
@@ -820,5 +821,14 @@
         "integrity": "La plataforma guarda el resumen SHA-256 de este archivo y lo muestra en la lista de dosieres; úselo para identificar el archivo exacto."
       }
     }
+  },
+  "blog": {
+    "title": "Blog",
+    "intro": "Artículos en lenguaje simple sobre los requisitos de cumplimiento para proveedores. Información general, no asesoramiento legal.",
+    "readMore": "Leer el artículo",
+    "minRead": "{minutes} min de lectura",
+    "draft": "BORRADOR — pendiente de revisión",
+    "back": "Volver al blog",
+    "empty": "Todavía no hay artículos."
   }
 }

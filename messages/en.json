@@ -38,7 +38,8 @@
   },
   "nav": {
     "pricing": "Pricing",
-    "legalBasis": "Legal basis"
+    "legalBasis": "Legal basis",
+    "blog": "Blog"
   },
   "common": {
     "changeCountry": "Change country",
@@ -820,5 +821,14 @@
         "integrity": "The platform keeps the SHA-256 digest of this file and shows it in the dossier list; use it to identify the exact file."
       }
     }
+  },
+  "blog": {
+    "title": "Blog",
+    "intro": "Plain-language articles on supplier compliance requirements. General information, not legal advice.",
+    "readMore": "Read the article",
+    "minRead": "{minutes} min read",
+    "draft": "DRAFT — pending review",
+    "back": "Back to the blog",
+    "empty": "No articles yet."
   }
 }
