@@ -12,6 +12,7 @@
 #                only for that site.  CADDY_RESOLVE=host:port:addr is passed to curl --resolve.
 #
 # Read-only for the app: it only makes GET/POST requests that the app answers with 4xx/redirects.
+# shellcheck disable=SC2015
 set -uo pipefail
 
 BASE=${1:?usage: check-caddy-logs.sh <base-url>}
@@ -51,7 +52,7 @@ ok()  { printf 'ok    %s\n' "$1"; }
 bad() { printf 'FAIL  %s\n' "$1"; fail=1; }
 
 for c in "$C_EMP" "$C_VEN" "$C_WEL" "$C_REP" "$C_API" "$C_Q" "$C_COOKIE" "$C_XFF"; do
-  if printf '%s' "$LOG" | grep -q -- "$c"; then bad "canary $c appears in the Caddy log"; else ok "canary ${c%%${RUN}*}… absent from the log"; fi
+  if printf '%s' "$LOG" | grep -q -- "$c"; then bad "canary $c appears in the Caddy log"; else ok "canary ${c%%"${RUN}"*}… absent from the log"; fi
 done
 printf '%s' "$LOG" | grep -q '"uri":"/br"' && ok '/br is logged with its query removed' || bad '/br line missing or still has its query (is Caddy logging at all?)'
 printf '%s' "$LOG" | grep -q '"uri":"/employee/\[redacted\]"' && ok '/employee/… is logged as /employee/[redacted]' || bad '/employee/[redacted] line missing'

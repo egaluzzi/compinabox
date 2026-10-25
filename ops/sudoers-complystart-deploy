@@ -1,0 +1,3 @@
+# /etc/sudoers.d/complystart-deploy — installed by bootstrap-server.sh (validated with visudo -cf).
+# The deploy user can do exactly this as root, and nothing else.
+complystart-deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart complystart, /usr/bin/systemctl is-active complystart, /usr/local/sbin/complystart-migrate *

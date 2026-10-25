@@ -1,0 +1,37 @@
+[Unit]
+Description=ComplyStart (Next.js standalone server)
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=complystart
+Group=complystart
+# `current` is a symlink to releases/<git sha>; the deploy script moves it, then restarts this unit.
+WorkingDirectory=/opt/compinabox/current
+# Secrets and settings (PORT, HOSTNAME=127.0.0.1, APP_ENV, DATABASE_URL, ...). Mode 600, never in git.
+EnvironmentFile=/opt/compinabox/.env
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+# NODE_OPTIONS=--max-old-space-size=<MB> comes from the drop-in written by bootstrap-server.sh
+# (about 60% of the server's RAM, between 384 and 2048).
+# The released git SHA travels with the release directory, so a rollback (moving the symlink back) is
+# reported correctly by /api/health.
+ExecStart=/bin/sh -c 'APP_VERSION="$(cat /opt/compinabox/current/VERSION)" exec /usr/bin/node server.js'
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+
+# Hardening that cannot get in the way of a Node server
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
