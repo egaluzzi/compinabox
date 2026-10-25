@@ -283,6 +283,10 @@ Built after the deploy because Mercado Pago webhooks need a public HTTPS URL. Re
 - [ ] `MercadoPagoProvider` implementing `PaymentProvider`: hosted checkout (preference) with Pix enabled for BR; webhook verifies the `x-signature` HMAC, then **re-fetches the payment by id** from the API — status in the webhook body is never trusted; idempotent on payment id + status
 - [ ] Env: `PAYMENT_PROVIDER=mercadopago`; sandbox credentials first, production credentials last; `ALLOW_FAKE_PAYMENTS` unset and `APP_ENV=production` on the production server
 - [ ] Handles approved, pending (Pix awaiting payment), rejected, cancelled/expired, and refunded/charged-back (marks `BillingRecord`, does not delete the Company)
+- [ ] Refunds and chargebacks set `billing_records.refunded_at` (migration 0009) and alert; no account suspension (Esteban's call later); partial refunds only alert
+- [ ] `live_mode` check: a live payment is refused on staging, a sandbox payment is refused in production
+- [ ] Reconciler (`scripts/reconcile-payments.mjs` + timer) re-fetches stale pending attempts through the same code path as the webhook
+- [ ] **Open gate, not tickable in 9b:** the `x-signature` algorithm proven against a *real* MP-delivered notification (MP's dashboard "simulate notification" to a public https URL) — possible only once a domain with a valid certificate exists (Phase 9d); staging is a bare IP with a self-made certificate
 - [ ] **Paid but not provisioned** (phase 2 marks the attempt `failed` with `email_in_use_after_payment`, logs `PAID BUT NOT PROVISIONED`): policy is manual refund by Esteban in the Mercado Pago dashboard. Add an alert email to an ops address (`OPS_ALERT_EMAIL`) when it happens so it is not only in logs, and a refund helper if the API makes it cheap
 
 **Definition of done**
