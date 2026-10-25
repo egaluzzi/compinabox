@@ -151,7 +151,7 @@ fi
 # 4d. Forbidden claims in copy (CLAUDE.md §8)
 # A *negated* guarantee ("does not guarantee compliance", "no garantiza el cumplimiento", "não garante a conformidade")
 # is the approved footer disclaimer (CONTENT.md §1), not a claim — those lines are exempt.
-BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cumplimiento|garante (a )?conformidade|ISO ?3730[12]|certif(ied|icado|icada) (by|por) (la )?ley|em conformidade com a lei|atende (integralmente )?(a|às) exigências' app messages lib/content lib/documents lib/training lib/employee lib/screening lib/vendors components 2>/dev/null | grep -viE '(^|[^[:alpha:]])(does not|do not|doesn.t|no|não|nao|never|nunca) +(guarantee|garantiza|garante)' || true)
+BANNED=$(grep -rniE 'guarantee[sd]? (legal )?compliance|garantiza(mos)? (el )?cumplimiento|garante (a )?conformidade|ISO ?3730[12]|certif(ied|icado|icada) (by|por) (la )?ley|em conformidade com a lei|atende (integralmente )?(a|às) exigências' app messages lib/content lib/documents lib/training lib/employee lib/screening lib/vendors lib/binder components 2>/dev/null | grep -viE '(^|[^[:alpha:]])(does not|do not|doesn.t|no|não|nao|never|nunca) +(guarantee|garantiza|garante)' || true)
 if [ -n "$BANNED" ]; then echo "$BANNED" | head; bad "forbidden claims" "copy implies guaranteed compliance or ISO certification"; else note "forbidden claims" "none"; fi
 
 # 4e. Second geo mechanism must not exist (CLAUDE.md §4)
@@ -250,6 +250,15 @@ if [ -d lib/screening ]; then
   fi
   KEYFILES=$(grep -rlE 'SCREENING_API_KEY' app lib components --include='*.ts' --include='*.tsx' 2>/dev/null | grep -vE '\.test\.' | sort || true)
   if [ "$KEYFILES" = "lib/screening/index.ts" ]; then note "screening key" "SCREENING_API_KEY read only in lib/screening/index.ts"; else echo "$KEYFILES"; bad "screening key" "SCREENING_API_KEY must be read in exactly one file (lib/screening/index.ts)"; fi
+fi
+
+# 4l. Dossier / binder (phase 8). The PDF leaves the customer's control, so lib/binder reads names,
+# dates, states, scores and counts ONLY: it must not import the modules that read or decrypt
+# employee e-mail/IP, disclosure contents, whistleblower report content/evidence/tracking codes or
+# vendor questionnaire answers, nor name those fields (scripts/check-binder-privacy.sh). The marker
+# test (tests/binder-pdf.test.tsx) proves the output; this is the tripwire on the source.
+if [ -d lib/binder ]; then
+  if BINDER_OUT=$(./scripts/check-binder-privacy.sh 2>&1); then note "binder privacy" "no excluded import or field in lib/binder"; else echo "$BINDER_OUT" | head -20; bad "binder privacy" "lib/binder touches data the dossier must exclude"; fi
 fi
 
 # 4g. KNOWN_ISSUES.md must exist (baseline)

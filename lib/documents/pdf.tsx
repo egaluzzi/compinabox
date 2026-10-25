@@ -1,5 +1,6 @@
 import {
   Document,
+  Font,
   Image,
   Page,
   renderToBuffer,
@@ -11,6 +12,11 @@ import { getT } from "@/lib/i18n";
 import { readUpload, sniffImage } from "@/lib/uploads";
 import { parseDocument } from "./generate";
 import type { StructuredDocument } from "./types";
+
+// react-pdf hyphenates with English patterns, which splits Portuguese words wrongly ("re-sposta").
+// Break lines at spaces only. Registered here because every PDF (documents, roster, binder) imports
+// this module, so they all behave the same.
+Font.registerHyphenationCallback((word) => [word]);
 
 // Built-in Helvetica only: no network font fetch, and its WinAnsi set covers ç ã é õ.
 const styles = StyleSheet.create({
@@ -62,6 +68,11 @@ const styles = StyleSheet.create({
   },
   // render-prop text has no intrinsic width in a flex row, so it gets an explicit one
   pageNumber: { width: 90, textAlign: "right" },
+});
+
+// Text styles of a document's body, shared with the phase 8 binder so a policy looks the same in
+// its own PDF and inside the dossier.
+export const bodyStyles = StyleSheet.create({
   title: { fontSize: 20, fontFamily: "Helvetica-Bold", marginBottom: 14 },
   heading: {
     fontSize: 13,
@@ -71,6 +82,28 @@ const styles = StyleSheet.create({
   },
   p: { marginBottom: 6, fontSize: 10.5, lineHeight: 1.45 },
 });
+
+/** The sections of a document, without page furniture (title excluded). */
+export function DocumentSections({ doc }: { doc: StructuredDocument }) {
+  return (
+    <>
+      {doc.sections.map((s) => (
+        <View key={s.id}>
+          {/* heading + first paragraph never split from each other across a page break */}
+          <View wrap={false}>
+            <Text style={bodyStyles.heading}>{s.heading}</Text>
+            <Text style={bodyStyles.p}>{s.paragraphs[0]}</Text>
+          </View>
+          {s.paragraphs.slice(1).map((p, i) => (
+            <Text key={i} style={bodyStyles.p}>
+              {p}
+            </Text>
+          ))}
+        </View>
+      ))}
+    </>
+  );
+}
 
 export type PdfMeta = { version: number; generatedAt: Date; logo?: LoadedLogo };
 export type LoadedLogo = { data: Buffer; format: "png" | "jpg" };
@@ -114,21 +147,8 @@ function DocumentPdf({
           </View>
         </View>
 
-        <Text style={styles.title}>{doc.title}</Text>
-        {doc.sections.map((s) => (
-          <View key={s.id}>
-            {/* heading + first paragraph never split from each other across a page break */}
-            <View wrap={false}>
-              <Text style={styles.heading}>{s.heading}</Text>
-              <Text style={styles.p}>{s.paragraphs[0]}</Text>
-            </View>
-            {s.paragraphs.slice(1).map((p, i) => (
-              <Text key={i} style={styles.p}>
-                {p}
-              </Text>
-            ))}
-          </View>
-        ))}
+        <Text style={bodyStyles.title}>{doc.title}</Text>
+        <DocumentSections doc={doc} />
 
         <View style={styles.footer} fixed>
           <View style={styles.footerRow}>

@@ -50,6 +50,13 @@
       "when": 1792146529658,
       "tag": "0006_vendor_screening",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792877888471,
+      "tag": "0007_binders",
+      "breakpoints": true
     }
   ]
 }

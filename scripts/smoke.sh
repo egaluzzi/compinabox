@@ -644,6 +644,66 @@ t "(no key) screening unavailable: the page says so and has no screen button, th
 kill $STUB_PID 2>/dev/null; wait $STUB_PID 2>/dev/null
 rm -rf "$STUBDIR" "$P7_HTML" "$P7_HDR"
 
+# ---------------------------------------------------------------------------------------------
+# Phase 8: the dossier (binder) — generate -> poll -> download -> list -> immutability -> tenant
+# isolation, then the file itself is opened (pdf.js) to prove what it contains and what it leaves
+# out. Real Postgres, real HTTP through the standalone build, real session cookies. Company 1 =
+# JAR5 (the one with the employees, the report and the vendors above), company 2 = JAR3.
+# ---------------------------------------------------------------------------------------------
+P8_DL=$(mktemp); P8_HDR=$(mktemp); P8_HTML=$(mktemp); P8_TXT=$(mktemp); P8A=$(mktemp); P8B=$(mktemp)
+( curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' -b "$JAR5" -F stats=on -X POST "$B/dashboard/binder/generate" >"$P8A" ) &
+P8_PID1=$!
+( curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' -b "$JAR5" -F stats=on -X POST "$B/dashboard/binder/generate" >"$P8B" ) &
+P8_PID2=$!
+wait "$P8_PID1" "$P8_PID2"   # NOT a bare `wait`: that would also wait for the server process
+t "two simultaneous clicks: both 303, one 'started' and one 'existing', exactly ONE binder row" bash -c "cat '$P8A' '$P8B' | grep -c '^303 ' | grep -q '^2\$' && cat '$P8A' '$P8B' | grep -q 'generate=started' && cat '$P8A' '$P8B' | grep -q 'generate=existing' && [ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from binders where company_id='$CID'\")\" = 1 ]"
+BID=$(SQL "select id from binders where company_id='$CID' order by created_at limit 1")
+P8_ST=$(curl -s -b "$JAR5" "$B/dashboard/binder/status?id=$BID")
+t "right after the click the job is queued/running/ready (the request did not wait for the render)" bash -c "echo '$P8_ST' | grep -qE '\"status\":\"(queued|running|ready)\"'"
+for _ in $(seq 1 240); do
+  P8_ST=$(curl -s -b "$JAR5" "$B/dashboard/binder/status?id=$BID"); S=$(echo "$P8_ST" | JQ status)
+  [ "$S" = ready ] || [ "$S" = failed ] && break; sleep 0.5
+done
+t "polling the status handler reaches ready (and nothing else is queued)" bash -c "[ '$S' = ready ] && [ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from binders where company_id='$CID' and status in ('queued','running')\")\" = 0 ]"
+curl -s -D "$P8_HDR" -b "$JAR5" -o "$P8_DL" "$B/dashboard/binder/$BID/pdf"
+P8_SIZE=$(wc -c <"$P8_DL" | tr -d ' ')
+t "download: 200 attachment, application/pdf, no-store, nosniff, ASCII filename dossie-<slug>-YYYYMMDD.pdf; starts with %PDF; size matches the stored size" bash -c "tr -d '\r' <'$P8_HDR' | head -1 | grep -q ' 200' && tr -d '\r' <'$P8_HDR' | grep -iq '^content-type: application/pdf' && tr -d '\r' <'$P8_HDR' | grep -iqE '^cache-control: .*no-store' && tr -d '\r' <'$P8_HDR' | grep -iq '^x-content-type-options: nosniff' && tr -d '\r' <'$P8_HDR' | grep -iqE '^content-disposition: attachment; filename=\"dossie-[a-z0-9-]+-[0-9]{8}\.pdf\"\$' && head -c 5 '$P8_DL' | grep -q '%PDF-' && [ '$P8_SIZE' -gt 1000 ] && [ '$P8_SIZE' = \"\$(psql '$DATABASE_URL' -Atc \"select size_bytes from binders where id='$BID'\")\" ]"
+P8_SHA=$(sha256sum "$P8_DL" | cut -d' ' -f1)
+curl -s -b "$JAR5" "$B/dashboard/binder" -o "$P8_HTML"
+t "the list shows the binder with a SHA-256 equal to sha256sum of the downloaded file, its page count, and the download link" bash -c "grep -q '$P8_SHA' '$P8_HTML' && [ \"\$(psql '$DATABASE_URL' -Atc \"select sha256 from binders where id='$BID'\")\" = '$P8_SHA' ] && grep -q '/dashboard/binder/$BID/pdf' '$P8_HTML' && grep -q 'O arquivo contém nomes de colaboradores e datas; compartilhe só com quem precisa.' '$P8_HTML'"
+echo "--- smoke evidence: the binders row as stored (psql -x, PDF bytes shown as their length)"
+psql "$DATABASE_URL" -x -c "select id, company_id, status, options, as_of, started_at, finished_at, error_code, size_bytes, page_count, sha256, length(pdf) as pdf_bytes from binders where id='$BID'"
+t "the overview card links the latest binder" bash -c "curl -s -b '$JAR5' $B/dashboard | grep -q '/dashboard/binder/$BID/pdf'"
+P8C=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -b "$JAR5" -X POST "$B/dashboard/binder/generate")
+t "right after a finished job a new click is refused (cooldown) and nothing is created" bash -c "echo '$P8C' | grep -q 'generate=cooldown' && [ \"\$(psql '$DATABASE_URL' -Atc \"select count(*) from binders where company_id='$CID'\")\" = 1 ]"
+
+# immutability: a direct SQL change to a ready binder is refused by the database itself
+P8_UPD=$(psql "$DATABASE_URL" -c "update binders set error_code='x' where id='$BID'" 2>&1); P8_DEL=$(psql "$DATABASE_URL" -c "delete from binders where id='$BID'" 2>&1); P8_TRN=$(psql "$DATABASE_URL" -c "truncate binders" 2>&1)
+echo "--- smoke evidence: direct SQL against the ready binder"; echo "$P8_UPD"; echo "$P8_DEL"; echo "$P8_TRN"
+t "direct SQL UPDATE / DELETE / TRUNCATE on a ready binder all fail ('immutable'); the row and its hash are unchanged" bash -c "echo '$P8_UPD' | grep -q 'immutable' && echo '$P8_DEL' | grep -q 'immutable' && echo '$P8_TRN' | grep -q 'immutable' && [ \"\$(psql '$DATABASE_URL' -Atc \"select sha256 from binders where id='$BID'\")\" = '$P8_SHA' ]"
+
+# tenant isolation + no session
+t "company 2: company 1's binder download -> 404, status -> 404; its binder page shows neither the id nor the hash" bash -c "[ \"\$(code -b '$JAR3' $B/dashboard/binder/$BID/pdf)\" = 404 ] && [ \"\$(code -b '$JAR3' '$B/dashboard/binder/status?id=$BID')\" = 404 ] && H=\$(curl -s -b '$JAR3' $B/dashboard/binder) && ! echo \"\$H\" | grep -q '$BID' && ! echo \"\$H\" | grep -q '$P8_SHA'"
+t "no session: binder download / status / generate answer 401, the page redirects to /login" bash -c "[ \"\$(code $B/dashboard/binder/$BID/pdf)\" = 401 ] && [ \"\$(code '$B/dashboard/binder/status?id=$BID')\" = 401 ] && [ \"\$(code -X POST $B/dashboard/binder/generate)\" = 401 ] && curl -s -D - -o /dev/null $B/dashboard/binder | tr -d '\r' | grep -iqE '^location: .*/login'"
+
+# the FILE: open it and check what it says and what it leaves out
+node --input-type=module -e '
+import { readFileSync, writeFileSync } from "node:fs";
+const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+const doc = await pdfjs.getDocument({ data: new Uint8Array(readFileSync(process.argv[1])), useSystemFonts: false, verbosity: 0 }).promise;
+let out = [];
+for (let i = 1; i <= doc.numPages; i++) { const c = await (await doc.getPage(i)).getTextContent(); out.push(c.items.map((x) => ("str" in x ? x.str + (x.hasEOL ? "\n" : " ") : "")).join("")); }
+writeFileSync(process.argv[2], out.join("\n=====PAGE=====\n"));
+const o = await doc.getOutline(); console.log("pages", doc.numPages, "outline entries", (o || []).length);
+' "$P8_DL" "$P8_TXT"
+P8_COMPACT=$(tr -d ' \n\t' <"$P8_TXT" | tr 'A-Z' 'a-z')
+t "the PDF carries the company name, the active employees (Ana, Beto; Carla was deactivated earlier, so she is not listed) and the vendor" bash -c "grep -q 'Smoke Settings Ltda' '$P8_TXT' && grep -q 'Ana Smoke' '$P8_TXT' && grep -q 'Beto Smoke' '$P8_TXT' && ! grep -q 'Carla Smoke' '$P8_TXT' && grep -q '$V_LIST' '$P8_TXT'"
+t "the PDF carries the channel URL (APP_URL + /report/<slug>) and the opt-in statistics total" bash -c "grep -q '$B/report/$SLUG1' '$P8_TXT' && grep -qE 'Relatos recebidos até a data da posição: [0-9]+' '$P8_TXT'"
+t "the PDF carries 'Página 1 de N', the not-an-audit statement, the not-legal-advice line and the draft notice" bash -c "grep -qE 'Página 1 de [0-9]+' '$P8_TXT' && grep -q 'Não é uma auditoria, uma certificação nem um parecer jurídico' '$P8_TXT' && grep -q 'não constitui aconselhamento jurídico' '$P8_TXT' && grep -q 'RASCUNHO — pendente de revisão' '$P8_TXT'"
+t "the PDF does NOT contain: employee e-mails, the acceptance IP, the disclosure text, the report text, the tracking code (formatted or raw), the vendor's answers, the vendor contact e-mails" bash -c "for needle in 'example.test' '203.0.113' 'minhaprima' 'descriçãosecreta' '$(echo "$RAW" | tr 'A-Z' 'a-z')' 'mariasilvasmoke' 'holdingsmokesa' 'primoéprefeito'; do echo '$P8_COMPACT' | grep -q \"\$needle\" && { echo \"leaked: \$needle\"; exit 1; }; done; exit 0"
+t "the PDF says 'ferramenta de triagem, não uma investigação de due diligence' and contains no 'em conformidade' and no ISO 37301/37002" bash -c "grep -q 'ferramenta de triagem, não uma investigação de due diligence' '$P8_TXT' && ! grep -qiE 'em conformidade|ISO ?3730[12]' '$P8_TXT'"
+rm -f "$P8_DL" "$P8_HDR" "$P8_HTML" "$P8_TXT" "$P8A" "$P8B"
+
 rm -f "$JAR4" "$SO_HDR" "$JAR_OLD" "$JAR5"
 
 rm -f "$JAR3" /tmp/pdf.hdr /tmp/doc1.pdf /tmp/st3.out

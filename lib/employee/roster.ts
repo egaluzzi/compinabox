@@ -1,5 +1,6 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type { Db } from "@/lib/db/client";
+import { sequentially } from "@/lib/db/sequence";
 import {
   acknowledgments,
   disclosures,
@@ -77,7 +78,8 @@ export async function getRoster(
   const year = disclosureYear(now);
   const hasTraining = trainingAvailable(locale);
 
-  const [emps, docRows, acks, trainings, discs] = await Promise.all([
+  // one after another: the phase 8 binder runs this inside a single-connection transaction
+  const [emps, docRows, acks, trainings, discs] = await sequentially([
     db
       .select()
       .from(employees)

@@ -94,6 +94,7 @@ Public URLs use two-letter country prefixes; locale codes are internal and must 
 - `/lib/db/schema.ts`, `/lib/db/client.ts`, `/lib/db/migrations/`
 - `/lib/payments/` — `PaymentProvider` interface, `fake` provider (dev/test only, guarded), Mercado Pago implementation (phase 9b)
 - `/lib/screening/` — `ScreeningProvider` interface + OpenSanctions implementation
+- `/lib/binder/` — the dossier PDF (phase 8): snapshot, react-pdf layout, async job runner, `REVIEW.md` for the lawyer. Reads names/dates/states/counts only; `scripts/check-binder-privacy.sh` enforces it
 - `/messages/{locale}.json` — next-intl messages, one per locale
 - **Standing checklist item, every phase that adds a tenant-owned table:** it has a `company_id` column, every query filters by `company_id` taken from the authenticated session (never from a request param), and there is a test proving a second tenant can't read it. `verify.sh` greps for tenant tables without `company_id`.
 - Env vars (all in `.env.example`): `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `APP_URL`, `ENABLED_COUNTRIES`, `RESEND_API_KEY`, `EMAIL_FROM`, `PAYMENT_PROVIDER` (`none` default | `fake` | `mercadopago`), `ALLOW_FAKE_PAYMENTS`, `FAKE_PAYMENTS_SECRET`, `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_PUBLIC_KEY`, `MERCADOPAGO_WEBHOOK_SECRET`, `REPORT_ENCRYPTION_KEYS`, `EVIDENCE_DIR`, `SCREENING_API_KEY`, `SCREENING_BASE_URL`, `SCREENING_DATASET`, `GTM_ID`

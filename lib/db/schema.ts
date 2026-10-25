@@ -2,12 +2,15 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  customType,
+  index,
   integer,
   jsonb,
   pgTable,
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -445,3 +448,51 @@ export const billingRecords = pgTable("billing_records", {
   utmCampaign: text("utm_campaign"),
   paidAt: timestamp("paid_at", { withTimezone: true }).notNull(),
 });
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType: () => "bytea",
+});
+
+export type BinderOptions = { includeChannelStats: boolean };
+
+// The dossier PDF (phase 8). A job row (queued -> running -> ready | failed); the bytes live in
+// Postgres so the nightly pg_dump covers them. IMMUTABLE once ready: a trigger (migration 0007)
+// rejects UPDATE and DELETE of a ready row and every TRUNCATE; a partial unique index allows one
+// queued/running job per company. List queries must not select `pdf`.
+export const binders = pgTable(
+  "binders",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: companyId(),
+    status: text("status").notNull().default("queued"), // queued | running | ready | failed
+    requestedByUserId: uuid("requested_by_user_id").references(() => users.id),
+    options: jsonb("options").$type<BinderOptions>().notNull(),
+    // the instant the data snapshot was taken (printed on the cover); set when the job finishes
+    asOf: timestamp("as_of", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    errorCode: text("error_code"), // fixed vocabulary (lib/binder/constants.ts), never a message
+    sizeBytes: integer("size_bytes"),
+    pageCount: integer("page_count"),
+    sha256: text("sha256"),
+    pdf: bytea("pdf"),
+  },
+  (t) => [
+    check(
+      "binders_status_check",
+      sql`${t.status} in ('queued', 'running', 'ready', 'failed')`,
+    ),
+    check(
+      "binders_ready_complete",
+      sql`${t.status} <> 'ready' or (${t.pdf} is not null and ${t.sha256} is not null and ${t.sizeBytes} is not null and ${t.pageCount} is not null and ${t.asOf} is not null)`,
+    ),
+    index("binders_company_created").on(t.companyId, t.createdAt),
+    // one active job per company: a second click finds this one instead of starting another
+    uniqueIndex("binders_one_active_per_company")
+      .on(t.companyId)
+      .where(sql`${t.status} in ('queued', 'running')`),
+  ],
+);

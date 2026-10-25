@@ -54,20 +54,47 @@ export async function scratchDb() {
   const url = new URL(base);
   url.pathname = `/${name}`;
   const pool = new Pool({ connectionString: url.toString(), max: 4 });
+  // DROP DATABASE ... WITH (FORCE) at teardown kills any connection still closing; that is expected
+  pool.on("error", () => {});
   const db = drizzle(pool, { schema }) as Db;
   await migrate(db, {
     migrationsFolder: path.resolve(__dirname, "../../lib/db/migrations"),
   });
   const client = new Client({ connectionString: url.toString() });
+  client.on("error", () => {});
   await client.connect();
   return {
     db,
     client,
+    url: url.toString(),
     async drop() {
       await client.end();
       await pool.end();
       await admin.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);
       await admin.end();
+    },
+  };
+}
+
+/**
+ * For test files that create a lot of tenant data (the binder tests seed hundreds of employees,
+ * acknowledgments, reports): a throwaway migrated database that IS "the database" for this file
+ * (DATABASE_URL + getDb()), so it neither pollutes the shared verify database — scripts/smoke.sh and
+ * the whole-database anonymity scan in the whistleblower test read that one — nor is polluted by it.
+ * Call before anything calls getDb(); call `drop()` in afterAll.
+ */
+export async function useScratchTestDb() {
+  const scratch = await scratchDb();
+  process.env.DATABASE_URL = scratch.url;
+  const db = getDb();
+  (globalThis as unknown as { __pool?: Pool }).__pool?.on("error", () => {});
+  return {
+    db,
+    async drop() {
+      await (globalThis as unknown as { __pool?: Pool }).__pool?.end();
+      (globalThis as unknown as { __pool?: Pool; __db?: Db }).__db = undefined;
+      (globalThis as unknown as { __pool?: Pool }).__pool = undefined;
+      await scratch.drop();
     },
   };
 }

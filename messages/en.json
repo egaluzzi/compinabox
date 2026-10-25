@@ -207,7 +207,12 @@
       "binder": "Binder",
       "binderDownload": "Download binder",
       "sections": "Sections",
-      "completionDetail": "{full} of {active} employees fully complete"
+      "completionDetail": "{full} of {active} employees fully complete",
+      "binderNone": "No dossier generated yet.",
+      "binderReady": "Latest dossier: as of {date}",
+      "binderActive": "A dossier is being generated.",
+      "binderFailed": "The latest attempt to generate the dossier failed.",
+      "binderOpen": "Open the dossier page"
     },
     "employees": {
       "empty": "No employees yet. Once your team is added, each person's reading and acknowledgment status will appear here.",
@@ -455,6 +460,49 @@
         "br": "Brazil",
         "mx": "Mexico"
       }
+    },
+    "binder": {
+      "title": "Dossier",
+      "intro": "Generate a PDF file with the documents and records of your account, to hand to an auditor or a buyer. The dossier shows what the platform had recorded when it was generated; it is not an audit, a certification or a legal opinion.",
+      "notice": "The file contains employee names and dates; share it only with those who need it.",
+      "excluded": "Left out: employee e-mail and IP addresses, disclosure content, report content and evidence, tracking codes and vendor questionnaire answers.",
+      "draftWarning": "While any documents or texts are drafts, the cover of the dossier carries a draft notice.",
+      "statsLabel": "Include whistleblower channel usage statistics (totals by status, no content)",
+      "generate": "Generate dossier",
+      "unavailable": "The dossier is not yet available in your company's language.",
+      "current": "Dossier in progress",
+      "refreshHint": "This page updates by itself. If it does not, use the link below.",
+      "refresh": "Refresh",
+      "status": {
+        "queued": "Queued",
+        "running": "Generating",
+        "ready": "Ready",
+        "failed": "Failed"
+      },
+      "error": {
+        "too_large": "The file became too large (25 MB limit).",
+        "snapshot_failed": "The account data could not be read. Try again.",
+        "render_failed": "The PDF could not be built. Try again.",
+        "interrupted": "The generation was interrupted. Try again."
+      },
+      "flash": {
+        "started": "Generation started.",
+        "existing": "A dossier is already being generated; follow it here.",
+        "cooldown": "Wait a few seconds before generating another dossier.",
+        "cap": "Daily limit of {cap} dossiers reached (UTC day). Try again tomorrow.",
+        "unavailable": "The dossier is not yet available in your company's language."
+      },
+      "previous": "Previous dossiers",
+      "empty": "No dossier generated yet.",
+      "colDate": "As of",
+      "colStatus": "Status",
+      "colSize": "Size",
+      "colPages": "Pages",
+      "colHash": "SHA-256",
+      "colDownload": "File",
+      "download": "Download PDF",
+      "hashHelp": "The SHA-256 digest identifies the exact file; give it to whoever receives the dossier.",
+      "withStats": "with channel statistics"
     }
   },
   "email": {
@@ -644,5 +692,126 @@
     "thanksBody": "Thank you. Your answers have been sent to the company that requested the questionnaire. You can close this page.",
     "invalidTitle": "This link is no longer valid",
     "invalidBody": "The questionnaire link has already been used, has expired or has been replaced. Ask the company that invited you to send a new link."
+  },
+  "binder": {
+    "pdf": {
+      "title": "Integrity dossier",
+      "coverSubtitle": "Compilation of platform records",
+      "taxId": "Tax ID (CNPJ)",
+      "asOf": "Records as of",
+      "binderId": "Dossier identifier",
+      "timezoneNote": "Dates and times are in Brasília time.",
+      "draftNote": "This dossier includes documents or texts that are drafts pending legal review. Do not present them as final.",
+      "howTitle": "How to read this dossier",
+      "how1": "This dossier is a compilation of the records held on the platform up to the date shown on the cover. It shows what had been generated, sent, accepted and completed by then.",
+      "how2": "It is not an audit, a certification or a legal opinion, and it does not state that the company meets any law or requirement. Whoever receives it should make their own assessment.",
+      "how3": "The data comes from the company's own records on the platform and has not been independently verified. This dossier is not legal advice.",
+      "contents": "Contents",
+      "headerTitle": "Integrity dossier",
+      "footerId": "Dossier {id}",
+      "section": {
+        "legal": "Legal context",
+        "documents": "Code of conduct and policies",
+        "training": "Training report",
+        "acknowledgments": "Acknowledgment roster",
+        "disclosures": "Conflict of interest disclosures",
+        "channel": "Whistleblower channel",
+        "vendors": "Vendor screening",
+        "notes": "Data notes"
+      },
+      "legal": {
+        "intro": "This section summarises the legal-basis content the platform keeps for the company's country, which feeds the documents in this dossier. It is general information.",
+        "draftNote": "This content is a draft awaiting review by a lawyer.",
+        "references": "References cited",
+        "required": "Program elements cited as required",
+        "recommended": "Program elements cited as recommended"
+      },
+      "documents": {
+        "intro": "Current versions of the code of conduct and the five policies on the as-of date, as generated by the platform. Each document starts on a new page.",
+        "meta": "Version {version} · generated on {date}",
+        "missing": "This document did not exist on the as-of date."
+      },
+      "counts": {
+        "active": "Active employees: {count}"
+      },
+      "empty": {
+        "employees": "No active employees on the as-of date."
+      },
+      "col": {
+        "name": "Name",
+        "status": "Status",
+        "date": "Date",
+        "score": "Score",
+        "document": "Document",
+        "version": "Version"
+      },
+      "state": {
+        "done": "Completed",
+        "pending": "Pending",
+        "outdated": "Outdated"
+      },
+      "training": {
+        "intro": "Training module results for each active employee. The platform records only completions that reached the minimum score.",
+        "module": "Anti-corruption training module (identifier {id}): {lessons} lessons and a quiz of {questions} questions. Minimum score: {pass}%.",
+        "draft": "The content of this module is a draft pending review.",
+        "counts": "Invited: {invited} · Completed: {completed} · Active employees: {active}",
+        "note": "Attempts that did not reach the minimum score are not recorded; \"Pending\" includes people who have not tried and people who have not yet reached the score.",
+        "unavailable": "Training is not available in the company's language."
+      },
+      "acks": {
+        "intro": "For each active employee, the date on which they accepted the current version of each document. Only names and dates appear; e-mail and IP addresses are not part of this dossier.",
+        "versions": "Current versions",
+        "legend": "Date: accepted the current version · Outdated: accepted only an earlier version · Pending: not accepted."
+      },
+      "disclosures": {
+        "intro": "Annual conflict of interest disclosure, period {year}. Only the name and the submission date appear; the content of the disclosures is not part of this dossier.",
+        "counts": "Submitted: {submitted} of {total} active employees",
+        "submitted": "Submitted"
+      },
+      "channel": {
+        "intro": "The whistleblower channel is a public page, no account needed, published at the address below.",
+        "url": "Public address",
+        "since": "Available since",
+        "how": "How it works",
+        "how1": "Anyone can submit a report through the channel's public page, without creating an account.",
+        "how2": "A report can be anonymous; the form only receives contact details if the person chooses to give them.",
+        "how3": "On submitting, the person receives a tracking code to check the status of the report without identifying themselves.",
+        "how4": "Reports are visible only to the company's administrator on the platform, which records the status and notes of each case.",
+        "how5": "The text of reports, optional contact details and evidence are stored encrypted on the platform's server.",
+        "how6": "The platform does not store the IP address or browser of the person submitting a report with the report record. Infrastructure services may keep their own technical logs.",
+        "limits": "This dossier does not show the content of reports and does not show that the channel has been used or answered.",
+        "stats": "Usage statistics (optional)",
+        "statsTotal": "Reports received up to the as-of date: {count}",
+        "statsNote": "Totals only; no report content.",
+        "status": {
+          "new": "New",
+          "under_review": "Under review",
+          "closed": "Closed"
+        }
+      },
+      "vendors": {
+        "intro": "Active vendors registered on the platform, with the questionnaire state and the result of the latest screening. The screening is a screening tool, not a due diligence investigation.",
+        "empty": "No vendors registered on the as-of date.",
+        "count": "Active vendors: {count}",
+        "colVendor": "Vendor",
+        "colCountry": "Country",
+        "colQuestionnaire": "Questionnaire",
+        "colScreening": "Screening",
+        "lists": "Lists: {dataset}",
+        "matches": "{count, plural, one {# possible match} other {# possible matches}}",
+        "noAnswers": "Questionnaire answers are not part of this dossier."
+      },
+      "notes": {
+        "asOf": "All data was read at a single instant, {date}; later changes do not appear in this dossier.",
+        "employees": "Employees: only employees active on the as-of date appear, with name and dates. Deactivated employees are not listed.",
+        "excluded": "Deliberately left out: employee e-mail and IP addresses; the content of conflict of interest disclosures; the content of whistleblower reports, evidence and tracking codes; vendor questionnaire answers.",
+        "documents": "Documents: these are the versions current on the as-of date, as generated by the platform from the company's data.",
+        "vendors": "Vendors: the screening queries public lists on the date shown and records what was queried and what came back. It is not a conclusion about the vendor.",
+        "statsOn": "Whistleblower channel usage statistics: included in this edition, by choice of whoever generated the dossier.",
+        "statsOff": "Whistleblower channel usage statistics: not included in this edition.",
+        "personalData": "This file contains employee names and dates. Share it only with those who need it.",
+        "integrity": "The platform keeps the SHA-256 digest of this file and shows it in the dossier list; use it to identify the exact file."
+      }
+    }
   }
 }

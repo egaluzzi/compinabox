@@ -4,6 +4,7 @@ import type { Db } from "./client";
 import {
   acknowledgments,
   billingRecords,
+  binders,
   companies,
   disclosures,
   documents,
@@ -38,6 +39,7 @@ export const TENANT_TABLES = {
   vendorResponses,
   vendorScreenings,
   billingRecords,
+  binders,
 } as const;
 
 export type TenantTableName = keyof typeof TENANT_TABLES;
