@@ -2,8 +2,18 @@
 
 /** A rendered file above this fails with `too_large` (the bytes are stored in Postgres). */
 export const BINDER_MAX_BYTES = 25 * 1024 * 1024;
-/** Process-wide cap on simultaneous renders (one Node process under systemd, no queue service). */
-export const BINDER_CONCURRENCY = 2;
+/**
+ * Process-wide cap on simultaneous renders (one Node process under systemd, no queue service).
+ * Read from the BINDER_CONCURRENCY env var (default 1: a small droplet cannot spare the memory for
+ * two PDF renders at once); values outside 1..8 fall back to the default.
+ */
+export const BINDER_CONCURRENCY = parseConcurrency(
+  process.env.BINDER_CONCURRENCY,
+);
+export function parseConcurrency(raw: string | undefined): number {
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 1 && n <= 8 ? n : 1;
+}
 /** A queued/running job older than this is marked `failed: interrupted` when someone looks. */
 export const BINDER_STUCK_MS = 10 * 60 * 1000;
 /** Pause after a job finishes (ready or failed) before the same company can start another. */

@@ -1,4 +1,6 @@
 // @vitest-environment node
+import { GET as statusGET } from "@/app/api/checkout/status/route";
+import { TERMS_VERSION } from "@/lib/legal/version";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,6 +39,8 @@ async function paidAttempt() {
     taxId: "11222333000181",
     billingEmail: `r-${uid()}@example.test`,
     utm: null,
+    termsAccepted: true,
+    termsVersion: TERMS_VERSION,
   });
   if (!r.ok) throw new Error(r.error);
   const [attempt] = await db
@@ -144,5 +148,32 @@ describe("return page state / post-payment session", () => {
     expect((await readReturnState(db, "not-a-uuid", "x")).status).toBe(
       "unknown",
     );
+  });
+});
+
+describe("GET /api/checkout/status: amount for the conversion event", () => {
+  const call = (id: string, token?: string) =>
+    statusGET(
+      new Request(`http://localhost/api/checkout/status?attempt=${id}`, {
+        headers: token ? { cookie: `return_token=${token}` } : {},
+      }),
+    );
+  it("pending: no amount; paid: amountCents + currency and nothing identifying", async () => {
+    const a = await paidAttempt();
+    const pending = await (await call(a.attemptId)).json();
+    expect(pending).toEqual({
+      status: "pending",
+      country: "br",
+      signedIn: false,
+    });
+    await pay(a.attempt);
+    const paid = await (await call(a.attemptId)).json();
+    expect(paid).toEqual({
+      status: "paid",
+      country: "br",
+      signedIn: false,
+      amountCents: a.attempt.amountCents,
+      currency: a.attempt.currency,
+    });
   });
 });

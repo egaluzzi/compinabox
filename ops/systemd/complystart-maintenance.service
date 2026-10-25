@@ -1,0 +1,12 @@
+[Unit]
+Description=ComplyStart daily clean-up (expired employee sessions and sign-in tokens)
+After=postgresql.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/opt/compinabox/.env
+WorkingDirectory=/opt/compinabox/current
+ExecStart=/usr/bin/node scripts/maintenance.mjs
+User=complystart
+Group=complystart
+Nice=10

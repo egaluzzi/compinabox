@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { CheckoutForm } from "@/components/CheckoutForm";
 import { isCountry, isCountryEnabled } from "@/lib/countries";
 import { COUNTRY_LOCALE, getT, localeFromCookies } from "@/lib/i18n";
+import { TERMS_VERSION } from "@/lib/legal/version";
 import { resolveProvider } from "@/lib/payments";
 import { formatPrice, PRICING } from "@/lib/pricing";
 import { pageMetadata } from "@/lib/seo";
@@ -75,6 +76,7 @@ export default async function Checkout({
       </p>
       <CheckoutForm
         country={country}
+        termsVersion={TERMS_VERSION}
         labels={{
           companyName: t("checkout.companyName"),
           taxId: country === "br" ? t("checkout.taxIdBr") : t("checkout.taxId"),
@@ -82,10 +84,15 @@ export default async function Checkout({
           button: t("checkout.button"),
           processing: t("checkout.processing"),
           signIn: t("checkout.signInLink"),
+          acceptPrefix: t("checkout.acceptPrefix"),
+          acceptAnd: t("checkout.acceptAnd"),
+          termsLink: t("footer.terms"),
+          privacyLink: t("footer.privacy"),
           errors: {
             invalid_name: t("checkout.errInvalidName"),
             invalid_tax_id: t("checkout.errInvalidTaxId"),
             invalid_email: t("checkout.errInvalidEmail"),
+            terms_not_accepted: t("checkout.errTerms"),
             email_in_use: t("checkout.errEmailInUse"),
             country_unavailable: t("checkout.errCountry"),
             unavailable: t("checkout.unavailable"),

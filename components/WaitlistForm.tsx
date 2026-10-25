@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { trackEvent } from "@/lib/tracking";
 
 type Props = {
   /** Fixed country code for localized pages; null on `/`, where visitors type their own. */
@@ -35,6 +36,7 @@ export function WaitlistForm({ country, labels }: Props) {
           website: data.get("website"),
         }),
       });
+      if (res.ok) trackEvent({ event: "lead_generic_country_waitlist" });
       setStatus(res.ok ? "success" : res.status === 422 ? "invalid" : "error");
     } catch {
       setStatus("error");

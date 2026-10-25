@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { signOut } from "@/auth";
 import { DashboardNav } from "@/components/DashboardNav";
@@ -83,6 +84,10 @@ export default async function DashboardLayout({
           {children}
         </main>
       </div>
+      <footer className="mx-auto flex max-w-6xl gap-x-4 px-4 pb-6 text-sm text-slate-600">
+        <Link href="/legal/terms">{t("footer.terms")}</Link>
+        <Link href="/legal/privacy">{t("footer.privacy")}</Link>
+      </footer>
     </div>
   );
 }

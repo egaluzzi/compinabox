@@ -107,6 +107,10 @@ export const checkoutAttempt = pgTable("checkout_attempt", {
   utmSource: text("utm_source"),
   utmMedium: text("utm_medium"),
   utmCampaign: text("utm_campaign"),
+  // Acceptance of the terms of service at checkout (phase 9): when, and which text version
+  // (lib/legal/version.ts). NULL on rows created before the checkbox existed.
+  termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+  termsVersion: text("terms_version"),
   // Browser binding for the post-payment sign-in (hash only; the token is in an httpOnly cookie).
   returnTokenHash: text("return_token_hash").notNull(),
   returnTokenExpiresAt: timestamp("return_token_expires_at", {

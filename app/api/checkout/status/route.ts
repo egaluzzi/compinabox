@@ -19,11 +19,23 @@ export async function GET(request: Request) {
   if (state.status === "unknown") return json({ status: "unknown" }, 404);
 
   const [row] = await db
-    .select({ country: checkoutAttempt.country })
+    .select({
+      country: checkoutAttempt.country,
+      amountCents: checkoutAttempt.amountCents,
+      currency: checkoutAttempt.currency,
+    })
     .from(checkoutAttempt)
     .where(eq(checkoutAttempt.id, attemptId));
   const response = NextResponse.json(
-    { status: state.status, country: row?.country, signedIn: !!state.user },
+    {
+      status: state.status,
+      country: row?.country,
+      signedIn: !!state.user,
+      // For the consent-gated `purchase` conversion event (value + currency only).
+      ...(state.status === "paid" && row
+        ? { amountCents: row.amountCents, currency: row.currency }
+        : {}),
+    },
     { headers: { "Cache-Control": "no-store" } },
   );
   if (state.user) {

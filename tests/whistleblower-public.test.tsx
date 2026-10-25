@@ -140,15 +140,16 @@ describe("response headers (next.config) for the public channel", () => {
     }
   });
 
-  it("the proxy matcher is unchanged: the channel is not touched by geo / UTM / consent logic", async () => {
-    const { config } = await import("@/proxy");
-    expect(config.matcher).toEqual([
-      "/",
-      "/ar/:path*",
-      "/br/:path*",
-      "/mx/:path*",
-      "/checkout",
-    ]);
+  it("the proxy does no geo / UTM / consent work on the channel (phase 9 widened the matcher only so the staging X-Robots-Tag covers every path)", async () => {
+    const { proxy } = await import("@/proxy");
+    const { NextRequest } = await import("next/server");
+    const res = proxy(
+      new NextRequest("http://localhost:3000/report/acme?utm_source=x", {
+        headers: { "cf-ipcountry": "BR", cookie: "consent=accepted" },
+      }),
+    );
+    expect(res.headers.get("location")).toBeNull();
+    expect(res.headers.get("set-cookie")).toBeNull();
   });
 });
 

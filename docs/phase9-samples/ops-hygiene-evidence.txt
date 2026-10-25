@@ -1,0 +1,19 @@
+$ ./scripts/check-ops-hygiene.sh   # real tree (shellcheck 0.10.0 on PATH)
+bash -n: 15 script(s) parsed
+shellcheck: clean (10 at warning level, 5 at error level)
+ops hygiene: ok
+exit 0
+
+$ HYGIENE_ROOT=<tree with planted violations> ./scripts/check-ops-hygiene.sh
+ops/broken.sh: line 1: syntax error near unexpected token `then'
+ops/broken.sh: line 1: `if then'
+FAIL  ops/broken.sh does not parse
+bash -n: 3 script(s) parsed
+shellcheck: not installed (skipped)
+ops/k.txt:1:-----BEGIN OPENSSH PRIVATE KEY-----
+ops/bad.sh:1:ssh -o StrictHostKeyChecking=no host
+.github/workflows/x.yml:1:run: ssh-keyscan host >> known_hosts
+FAIL  host-key checking weakened, ssh-keyscan, or a private key in ops/ or .github/
+ops/a.conf:1:SECRET=changeme
+FAIL  a changeme placeholder in ops/ or .github/
+exit 1
