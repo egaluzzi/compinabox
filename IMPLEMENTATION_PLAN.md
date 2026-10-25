@@ -241,41 +241,38 @@ Judgment: PNGs of the cover, a contents page, a long-table page, the channel pag
 
 ---
 
-## Phase 9 — Production deploy, tracking, blog seeding (Brazil launch)
+## Phase 9 — Staging deploy on the dev server, environment safeguards, legal drafts, tracking
 
-SPEC §9 (blog), §10, CLAUDE.md §4.
+Esteban's decision (2026-10-25): first deploy goes to his DigitalOcean **dev server `138.197.70.66`, folder `/opt/compinabox`**, **no Cloudflare yet**, **dummy e-mail**, legal pages **drafted by the team**, legal review **later**. So this phase builds a *staging* environment: the real pipeline (build → deploy → migrate → health check → rollback → remote smoke), the real server layout (Caddy, systemd, Postgres, backups), but with test data only and loud guards so it can never be mistaken for production. The production go-live items that need a domain, Cloudflare, Resend, a lawyer or real payments are collected in **Phase 9d** and still block the Brazil launch.
 
-- [ ] `deploy.yml`: on push to `main` → build → rsync standalone to droplet → restart `complystart.service`. **Migration step is manual until Esteban approves automating it.**
-- [ ] Caddyfile, `complystart.service`, backup timer — committed under `/ops/` with install notes. **Gate: Esteban installs the backup timer and completes a restore test on the droplet before any real customer data** (CLAUDE.md §4)
-- [ ] GTM container after consent; events `view_pricing`, `begin_checkout`, `purchase` (value+currency), `lead_generic_country_waitlist`
-- [ ] Blog: `/{country}/blog/[slug]` with MDX; seed the 4 Brazil articles + 3 English generic articles from CONTENT.md §6 (drafts, flagged for review); `Article` JSON-LD
-- [ ] Legal pages: real BR privacy policy and terms **from Esteban's legal review** — if not available, pages stay "DRAFT" and launch is blocked (escalation rule 2)
-- [ ] **Legal review gate:** `lib/content/br.ts` and the pt-BR document templates (`lib/documents/REVIEW.md`) reviewed by a Brazilian lawyer, corrections applied, `reviewStatus` set to reviewed with reviewer and date — unreviewed templates mean launch is blocked (escalation rule 2: the customer hands these documents to auditors)
-- [ ] Cloudflare rate-limit rules for the unauthenticated write endpoints: `/api/checkout`, `/api/auth/*`, `/api/waitlist` (phase 2 left them unlimited; `/api/checkout` also confirms whether an email already has an account)
-- [ ] Droplet `.env` review: `ALLOW_FAKE_PAYMENTS` and `EMAIL_DEV_SINK` unset, `APP_URL`/`AUTH_URL` are the public https origin, `AUTH_SECRET` real
-- [ ] Real Resend send verified from the droplet (welcome email + sign-in link delivered to a real inbox; link works once)
-- [ ] Welcome-link scanner check: open the delivered link via the real mail path; if a prefetch burns it, switch `/api/welcome` to GET → confirm page → POST
-- [ ] **Whistleblower anonymity at the edge (phase 5 follow-ups):** Caddy must not write client IPs to its access log for `/report/*` (log filter or no access log for that path) and Cloudflare per-IP rate limits cover `/report/*` and `/api/report/*`; GTM/GA4 and the consent banner must never load on `/report/*` or `/dashboard/*`; the privacy policy must say Cloudflare, as proxy, sees reporter IPs
-- [ ] **`REPORT_ENCRYPTION_KEY` custody:** set on the droplet and stored separately from the database backups (password manager); losing it makes every report unreadable and a backup without it is useless — Esteban confirms (hard to undo); `EVIDENCE_DIR` exists, is outside Caddy's served paths, and is included in backups
-- [ ] Phase 5 carry-overs: Caddy request-body size cap on `/api/report` (the handler buffers the multipart body before validating sizes); set `NEXT_TELEMETRY_DISABLED=1`; decide how `npm run rotate-report-key` runs on the droplet (it needs a checkout + `node_modules`, the deploy ships only the standalone output); `scripts/backup.sh` currently dumps the DB only — extend it (or add a second job) to cover `EVIDENCE_DIR`
-- [ ] Phase 6 carry-overs: origin only reachable from Cloudflare (firewall/Caddy allow-list of Cloudflare ranges) so `cf-connecting-ip` on acknowledgments cannot be spoofed; real-inbox check that invite links survive mail scanners (the GET confirm page should make them safe); Resend daily/second rate limits vs bulk invites (≤ 50 per click)
-- [ ] Phase 6 carry-overs (2): Caddy must not log the path of `/employee/*` (the invite token is in the URL path; it dies on use or after 14 days, but keep it out of logs anyway); purge expired `employee_sessions` rows in the ops timer; day-one support note for Esteban: an employee whose session ended (8 h) or whose link was used needs the admin to re-send the invitation
-- [ ] Phase 8 carry-overs (supervisor review): set `BINDER_CONCURRENCY = 1` unless the droplet has ≥ 4 GB RAM, and a heap cap (`NODE_OPTIONS=--max-old-space-size=…`) in `complystart.service` — a 500-employee binder peaks near 730 MB RSS (≈ 580 MB above idle) and takes ~19 s on 4 vCPU; make the cover's draft notice also depend on the binder wording's own review status (`lib/binder/REVIEW.md`) so it cannot disappear while that text is unreviewed
-- [ ] **Dependency and advisory sweep before launch:** `next build` in the worker sandbox stops once per invocation with a Next.js security-advisory error (advisory lookup at registry.npmjs.org; passes on retry) — find out which advisory applies to the pinned Next 16.4.0 and upgrade to the patched release; also clear the `npm audit` high-severity findings noted in phase 0; re-run `./verify.sh`
-- [ ] Phase 8 carry-over: `binders` rows hold PDF bytes in Postgres — watch dump size at the monthly restore test; Overview/Binder page copy and the personal-data contents of the binder are on the lawyer's list
-- [ ] Phase 7 carry-overs: `SCREENING_API_KEY` / `SCREENING_BASE_URL` / `SCREENING_DATASET` on the droplet; vendor names are sent to the screening provider — the privacy policy must name it as a sub-processor; vendor-link paths (`/vendor/*`) kept out of Caddy logs like `/employee/*`
-- [ ] Backup bucket is **private**; Esteban confirms a downloaded dump restores with `scripts/restore-test.sh`
+Workers cannot reach the server. **Acceptance of this phase requires a real pipeline run**: Esteban performs the one-time setup (README "Staging server setup", copy-paste steps), triggers the deploy, and the GitHub Actions run (deploy + remote smoke) is the evidence.
+
+- [ ] **`APP_ENV`** = `development` (default) | `staging` | `production`. One tested guard function: in `production` the app **refuses to start/serve** (health fails, loud log) if `ALLOW_FAKE_PAYMENTS`, `EMAIL_DEV_SINK`, `PAYMENT_PROVIDER=fake`, a placeholder price, `changeme`-style secrets or missing required env are present. In `staging`: every page shows a visible "Ambiente de teste — dados fictícios" banner, `robots.txt` is `Disallow: /` plus `X-Robots-Tag: noindex`, no tracking, fake payments and the e-mail sink are allowed. This replaces "never on the droplet" with "never in production" (CLAUDE.md §8)
+- [ ] `GET /api/health` (200 + `{ok, version, db}`; no secrets), version = deployed git SHA
+- [ ] **Dev e-mail outbox viewer** (staging only; `APP_ENV=staging` and `EMAIL_DEV_SINK=true`): `/dev-outbox`, HTTP Basic auth with a generated password from `.env`, lists the latest emails (sign-in links, welcome, employee invitations, vendor links) so Esteban can click through every flow without a mail provider; 404 in every other configuration
+- [ ] **`ops/bootstrap-server.sh`** — idempotent, run once as root on Ubuntu 22.04/24.04 (aborts clearly otherwise or if something else already owns ports 80/443): creates `complystart` (runs the app) and `complystart-deploy` (SSH, deploys only) users, `/opt/compinabox/{releases,data/uploads,data/evidence,backups}`, installs Node 22, Postgres 16 (localhost only), Caddy, `ufw` (22/80/443), the systemd units/timers, generates `/opt/compinabox/.env` (mode 600) with random secrets from `.env.example` for staging (`APP_ENV=staging`, fake payments, e-mail sink, `ENABLED_COUNTRIES=br`), prints what it did, RAM found, and the next steps. Never prints secrets except the one-time outbox password
+- [ ] **Release layout + `ops/deploy-remote.sh`**: `releases/<sha>` + `current` symlink, last 3 kept; uploads/evidence outside releases; install runtime deps, run migrations (staging: automatic; production: manual — CLAUDE.md §4), switch, restart `complystart.service`, poll `/api/health` for the new version, **roll back automatically** (symlink + restart) if it never turns healthy
+- [ ] **`.github/workflows/deploy.yml`**: on push to `main` and `workflow_dispatch`; environment `staging`; secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` (host key pinned, never `StrictHostKeyChecking=no`); serialized (`concurrency`); build once, upload, run `deploy-remote.sh`, then **remote smoke**
+- [ ] **`scripts/remote-smoke.sh <base-url>`** (curl only, no database access): health + version, `/br` 200 and not `noindex`-less on staging, robots, security headers, geo with a simulated `CF-IPCountry`, the full fake journey over HTTPS (checkout → simulator pay → onboarding → documents → PDF → binder generate/download → sign out → old cookie refused), outbox viewer reachable only with the password, a vendor and an employee link read from the outbox
+- [ ] **Caddy** (`ops/Caddyfile`): TLS via `tls internal` on the IP (self-signed — browser warning accepted on staging; README shows the one-line change to a real certificate once a domain exists), HTTP→HTTPS, reverse proxy to the app port from the unit, request-body cap on `/api/report`, security headers, **access log with query strings dropped and the paths of `/employee/*`, `/vendor/*`, `/report/*` and `/api/welcome` redacted, and no client IP for `/report/*`** — proven by requesting those paths and grepping the log
+- [ ] **systemd** `complystart.service` (unprivileged user, `EnvironmentFile`, restart on failure, `NODE_OPTIONS=--max-old-space-size` sized from RAM, `NEXT_TELEMETRY_DISABLED=1`), `BINDER_CONCURRENCY` readable from env (default 1)
+- [ ] **Backups on staging**: `complystart-backup.timer` to a local destination (`/opt/compinabox/backups`), now also archiving `data/evidence` and `data/uploads` with the same timestamp; restore-test documented for the real server (this exercises the phase 2 scripts for real; the Spaces/off-server copy and Esteban's production restore test stay in 9d)
+- [ ] **Maintenance timer**: purge expired `employee_sessions` and expired `verification_tokens`
+- [ ] **Legal pages, drafted** (`/legal/privacy`, `/legal/terms`, pt-BR, DRAFT banner kept): written from what the product actually does (data categories, recipients and sub-processors, cookies, whistleblower and employee data, retention as it is today, rights in plain language, contact placeholders), LGPD named but **no article numbers or other citations**; `lib/legal/REVIEW.md` for the lawyer listing every assumption (controller/processor roles, legal bases, international transfers, retention) and every placeholder; terms acceptance is a required checkbox at checkout and is stored on `checkout_attempt` (timestamp + terms version)
+- [ ] **Tracking**: GTM loader that is inert without `GTM_ID` and without consent; events `view_pricing`, `begin_checkout`, `purchase` (value + currency, no personal data), `lead_generic_country_waitlist`; never on `/report/*`, `/dashboard/*`, `/employee/*`, `/vendor/*`, `/login`, `/onboarding`; staging has no `GTM_ID`
+- [ ] **Dependency and advisory sweep (first commit):** `next build` stops once per invocation with a Next.js security-advisory error (advisory lookup at registry.npmjs.org; passes on retry) — find which advisory applies to the pinned Next 16.4.0, upgrade to the patched release, clear the `npm audit` highs, re-run `./verify.sh`
+- [ ] README: **"Staging server setup" for Esteban** — exact steps (what to copy, what to run, which GitHub secrets to add, how to create the deploy key, how to open the site and read the outbox, how to roll back by hand)
 
 **Definition of done**
 ```
-./verify.sh
-gh run list --workflow deploy.yml --limit 1        # green
-curl -sI https://<domain>/br | grep -E "^HTTP/.* 200"
-curl -sI https://<domain>/ | grep -i "cf-ray"       # confirms Cloudflare in front
+./verify.sh                                  # includes the guard tests and a local rehearsal of the release/rollback logic
+# worker evidence (no server access): a local rehearsal — build a release, run ops/deploy-remote.sh against a temp /opt-like tree
+#   with a stubbed systemctl, real Postgres and a real node process: deploy A, deploy B, a deploy whose health never turns green
+#   -> automatic rollback to B; then scripts/remote-smoke.sh against it, all green
+# acceptance evidence (Esteban + supervisor): the first real deploy.yml run on main — deploy job and remote-smoke job green — and
+#   https://138.197.70.66/br opens, the banner shows, /dev-outbox needs the password, a full fake journey works in his browser
 ```
-Judgment: first request from a Brazilian IP / VPN to `https://<domain>/` lands on `https://<domain>/br` (the Cloudflare→Caddy→app chain; `APP_URL` correct); Lighthouse mobile on `/br` ≥ 90 performance; consent banner blocks GTM until accepted (check network tab); backup timer active (`systemctl list-timers`).
-
-**→ Deployed. Brazil launch waits for phase 9b (real payments).**
+Judgment: nothing in the repo or the Actions logs contains a secret; the Caddy log redaction is demonstrated on a real log; `bootstrap-server.sh` is idempotent (second run changes nothing) and refuses to touch a server it doesn't understand; the staging banner is on every page type (marketing, dashboard, employee, vendor, report); privacy/terms text states only things the code does, every placeholder is visible in the page and listed in `lib/legal/REVIEW.md`.
 
 ---
 
@@ -284,7 +281,7 @@ Judgment: first request from a Brazilian IP / VPN to `https://<domain>/` lands o
 Built after the deploy because Mercado Pago webhooks need a public HTTPS URL. Replaces the `fake` provider in production; the flow, tables and webhook endpoint from phase 2 are unchanged. **Deep review — money.**
 
 - [ ] `MercadoPagoProvider` implementing `PaymentProvider`: hosted checkout (preference) with Pix enabled for BR; webhook verifies the `x-signature` HMAC, then **re-fetches the payment by id** from the API — status in the webhook body is never trusted; idempotent on payment id + status
-- [ ] Env: `PAYMENT_PROVIDER=mercadopago`; sandbox credentials first, production credentials last; `ALLOW_FAKE_PAYMENTS` unset on the droplet
+- [ ] Env: `PAYMENT_PROVIDER=mercadopago`; sandbox credentials first, production credentials last; `ALLOW_FAKE_PAYMENTS` unset and `APP_ENV=production` on the production server
 - [ ] Handles approved, pending (Pix awaiting payment), rejected, cancelled/expired, and refunded/charged-back (marks `BillingRecord`, does not delete the Company)
 - [ ] **Paid but not provisioned** (phase 2 marks the attempt `failed` with `email_in_use_after_payment`, logs `PAID BUT NOT PROVISIONED`): policy is manual refund by Esteban in the Mercado Pago dashboard. Add an alert email to an ops address (`OPS_ALERT_EMAIL`) when it happens so it is not only in logs, and a refund helper if the API makes it cheap
 
@@ -301,6 +298,32 @@ Built after the deploy because Mercado Pago webhooks need a public HTTPS URL. Re
 Judgment: mock-only is **not** verified for this phase — every line above needs a real sandbox round-trip; fake routes 404 on the droplet; no credential in repo. Then **one real low-value live payment by Esteban, refunded**, before launch (money — his call).
 
 **→ Brazil launch. Esteban signs off.**
+
+---
+
+## Phase 9c — Blog seeding (can run in parallel with 9; touches different files)
+
+SPEC §9, CONTENT.md §6. **Draft articles, flagged for review.** They discuss laws, so they use only facts already in SPEC/CONTENT (no new citations) and stay cautious; the open "what does Lei 14.133 require, and for which contracts" question (CLAUDE.md §11) applies to every Brazil article.
+
+- [ ] `/{country}/blog` and `/{country}/blog/[slug]` with MDX; seed the 4 Brazil articles and 3 English generic articles from CONTENT.md §6 (≈ 500–800 words each), a draft banner on each, `Article` JSON-LD, sitemap entries for enabled countries only, `noindex` while draft or staging
+- [ ] `content/blog/REVIEW.md` for the lawyer/Esteban (every legal statement per article)
+
+---
+
+## Phase 9d — Production go-live checklist (needs a domain, Cloudflare, Resend, a lawyer; blocks the Brazil launch)
+
+Everything below was deliberately postponed when the dev server became the first target. Do these when the inputs exist, then deploy the same pipeline to a production environment (`APP_ENV=production`).
+
+- [ ] Domain + Cloudflare in front (proxied DNS, "Full (strict)", origin certificate in Caddy); `APP_URL`/`AUTH_URL` = the public https origin; first request from a Brazilian IP/VPN lands on `/br` through the whole chain; Lighthouse mobile on `/br` ≥ 90
+- [ ] **Origin reachable only from Cloudflare** (firewall/Caddy allow-list of Cloudflare ranges) so `cf-connecting-ip` on acknowledgments and `CF-IPCountry` cannot be spoofed; Cloudflare rate-limit rules for `/api/checkout`, `/api/auth/*`, `/api/waitlist`, `/report/*`, `/api/report/*`
+- [ ] Real Resend: account + sending domain; welcome e-mail and sign-in link delivered to a real inbox and single-use; invitation and vendor links survive mail scanners (GET → confirm page); Resend rate limits vs bulk invites (≤ 50 per click); if a prefetch burns `/api/welcome`, switch it to GET → confirm → POST
+- [ ] Production `.env` review (`APP_ENV=production`, no fake payments, no e-mail sink, real secrets); the guard from phase 9 refuses otherwise
+- [ ] **`REPORT_ENCRYPTION_KEYS` custody**: stored separately from backups (password manager); losing it makes every report unreadable — Esteban confirms (hard to undo)
+- [ ] **Backups for real:** DigitalOcean Spaces bucket (private), `s3cmd` configured for the service user, nightly off-server copy; Esteban runs a restore test of a downloaded dump with `scripts/restore-test.sh` **before the first real customer**; migrations on production stay manual until he has confirmed that
+- [ ] Legal: privacy policy and terms reviewed by a Brazilian lawyer and the DRAFT markers removed; `br.ts`, the six templates, the training module, the binder wording and `messages/DRAFTS.md` reviewed; the lawyer's answer on Lei 14.133 scope; the privacy policy names every sub-processor (hosting, Cloudflare, Resend, Mercado Pago, OpenSanctions) and what Cloudflare sees
+- [ ] OpenSanctions: API key, commercial terms and cost accepted by Esteban, network allowlist, `scripts/screening-live-check.sh` run and pasted (phase 7 acceptance)
+- [ ] Day-one support notes for Esteban: re-sending employee invitations when a session ended or a link was used; what to do on `PAID BUT NOT PROVISIONED`
+- [ ] Legal entity details filled in the legal pages (company name, CNPJ, address, privacy contact / encarregado, support e-mail)
 
 ---
 

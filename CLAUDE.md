@@ -97,7 +97,7 @@ Public URLs use two-letter country prefixes; locale codes are internal and must 
 - `/lib/binder/` — the dossier PDF (phase 8): snapshot, react-pdf layout, async job runner, `REVIEW.md` for the lawyer. Reads names/dates/states/counts only; `scripts/check-binder-privacy.sh` enforces it
 - `/messages/{locale}.json` — next-intl messages, one per locale
 - **Standing checklist item, every phase that adds a tenant-owned table:** it has a `company_id` column, every query filters by `company_id` taken from the authenticated session (never from a request param), and there is a test proving a second tenant can't read it. `verify.sh` greps for tenant tables without `company_id`.
-- Env vars (all in `.env.example`): `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `APP_URL`, `ENABLED_COUNTRIES`, `RESEND_API_KEY`, `EMAIL_FROM`, `PAYMENT_PROVIDER` (`none` default | `fake` | `mercadopago`), `ALLOW_FAKE_PAYMENTS`, `FAKE_PAYMENTS_SECRET`, `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_PUBLIC_KEY`, `MERCADOPAGO_WEBHOOK_SECRET`, `REPORT_ENCRYPTION_KEYS`, `EVIDENCE_DIR`, `SCREENING_API_KEY`, `SCREENING_BASE_URL`, `SCREENING_DATASET`, `GTM_ID`
+- Env vars (all in `.env.example`): `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `APP_URL`, `ENABLED_COUNTRIES`, `RESEND_API_KEY`, `EMAIL_FROM`, `PAYMENT_PROVIDER` (`none` default | `fake` | `mercadopago`), `ALLOW_FAKE_PAYMENTS`, `FAKE_PAYMENTS_SECRET`, `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_PUBLIC_KEY`, `MERCADOPAGO_WEBHOOK_SECRET`, `APP_ENV`, `DEV_OUTBOX_PASSWORD`, `REPORT_ENCRYPTION_KEYS`, `EVIDENCE_DIR`, `BINDER_CONCURRENCY`, `NEXT_TELEMETRY_DISABLED`, `SCREENING_API_KEY`, `SCREENING_BASE_URL`, `SCREENING_DATASET`, `GTM_ID`
 
 ## 7. Commands
 
@@ -120,8 +120,8 @@ npm run db:migrate   # drizzle-kit migrate — apply migrations
 - **Anonymous reporting:** the default intake path must not log IP or identifying metadata against a report unless the reporter explicitly opts in (SPEC §5.3, §11). Note the asymmetry: employee *acknowledgments* DO log IP (SPEC §5.5) — that's an audit trail the customer wants.
 - **No ISO/certification claims** (ISO 37301/37002) anywhere in UI copy — out of scope for v1 (SPEC §2).
 - **Legal content (`/lib/content/*.ts`, `/lib/documents/templates/**`)** is edited only in a phase scoped for it, never as a side effect of an unrelated PR. A worker never adds a citation (article number, decree, statute) that is not already in SPEC.md or CONTENT.md — suggestions go in HANDOFF.md for the lawyer.
-- **Dev email sink enabled outside dev/test** (`EMAIL_DEV_SINK=true` on the droplet) — it writes sign-in links to disk instead of sending them.
-- **Fake payment provider enabled outside dev/test** (`ALLOW_FAKE_PAYMENTS` set on the droplet or in CI deploy config) — it provisions accounts without payment.
+- **Dev email sink or fake payments in production** (`APP_ENV=production` with `EMAIL_DEV_SINK=true` or `ALLOW_FAKE_PAYMENTS=true` / `PAYMENT_PROVIDER=fake`) — the sink writes sign-in links to disk, the fake provider provisions accounts without payment. Both are allowed on the **staging** server only (test data, loud banner, `noindex`); the app refuses to run in production with either.
+- **Real customer, employee or whistleblower data on staging** — the staging server holds fictitious data only; anything real waits for the production environment (backups verified, §4).
 - **Migrations against live data, deleting data, changing what gets logged or retained, adding a paid service** — escalation rule 3; supervisor brings these to Esteban.
 
 ## 9. Decisions
@@ -138,7 +138,9 @@ Settled by Esteban or decided by the supervisor and recorded. Don't reopen; if a
 - **PDF:** react-pdf; Puppeteer only as flagged fallback. (2026-10-12) — droplet memory.
 - **Screening:** OpenSanctions behind `ScreeningProvider`. (2026-10-12) — free tier, swappable.
 - **Payments: Mercado Pago, not Stripe** (Esteban, 2026-10-14). `PaymentProvider` interface + `fake` provider from phase 2; the real Mercado Pago provider is phase 9b, before the Brazil launch sign-off. The webhook, never the browser return URL, is what marks a payment paid and provisions the account; a webhook is a *prompt to re-fetch the payment from the processor*, not a source of truth.
-- **Fake payments are guarded** (2026-10-14): `PAYMENT_PROVIDER` defaults to `none` (checkout unavailable); `fake` works only when `ALLOW_FAKE_PAYMENTS=true`, which must never be set on the droplet. Fake-provider routes return 404 otherwise.
+- **Fake payments are guarded** (2026-10-14, refined 2026-10-25): `PAYMENT_PROVIDER` defaults to `none` (checkout unavailable); `fake` works only when `ALLOW_FAKE_PAYMENTS=true`, which is allowed on staging and **refused in production** (`APP_ENV=production` fails the health check and startup). Fake-provider routes return 404 otherwise.
+- **Environments** (Esteban, 2026-10-25): the first deployment is a **staging** environment on his DigitalOcean dev server `138.197.70.66`, folder `/opt/compinabox`, **without Cloudflare**, with a dummy e-mail (dev outbox viewer), fake payments and fictitious data. `APP_ENV` = `development` | `staging` | `production`; staging shows a test-environment banner and is `noindex`. Production (domain, Cloudflare, Resend, Mercado Pago, reviewed legal text) is Phase 9d. Without Cloudflare there is no `CF-IPCountry` (generic page) and the header is client-controlled — harmless on staging, a launch blocker for production (origin only from Cloudflare).
+- **Legal pages drafted by the team** (Esteban, 2026-10-25): privacy policy and terms are written by the team from what the product actually does, marked DRAFT; legal review comes later and still gates the Brazil launch.
 - **Geo/cookie behaviour at `/`** (2026-10-13): cookie `country` ∈ `ar|br|mx|other` beats `CF-IPCountry`; `other` means "show the picker" and is what the "change country" control sets (otherwise a cookie'd visitor could never reach `/`). Redirects are 307 + `no-store`. Generic-page language toggle is EN/ES/PT = locales `en`/`es-MX`/`pt-BR`, cookie `lang`.
 - **`ENABLED_COUNTRIES` is read at request time**, not build time (2026-10-13) — CI builds the artifact, the droplet's `.env` supplies the value.
 - **Documents are drafts until a lawyer reviews them** (2026-10-14): the pt-BR code of conduct and policy templates and `br.ts` are worker-drafted from SPEC §7/§5; each carries a draft status, and the Brazil launch is blocked until a Brazilian lawyer has reviewed them (§11). Documents are append-only (DB trigger); generated at onboarding completion; logo uploads are PNG/JPEG only so PDFs can embed them.
@@ -159,9 +161,12 @@ Considered and declined — don't build unless Esteban asks again:
 - [ ] Pricing for Brazil (BRL); later AR/MX
 - [ ] Monthly vs annual-only billing
 - [x] Payments: Mercado Pago (decided 2026-10-14); Pix via Mercado Pago to be confirmed in sandbox at phase 9b
-- [ ] Domain name + Cloudflare account access (needed before phase 1 can be verified end-to-end on geo)
+- [ ] Domain name + Cloudflare account access — deferred (2026-10-25: staging on the IP without Cloudflare); needed for production (Phase 9d) and for the geo chain check
 - [ ] Mercado Pago account: sandbox (test) credentials for phase 9b; production credentials before launch
-- [ ] Resend account + sending domain
+- [ ] Resend account + sending domain — deferred (2026-10-25: dummy e-mail / dev outbox on staging); needed for production (Phase 9d)
+- [ ] **Legal entity and contact details for the legal pages**: company legal name, CNPJ, address, privacy contact (encarregado / DPO), support e-mail, and the retention periods Esteban wants — the drafted privacy policy and terms show visible placeholders until given
+- [ ] **Staging server facts** (Esteban): Ubuntu version and RAM of `138.197.70.66`, whether anything already uses ports 80/443 or runs Postgres/Node — the bootstrap script checks and aborts rather than guess
+- [ ] **Staging deploy access** (Esteban, one-time): create a deploy SSH key, add its public half to the server, add GitHub secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` (README "Staging server setup")
 - [ ] Legal review of `/lib/content/br.ts` citations, the pt-BR document templates (`lib/documents/REVIEW.md`) and the BR privacy policy before launch (SPEC §11) — **needs a Brazilian lawyer; allow lead time.** Ask the lawyer to confirm specifically *what Lei 14.133/2021 requires and for which contracts*: the pre-approved marketing copy ("passou a exigir programas de integridade robustos para elegibilidade em licitações") and the Brazil-first rationale in §2 depend on that scope, and the team cannot verify it. If the requirement is narrower than the copy says, that is a marketing-claim and positioning change for Esteban (rule 1/2), not just a wording fix
 - [ ] Lawyer to review the binder wording and its personal-data contents (employee names and acceptance dates go to third parties; emails/IPs excluded) — `lib/binder/REVIEW.md`, with the rest of the legal review
 - [ ] Review of `messages/DRAFTS.md` (gap-filled translations, incl. footer disclaimer) by a native speaker / legal before launch
