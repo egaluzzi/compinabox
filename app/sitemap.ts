@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getEnabledCountries } from "@/lib/countries";
+import { isStaging } from "@/lib/env";
 import { siteUrl } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,7 @@ const SUBPAGES = ["", "/pricing", "/how-it-works", "/faq", "/legal-basis"];
 
 // Enabled countries only (disabled ones are noindex), plus `/`.
 export default function sitemap(): MetadataRoute.Sitemap {
+  if (isStaging()) return []; // staging is never indexed
   const base = siteUrl();
   const paths = [
     "/",

@@ -21,8 +21,24 @@ describe("proxy", () => {
     const res = proxy(req("/", { "cf-ipcountry": "BR", cookie: "country=mx" }));
     expect(res.headers.get("location")).toMatch(/\/mx$/);
   });
-  it("is matched on / (geo) plus the marketing pages and /checkout (UTM)", () => {
-    expect(config.matcher).toContain("/");
+  it("runs on every path except Next's static assets (the staging X-Robots-Tag), geo/UTM stay on the marketing pages", () => {
+    expect(config.matcher).toHaveLength(1);
+    const re = new RegExp(`^${config.matcher[0]}$`);
+    for (const p of [
+      "/",
+      "/br",
+      "/br/pricing",
+      "/checkout",
+      "/dashboard",
+      "/api/health",
+      "/report/x",
+    ]) {
+      expect(re.test(p), p).toBe(true);
+    }
+    expect(re.test("/_next/static/chunk.js")).toBe(false);
+    // a non-marketing path is never geo-redirected, whatever the header says
+    const res = proxy(req("/dashboard", { "cf-ipcountry": "BR" }));
+    expect(res.headers.get("location")).toBeNull();
   });
   it("does not redirect deep links even if it were invoked for them", () => {
     const res = proxy(req("/ar/pricing", { "cf-ipcountry": "BR" }));
