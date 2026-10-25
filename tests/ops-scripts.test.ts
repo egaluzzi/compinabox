@@ -16,12 +16,18 @@ import {
 import { seedCompany, uid, useTestDb } from "./helpers/db";
 import { seedInvited } from "./helpers/employee";
 
+const cleanEnv = (env: Record<string, string>, pg: boolean) =>
+  ({
+    PATH: process.env.PATH ?? "",
+    ...(pg ? { PGPASSWORD: "postgres" } : {}),
+    ...env,
+  }) as unknown as NodeJS.ProcessEnv;
 const root = path.resolve(__dirname, "..");
 const adminUrl = () =>
   (process.env.TEST_DATABASE_URL as string).replace(/\/[^/]*$/, "/postgres");
 const run = (script: string, env: Record<string, string>) =>
   spawnSync("node", [path.join(root, script)], {
-    env: { PATH: process.env.PATH as string, ...env },
+    env: cleanEnv(env, false),
     encoding: "utf8",
     cwd: root,
   });
@@ -212,11 +218,7 @@ describe("scripts/maintenance.mjs", () => {
 describe("scripts/backup.sh — database dump plus the data directories", () => {
   const backup = (env: Record<string, string>) =>
     spawnSync("bash", [path.join(root, "scripts/backup.sh")], {
-      env: {
-        PATH: process.env.PATH as string,
-        PGPASSWORD: "postgres",
-        ...env,
-      } as NodeJS.ProcessEnv,
+      env: cleanEnv(env, true),
       encoding: "utf8",
     });
   const mk = () => fs.mkdtempSync(path.join(os.tmpdir(), "bk-"));
