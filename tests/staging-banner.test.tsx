@@ -6,6 +6,7 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => undefined }),
 }));
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/br",
   notFound: () => {
     throw new Error("notFound");
   },

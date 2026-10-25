@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { trackEvent } from "@/lib/tracking";
 
 type Labels = {
   companyName: string;
@@ -36,6 +37,7 @@ export function CheckoutForm({
     setError(null);
     setBusy(true);
     const data = new FormData(e.currentTarget);
+    trackEvent({ event: "begin_checkout" });
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",

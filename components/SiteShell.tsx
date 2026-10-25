@@ -2,9 +2,12 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ChangeCountry } from "./ChangeCountry";
 import { ConsentBanner } from "./ConsentBanner";
+import { CookieSettings } from "./CookieSettings";
+import { Tracking } from "./Tracking";
 import { LanguageToggle } from "./LanguageToggle";
 import type { Country } from "@/lib/countries";
 import { getT, type Lang, type Locale } from "@/lib/i18n";
+import { resolveGtmId } from "@/lib/tracking";
 
 type Props = {
   locale: Locale;
@@ -63,9 +66,11 @@ export function SiteShell({ locale, country, lang, children }: Props) {
             <Link href="/legal/terms">{t("footer.terms")}</Link>
             <Link href="/legal/privacy">{t("footer.privacy")}</Link>
             <Link href="/legal/disclaimer">{t("footer.disclaimerLink")}</Link>
+            <CookieSettings label={t("footer.cookies")} />
           </p>
         </div>
       </footer>
+      <Tracking gtmId={resolveGtmId()} />
       <ConsentBanner
         text={t("consent.text")}
         accept={t("consent.accept")}

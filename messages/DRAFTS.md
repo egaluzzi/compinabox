@@ -2622,3 +2622,7 @@ Row counts: see the table (phase 6 added 141 keys per locale)
 | pt-BR | checkout.acceptPrefix | new UI string (no CONTENT.md source) |
 | pt-BR | checkout.acceptAnd | new UI string (no CONTENT.md source) |
 | pt-BR | checkout.errTerms | new UI string (no CONTENT.md source) |
+| en | footer.cookies | new UI string (no CONTENT.md source) |
+| es-AR | footer.cookies | new UI string (no CONTENT.md source) |
+| es-MX | footer.cookies | new UI string (no CONTENT.md source) |
+| pt-BR | footer.cookies | new UI string (no CONTENT.md source) |
