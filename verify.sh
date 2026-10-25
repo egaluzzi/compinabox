@@ -261,6 +261,13 @@ if [ -d lib/binder ]; then
   if BINDER_OUT=$(./scripts/check-binder-privacy.sh 2>&1); then note "binder privacy" "no excluded import or field in lib/binder"; else echo "$BINDER_OUT" | head -20; bad "binder privacy" "lib/binder touches data the dossier must exclude"; fi
 fi
 
+# 4m. Ops hygiene (phase 9): every ops/ and scripts/ shell script parses (and passes shellcheck when it
+# is installed); no weakened SSH host-key checking, ssh-keyscan, private key or `changeme` placeholder in
+# ops/ or .github/ (scripts/check-ops-hygiene.sh).
+if [ -d ops ]; then
+  if HYG_OUT=$(./scripts/check-ops-hygiene.sh 2>&1); then note "ops hygiene" "scripts parse; no weakened host-key checking, key or placeholder in ops/ .github/"; else echo "$HYG_OUT" | head -20; bad "ops hygiene" "see above"; fi
+fi
+
 # 4g. KNOWN_ISSUES.md must exist (baseline)
 [ -f KNOWN_ISSUES.md ] && note "KNOWN_ISSUES.md" "present" || bad "KNOWN_ISSUES.md" "missing"
 

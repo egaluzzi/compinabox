@@ -1,0 +1,154 @@
+name: Deploy staging
+
+# Deploys main to the STAGING server (test data only; see CLAUDE.md §9 "Environments" and README
+# "Staging server setup"). It does not run the test suite again: the pull request's CI (ci.yml) is the
+# gate, and this workflow refuses to deploy a commit whose pull request did not pass it.
+#
+# Secrets (repository secrets, or secrets of the `staging` environment):
+#   DEPLOY_HOST          the server address, e.g. 138.197.70.66
+#   DEPLOY_USER          complystart-deploy
+#   DEPLOY_SSH_KEY       the PRIVATE half of the deploy key (the public half is on the server)
+#   DEPLOY_KNOWN_HOSTS   the server's SSH host key line(s), pinned (README shows how to get them safely)
+#   DEV_OUTBOX_PASSWORD  the /dev-outbox password from the server's .env (used by the smoke test)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      allow_unverified:
+        description: "Deploy even if no merged pull request with a green CI check is found for this commit"
+        type: boolean
+        default: false
+
+# One deploy at a time; a running deploy is never cancelled half-way.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build one release archive
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require a green CI check for this commit's pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ALLOW_UNVERIFIED: ${{ github.event.inputs.allow_unverified }}
+        run: |
+          set -euo pipefail
+          # main only receives merged pull requests: find the one that produced this commit and read the
+          # result of its `verify` job (ci.yml) on the PR's head commit.
+          head_sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+            --jq '[.[] | select(.merged_at != null)] | sort_by(.merged_at) | last | .head.sha // empty')
+          if [ -z "$head_sha" ]; then
+            if [ "${ALLOW_UNVERIFIED:-false}" = true ]; then
+              echo "::warning::No merged pull request found for $GITHUB_SHA; deploying anyway because allow_unverified was set."
+              exit 0
+            fi
+            echo "::error::No merged pull request found for $GITHUB_SHA, so there is no CI result to rely on. Merge through a pull request, or re-run with allow_unverified."
+            exit 1
+          fi
+          conclusion=$(gh api "repos/$GITHUB_REPOSITORY/commits/$head_sha/check-runs" \
+            --jq '[.check_runs[] | select(.name == "verify")] | sort_by(.started_at) | last | .conclusion // empty')
+          echo "CI check 'verify' on pull request head ${head_sha:0:7}: ${conclusion:-none}"
+          if [ "$conclusion" != success ]; then
+            echo "::error::CI did not pass for this commit's pull request (verify: ${conclusion:-none}). Not deploying."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Package the release (standalone server, static files, migrations, scripts)
+        run: scripts/package-release.sh "$GITHUB_SHA" release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: release/
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    name: Upload, migrate, switch, health check
+    needs: build
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: release
+
+      - name: Prepare SSH (host key pinned)
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # The server must present exactly the host key stored in DEPLOY_KNOWN_HOSTS; anything else fails.
+          {
+            echo "Host deploy-target"
+            echo "  HostName $DEPLOY_HOST"
+            echo "  User $DEPLOY_USER"
+            echo "  IdentityFile ~/.ssh/deploy_key"
+            echo "  IdentitiesOnly yes"
+            echo "  BatchMode yes"
+            echo "  StrictHostKeyChecking yes"
+            echo "  UserKnownHostsFile ~/.ssh/known_hosts"
+          } > ~/.ssh/config
+
+      - name: Upload the archive
+        run: |
+          set -euo pipefail
+          scp "release/${GITHUB_SHA}.tar.gz" "release/${GITHUB_SHA}.tar.gz.sha256" deploy-target:/opt/compinabox/incoming/
+
+      - name: "Deploy on the server (automatic migrations on staging; rollback if the health check fails)"
+        run: |
+          set -euo pipefail
+          # The script of THIS commit is streamed to the server. MIGRATE=auto is safe here only because
+          # this workflow targets the staging server (test data); the server-side migrate wrapper
+          # refuses to run unless that server's .env says APP_ENV=staging.
+          ssh deploy-target "MIGRATE=auto bash -s -- ${GITHUB_SHA}" < ops/deploy-remote.sh
+
+      - name: Remove the SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/known_hosts ~/.ssh/config
+
+  smoke:
+    name: Remote smoke test of the deployed site
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Smoke test https://<server>
+        env:
+          DEV_OUTBOX_PASSWORD: ${{ secrets.DEV_OUTBOX_PASSWORD }}
+          EXPECT_VERSION: ${{ github.sha }}
+          EXPECT_ENV: staging
+          # The staging site is a bare IP with a certificate Caddy made for itself (`tls internal`), which
+          # no runner trusts. -k is therefore set in THIS step only and only for the host in DEPLOY_HOST.
+          # It goes away when the site gets a real certificate (README "Staging server setup").
+          CURL_K: "1"
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: scripts/remote-smoke.sh "https://${DEPLOY_HOST}"

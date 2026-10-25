@@ -321,3 +321,67 @@ describe("scripts/backup.sh — database dump plus the data directories", () => 
     expect(randomUUID()).toBeTruthy();
   });
 });
+
+describe("ops/complystart-migrate (the only migration path of the deploy user)", () => {
+  const wrapper = path.join(root, "ops/complystart-migrate");
+  const tree = (appEnv: string) => {
+    const r = fs.mkdtempSync(path.join(os.tmpdir(), "mig-"));
+    fs.mkdirSync(path.join(r, "releases/abc1234"), { recursive: true });
+    fs.mkdirSync(path.join(r, "releases/abc1234/scripts"));
+    fs.writeFileSync(
+      path.join(r, "releases/abc1234/scripts/migrate.mjs"),
+      'console.log("ran with", process.env.APP_ENV, "and no PATH tricks")\n',
+    );
+    fs.writeFileSync(
+      path.join(r, ".env"),
+      `APP_ENV=${appEnv}\nDATABASE_URL=postgres://u:p@h/db\n`,
+    );
+    return r;
+  };
+  const call = (r: string, args: string[]) =>
+    spawnSync("bash", [wrapper, ...args], {
+      env: cleanEnv(
+        { COMPINABOX_ROOT: r, COMPLYSTART_RUN_AS_SELF: "1" },
+        false,
+      ),
+      encoding: "utf8",
+    });
+  it("runs the release's migrate script with the .env values on staging", () => {
+    const r = call(tree("staging"), ["abc1234"]);
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain("ran with staging");
+  });
+  it("refuses anything but staging (production migrations are a manual step)", () => {
+    for (const env of ["production", "development", ""]) {
+      const r = call(tree(env), ["abc1234"]);
+      expect(r.status, env).toBe(4);
+      expect(r.stderr).toContain("APP_ENV is not staging");
+      expect(r.stdout).not.toContain("ran with");
+    }
+  });
+  it("validates its argument strictly: one hex sha, no paths, no extras", () => {
+    const r = tree("staging");
+    for (const args of [
+      [],
+      ["abc1234", "extra"],
+      ["../etc"],
+      ["ABC1234"],
+      ["abc123"],
+      ["abc1234; id"],
+      ["abc1234/../abc1234"],
+    ]) {
+      expect(call(r, args).status, JSON.stringify(args)).toBe(2);
+    }
+    expect(call(r, ["deadbeef"]).status).toBe(3); // no such release
+  });
+  it("does not execute the .env: a value with shell syntax is data", () => {
+    const r = tree("staging");
+    const marker = path.join(r, "pwned");
+    fs.appendFileSync(
+      path.join(r, ".env"),
+      `EVIL=$(touch ${marker})\nX=\`touch ${marker}\`\n`,
+    );
+    expect(call(r, ["abc1234"]).status).toBe(0);
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+});
