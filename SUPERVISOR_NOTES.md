@@ -21,6 +21,20 @@ coding, read MP's current official developer documentation (Checkout Pro prefere
 pages you relied on in `HANDOFF.md`. Where the docs disagree with these notes, follow the docs and say so.
 Do not use an MP SDK: plain `fetch` (fewer dependencies — CLAUDE.md §0). No new dependency.
 
+### UPDATE 2026-10-29 (Esteban): no Mercado Pago account yet
+Esteban has no MP credentials yet and says: **keep the dummy payment page** (the guarded `fake` provider's
+simulator at `/checkout/fake/<id>`) until MP is set up. So for this session:
+- **Assume the sandbox credentials and network access are absent.** Do not wait for them. Build everything below,
+  test with fixtures labelled "hand-written from the docs, not recorded", and in `HANDOFF.md` state that the sandbox
+  round-trip is **not done and the phase cannot be accepted**, listing exactly what Esteban must provide (see "Verification").
+  If you find the credentials and network access *are* present after all, do the real round-trip as written.
+- Staging stays on `PAYMENT_PROVIDER=fake`; the fake provider, its simulator page and all phase-2 tests must keep
+  working unchanged in behaviour. `PAYMENT_PROVIDER=mercadopago` without credentials must simply report checkout
+  unavailable (item 5). Nothing here may change what a staging visitor sees today.
+- Your docs reading needs the web: if `www.mercadopago.com.br` / `developers` pages are unreachable, say so,
+  work from the supervisor's description, mark every API detail "unverified against current docs" in the code
+  comments and the handoff, and do not guess field names silently.
+
 ### What to build
 
 1. **`lib/payments/mercadopago.ts` — `MercadoPagoProvider`** implementing `PaymentProvider`.
