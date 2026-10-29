@@ -13,6 +13,7 @@ export async function POST(request: Request) {
     resolution.provider,
     raw,
     request.headers,
+    request.url,
   );
   return json(body, status);
 }

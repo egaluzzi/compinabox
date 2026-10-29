@@ -1,0 +1,12 @@
+[Unit]
+Description=ComplyStart payment reconciliation (re-check stale pending Mercado Pago payments)
+After=complystart.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/opt/compinabox/.env
+WorkingDirectory=/opt/compinabox/current
+ExecStart=/usr/bin/node scripts/reconcile-payments.mjs
+User=complystart
+Group=complystart
+Nice=10

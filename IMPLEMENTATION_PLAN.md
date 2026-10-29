@@ -280,7 +280,7 @@ Judgment: nothing in the repo or the Actions logs contains a secret; the Caddy l
 
 Built after the deploy because Mercado Pago webhooks need a public HTTPS URL. Replaces the `fake` provider in production; the flow, tables and webhook endpoint from phase 2 are unchanged. **Deep review — money.**
 
-- [ ] `MercadoPagoProvider` implementing `PaymentProvider`: hosted checkout (preference) with Pix enabled for BR; webhook verifies the `x-signature` HMAC, then **re-fetches the payment by id** from the API — status in the webhook body is never trusted; idempotent on payment id + status
+- [ ] (code + hand-written-fixture tests done; **sandbox round-trip NOT done**, see HANDOFF) `MercadoPagoProvider` implementing `PaymentProvider`: hosted checkout (preference) with Pix enabled for BR; webhook verifies the `x-signature` HMAC, then **re-fetches the payment by id** from the API — status in the webhook body is never trusted; idempotent on payment id + status
 - [ ] Env: `PAYMENT_PROVIDER=mercadopago`; sandbox credentials first, production credentials last; `ALLOW_FAKE_PAYMENTS` unset and `APP_ENV=production` on the production server
 - [ ] Handles approved, pending (Pix awaiting payment), rejected, cancelled/expired, and refunded/charged-back (marks `BillingRecord`, does not delete the Company)
 - [ ] Refunds and chargebacks set `billing_records.refunded_at` (migration 0009) and alert; no account suspension (Esteban's call later); partial refunds only alert

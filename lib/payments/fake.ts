@@ -71,6 +71,7 @@ export function createFakeProvider(opts: {
     },
 
     verifyWebhook(rawBody: string, headers: Headers): WebhookEvent | null {
+      // (the request URL, the third interface argument, is not part of the fake signature)
       const sig = headers.get(SIGNATURE_HEADER);
       if (!sig || !safeEqualHex(sig, hmacHex(secret, rawBody))) return null;
       try {

@@ -127,6 +127,17 @@ It makes a few requests with fake secrets in the address, the query and the cook
 ### Later: a real certificate once there is a domain
 In `/etc/caddy/Caddyfile` (and in `ops/Caddyfile`) change two things: put the domain where `https://138.197.70.66` is, and delete the line `tls internal`. Caddy then gets a public certificate by itself; then remove `CURL_K` from the smoke step of `.github/workflows/deploy.yml`. Production (Phase 9d) also needs Cloudflare in front, the origin reachable from Cloudflare only, a real e-mail provider and `APP_ENV=production`; none of that is part of staging.
 
+### Later: Mercado Pago sandbox (real payments, test money)
+**Not needed now.** Staging keeps `PAYMENT_PROVIDER=fake` (the dummy payment page) until you decide to switch. When you have a Mercado Pago account, the developer collects three values for you and the worker checks they work:
+1. Sign in at the Mercado Pago developers site (Brazil) and create an **application** ("Checkout Pro").
+2. Create two **test users** in that application's "test accounts": a **seller** and a **buyer**. Mercado Pago gives each a user name and password. Use the seller's test credentials for everything below; log in as the buyer only to pay.
+3. From the application's **test credentials** copy the **Access Token** (starts with `TEST-` or `APP_USR-`, belongs to the *seller*). It is secret: send it only as an environment secret, never by e-mail or chat.
+4. In the application's **Webhooks** settings, set the notification address to `https://<your address>/api/webhooks/payments` for payments, and copy the **secret signature** it shows. (Mercado Pago only delivers to a public https address with a certificate it trusts, so on staging, which uses a self-made certificate, deliveries will **not** arrive until a real domain exists, Phase 9d. The 10-minute reconciliation job below covers that gap: it asks Mercado Pago itself.)
+5. Put them in `/opt/compinabox/.env`: `PAYMENT_PROVIDER=mercadopago`, `MERCADOPAGO_ACCESS_TOKEN=...`, `MERCADOPAGO_WEBHOOK_SECRET=...`, and `OPS_ALERT_EMAIL=<where alerts should go>`. `MERCADOPAGO_PUBLIC_KEY` is not used. Then `sudo systemctl restart complystart`. If either value is missing the checkout simply shows as unavailable.
+6. For the worker's sandbox check, also allow `api.mercadopago.com`, `www.mercadopago.com.br` and `www.mercadopago.com` in the worker environment's network settings.
+
+Safety rules built in: a **real** (live) payment is refused on staging and a **test** payment is refused in production; the placeholder price (R$ 10,00) can never be charged in production; boleto is not offered; a refund or chargeback sets a mark on the billing record and sends an alert to `OPS_ALERT_EMAIL`, but **does not lock the account** (your decision). The timer `complystart-reconcile.timer` re-checks payments still pending after 5 minutes (up to 7 days) every 10 minutes.
+
 ### What lives where on the server
 ```
 /opt/compinabox/.env             secrets and settings (mode 600, owner complystart; never in git; never printed)

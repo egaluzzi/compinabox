@@ -451,6 +451,9 @@ export const billingRecords = pgTable("billing_records", {
   utmMedium: text("utm_medium"),
   utmCampaign: text("utm_campaign"),
   paidAt: timestamp("paid_at", { withTimezone: true }).notNull(),
+  // Set by the payment webhook/reconciler on a FULL refund or chargeback (phase 9b). Nothing else
+  // changes: the Company stays, no access is revoked (Esteban's decision, CLAUDE.md §0).
+  refundedAt: timestamp("refunded_at", { withTimezone: true }),
 });
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({

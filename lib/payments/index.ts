@@ -1,4 +1,6 @@
+import { appEnv } from "@/lib/env";
 import { createFakeProvider } from "./fake";
+import { createMercadoPagoProvider } from "./mercadopago";
 import type { PaymentProvider } from "./types";
 
 export type ProviderResolution =
@@ -29,9 +31,25 @@ export function resolveProvider(
     };
   }
   if (name === "mercadopago") {
-    throw new Error(
-      "PAYMENT_PROVIDER=mercadopago: not implemented until phase 9b",
-    );
+    // MERCADOPAGO_PUBLIC_KEY is not needed: the hosted (Checkout Pro) flow uses only the access token.
+    const accessToken = (env.MERCADOPAGO_ACCESS_TOKEN ?? "").trim();
+    const webhookSecret = (env.MERCADOPAGO_WEBHOOK_SECRET ?? "").trim();
+    const bad = (v: string) => v === "" || /changeme/i.test(v);
+    if (bad(accessToken) || bad(webhookSecret)) {
+      console.error(
+        "PAYMENT_PROVIDER=mercadopago but MERCADOPAGO_ACCESS_TOKEN / MERCADOPAGO_WEBHOOK_SECRET is missing: checkout unavailable",
+      );
+      return { available: false };
+    }
+    return {
+      available: true,
+      provider: createMercadoPagoProvider({
+        accessToken,
+        webhookSecret,
+        appUrl: env.APP_URL || "http://localhost:3000",
+        expectLive: appEnv(env) === "production",
+      }),
+    };
   }
   return { available: false };
 }

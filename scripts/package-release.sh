@@ -33,7 +33,7 @@ cp -r .next/static "$STAGE/.next/static"
 mkdir -p "$STAGE/lib/db"
 rm -rf "$STAGE/lib/db/migrations"
 cp -r lib/db/migrations "$STAGE/lib/db/migrations"
-cp scripts/migrate.mjs scripts/maintenance.mjs scripts/backup.sh scripts/restore-test.sh scripts/check-caddy-logs.sh "$STAGE/scripts/"
+cp scripts/migrate.mjs scripts/maintenance.mjs scripts/reconcile-payments.mjs scripts/backup.sh scripts/restore-test.sh scripts/check-caddy-logs.sh "$STAGE/scripts/"
 chmod +x "$STAGE/scripts/backup.sh" "$STAGE/scripts/restore-test.sh" "$STAGE/scripts/check-caddy-logs.sh"
 
 # drizzle-orm: runtime files only (no source maps, no type declarations)

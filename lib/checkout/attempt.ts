@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { isCountry, isCountryEnabled } from "@/lib/countries";
 import type { Db } from "@/lib/db/client";
 import { checkoutAttempt, users } from "@/lib/db/schema";
+import { appEnv } from "@/lib/env";
 import { TERMS_VERSION } from "@/lib/legal/version";
 import type { PaymentProvider } from "@/lib/payments/types";
 import { PRICING } from "@/lib/pricing";
@@ -53,8 +54,13 @@ export async function createAttempt(
     return { ok: false, error: "country_unavailable" };
 
   const price = PRICING[country];
-  // No real price exists yet: only the fake provider may "charge" the placeholder.
-  if (price.isPlaceholder && provider.name !== "fake")
+  // No real price exists yet: the fake provider may "charge" the placeholder anywhere it is allowed,
+  // Mercado Pago only outside production (sandbox credentials on staging: that is how it is tested).
+  if (
+    price.isPlaceholder &&
+    provider.name !== "fake" &&
+    !(provider.name === "mercadopago" && appEnv() !== "production")
+  )
     return { ok: false, error: "unavailable" };
 
   const companyName =

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { createWelcomeToken } from "@/lib/auth/links";
 import type { Db } from "@/lib/db/client";
 import {
@@ -13,11 +13,13 @@ import { linkEmail } from "@/lib/email/templates";
 import { COUNTRY_LOCALE } from "@/lib/i18n";
 import { uniqueCompanySlug } from "@/lib/whistleblower/company-slug";
 import type { Country } from "@/lib/countries";
+import { sendOpsAlert } from "./alerts";
 import {
   PaymentLookupUnavailable,
   PaymentNotFound,
   type PaymentInfo,
   type PaymentProvider,
+  type WebhookEvent,
 } from "./types";
 
 export const RETURN_TOKEN_TTL_MS = 60 * 60 * 1000;
@@ -31,7 +33,12 @@ export type Outcome =
   | "still_pending"
   | "unknown_attempt"
   | "mismatch"
-  | "email_conflict";
+  | "email_conflict"
+  | "refunded"
+  | "partial_refund"
+  | "refund_unprovisioned"
+  | "duplicate_payment"
+  | "ignored";
 
 export type WebhookResult = {
   status: number;
@@ -41,6 +48,8 @@ export type WebhookResult = {
 type Provisioned = {
   outcome: Outcome;
   welcome?: { email: string; country: Country; token: string };
+  alert?: string;
+  alertFacts?: Record<string, string | number>;
 };
 
 /**
@@ -53,12 +62,25 @@ export async function handlePaymentWebhook(
   provider: PaymentProvider,
   rawBody: string,
   headers: Headers,
+  url: string,
   now = new Date(),
 ): Promise<WebhookResult> {
-  const event = await provider.verifyWebhook(rawBody, headers);
-  if (!event)
+  const verified = await provider.verifyWebhook(rawBody, headers, url);
+  if (!verified)
     return { status: 401, body: { ok: false, error: "invalid_signature" } };
+  // Authentic but not a payment notification (e.g. a merchant order): acknowledge, never retry.
+  if ("ignored" in verified)
+    return { status: 200, body: { ok: true, outcome: "ignored" } };
+  return processPaymentEvent(db, provider, verified, now);
+}
 
+/** Re-fetch the payment from the processor, then act on it (shared by the webhook and the reconciler). */
+export async function processPaymentEvent(
+  db: Db,
+  provider: PaymentProvider,
+  event: WebhookEvent,
+  now = new Date(),
+): Promise<WebhookResult> {
   let info: PaymentInfo;
   try {
     info = await provider.fetchPayment(event.paymentRef);
@@ -69,20 +91,110 @@ export async function handlePaymentWebhook(
       return { status: 503, body: { ok: false, error: "lookup_unavailable" } };
     throw err;
   }
+  return applyPayment(db, provider, event, info, now);
+}
 
+/** The ONLY place an attempt becomes paid / failed / refunded. `info` must come from the processor. */
+export async function applyPayment(
+  db: Db,
+  provider: PaymentProvider,
+  event: WebhookEvent,
+  info: PaymentInfo,
+  now = new Date(),
+): Promise<WebhookResult> {
   const result = await db.transaction(async (tx): Promise<Provisioned> => {
     const [attempt] = await tx
       .select()
       .from(checkoutAttempt)
       .where(eq(checkoutAttempt.id, info.attemptId))
       .for("update");
-    if (!attempt) return { outcome: "unknown_attempt" };
+    const facts = {
+      payment: event.paymentRef,
+      attempt: info.attemptId,
+      amountCents: info.amountCents,
+      currency: info.currency,
+    };
+    if (!attempt)
+      return {
+        outcome: "unknown_attempt",
+        alert: "Payment for an unknown checkout attempt",
+        alertFacts: facts,
+      };
     if (
       attempt.provider !== provider.name ||
       attempt.amountCents !== info.amountCents ||
       attempt.currency !== info.currency
     )
-      return { outcome: "mismatch" };
+      return {
+        outcome: "mismatch",
+        alert:
+          "Payment does not match its checkout attempt (nothing provisioned)",
+        alertFacts: { ...facts, expectedCents: attempt.amountCents },
+      };
+
+    const ledgerKey = (suffix?: string) =>
+      [provider.name, event.eventId, suffix ?? info.ledgerStatus]
+        .filter(Boolean)
+        .join(":");
+    const claim = async (key: string) =>
+      (
+        await tx
+          .insert(paymentEvent)
+          .values({
+            eventKey: key,
+            provider: provider.name,
+            paymentRef: event.paymentRef,
+            attemptId: attempt.id,
+          })
+          .onConflictDoNothing()
+          .returning({ id: paymentEvent.id })
+      ).length > 0;
+
+    if (info.status === "refunded" || info.status === "charged_back") {
+      // Full refund / chargeback. Records it; never deletes or locks anything.
+      if (!(await claim(ledgerKey()))) return { outcome: "replay" };
+      const what = info.status === "refunded" ? "refunded" : "charged back";
+      if (attempt.status !== "paid" || !attempt.userId)
+        return {
+          outcome: "refund_unprovisioned",
+          alert: `Payment ${what} but it never provisioned an account`,
+          alertFacts: facts,
+        };
+      const [owner] = await tx
+        .select({ companyId: users.companyId })
+        .from(users)
+        .where(eq(users.id, attempt.userId));
+      if (owner)
+        await tx
+          .update(billingRecords)
+          .set({ refundedAt: now })
+          .where(
+            and(
+              eq(billingRecords.companyId, owner.companyId),
+              isNull(billingRecords.refundedAt),
+            ),
+          );
+      return {
+        outcome: "refunded",
+        alert: `Payment ${what} (account NOT suspended: your decision)`,
+        alertFacts: facts,
+      };
+    }
+
+    if (
+      info.status === "paid" &&
+      attempt.status === "paid" &&
+      (info.refundedCents ?? 0) > 0
+    ) {
+      // Partial refund of a provisioned payment: alert once per refunded amount, change nothing.
+      if (!(await claim(ledgerKey(`partial_refund_${info.refundedCents}`))))
+        return { outcome: "replay" };
+      return {
+        outcome: "partial_refund",
+        alert: "Payment partially refunded (nothing changed)",
+        alertFacts: { ...facts, refundedCents: info.refundedCents as number },
+      };
+    }
 
     if (info.status === "pending") return { outcome: "still_pending" };
     if (info.status === "failed" || info.status === "expired") {
@@ -97,21 +209,18 @@ export async function handlePaymentWebhook(
     }
 
     // paid: idempotency ledger first. A conflict means this exact event was already handled.
-    const eventKey = `${provider.name}:${event.eventId}`;
-    const inserted = await tx
-      .insert(paymentEvent)
-      .values({
-        eventKey,
-        provider: provider.name,
-        paymentRef: event.paymentRef,
-        attemptId: attempt.id,
-      })
-      .onConflictDoNothing()
-      .returning({ id: paymentEvent.id });
-    if (inserted.length === 0) return { outcome: "replay" };
+    if (!(await claim(ledgerKey()))) return { outcome: "replay" };
 
     // A different event for an attempt that is already provisioned must not create a second company.
-    if (attempt.status === "paid") return { outcome: "already_paid" };
+    // A second approved payment (different payment id) for an attempt that is already provisioned:
+    // the buyer paid twice (retry, back button, second tab). No second company; a human must refund.
+    if (attempt.status === "paid")
+      return {
+        outcome: "duplicate_payment",
+        alert:
+          "DUPLICATE PAYMENT for an already provisioned attempt: refund needed",
+        alertFacts: facts,
+      };
 
     const [clash] = await tx
       .select({ id: users.id })
@@ -125,7 +234,12 @@ export async function handlePaymentWebhook(
         .update(checkoutAttempt)
         .set({ status: "failed", failureReason: "email_in_use_after_payment" })
         .where(eq(checkoutAttempt.id, attempt.id));
-      return { outcome: "email_conflict" };
+      return {
+        outcome: "email_conflict",
+        alert:
+          "PAID BUT NOT PROVISIONED: billing e-mail already has an account",
+        alertFacts: facts,
+      };
     }
 
     const [company] = await tx
@@ -177,6 +291,9 @@ export async function handlePaymentWebhook(
       },
     };
   });
+
+  // After commit, and only for payments the processor vouched for (we never get here unverified).
+  if (result.alert) await sendOpsAlert(result.alert, result.alertFacts ?? {});
 
   // After commit: a mail failure must not undo or retry a provisioning that already happened.
   if (result.welcome) {
