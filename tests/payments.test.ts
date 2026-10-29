@@ -25,6 +25,7 @@ const provider = createFakeProvider({
   secret: SECRET,
   appUrl: "http://localhost:3000",
 });
+const URL0 = "http://localhost/api/webhooks/payments";
 const VALID_CNPJ = "11.222.333/0001-81";
 
 let db: ReturnType<typeof useTestDb>;
@@ -78,7 +79,7 @@ const webhook = (
       ? "00".repeat(32)
       : signWebhookBody(SECRET, raw),
   });
-  return handlePaymentWebhook(db, provider, raw, headers);
+  return handlePaymentWebhook(db, provider, raw, headers, URL0);
 };
 
 const companiesFor = async (email: string) => {
@@ -148,10 +149,10 @@ describe("provider guard (CLAUDE.md §8)", () => {
       ),
     ).toBe(SECRET);
   });
-  it("mercadopago throws until phase 9b", () => {
-    expect(() =>
-      resolveProvider(env({ PAYMENT_PROVIDER: "mercadopago" })),
-    ).toThrow(/phase 9b/);
+  it("mercadopago without credentials is unavailable (not a throw)", () => {
+    expect(resolveProvider(env({ PAYMENT_PROVIDER: "mercadopago" }))).toEqual({
+      available: false,
+    });
   });
 });
 
@@ -162,6 +163,7 @@ describe("fake provider", () => {
       provider.verifyWebhook(
         raw,
         new Headers(sig ? { [SIGNATURE_HEADER]: sig } : {}),
+        URL0,
       );
     expect(await ok(signWebhookBody(SECRET, raw))).toEqual({
       eventId: "e1",
@@ -173,6 +175,7 @@ describe("fake provider", () => {
       await provider.verifyWebhook(
         raw + " ",
         new Headers({ [SIGNATURE_HEADER]: signWebhookBody(SECRET, raw) }),
+        URL0,
       ),
     ).toBeNull();
   });
@@ -266,7 +269,8 @@ describe("createAttempt", () => {
       await createAttempt(db, provider, { ...base, billingEmail: "nope" }),
     ).toEqual({ ok: false, error: "invalid_email" });
   });
-  it("refuses the placeholder price for any provider other than fake", async () => {
+  it("refuses the placeholder price for a real provider in production", async () => {
+    vi.stubEnv("APP_ENV", "production");
     const real = { ...provider, name: "mercadopago" };
     const r = await createAttempt(db, real, {
       country: "br",

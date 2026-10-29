@@ -168,3 +168,42 @@ describe("BINDER_CONCURRENCY", () => {
     expect(BINDER_CONCURRENCY).toBe(1);
   });
 });
+
+describe("Mercado Pago in production (phase 9b)", () => {
+  const mp = { ...GOOD_PROD, PAYMENT_PROVIDER: "mercadopago" };
+  it("requires the access token and the webhook secret, not the placeholder", () => {
+    expect(checkEnvironment(mp)).toEqual(
+      expect.arrayContaining([
+        "mercadopago_access_token_missing",
+        "mercadopago_webhook_secret_missing",
+      ]),
+    );
+    expect(
+      checkEnvironment({
+        ...mp,
+        MERCADOPAGO_ACCESS_TOKEN: "changeme",
+        MERCADOPAGO_WEBHOOK_SECRET: "x".repeat(20),
+      }),
+    ).toEqual(["mercadopago_access_token_placeholder"]);
+    expect(
+      checkEnvironment({
+        ...mp,
+        MERCADOPAGO_ACCESS_TOKEN: "t".repeat(20),
+        MERCADOPAGO_WEBHOOK_SECRET: "x".repeat(20),
+      }),
+    ).toEqual([]);
+  });
+  it("PAYMENT_PROVIDER=none stays legal; staging has no Mercado Pago rules", () => {
+    expect(
+      checkEnvironment({ ...GOOD_PROD, PAYMENT_PROVIDER: "none" }),
+    ).toEqual([]);
+    expect(
+      checkEnvironment({ APP_ENV: "staging", PAYMENT_PROVIDER: "mercadopago" }),
+    ).toEqual([]);
+  });
+  it("fake payments are still refused in production", () => {
+    expect(
+      checkEnvironment({ ...GOOD_PROD, PAYMENT_PROVIDER: "fake" }),
+    ).toContain("payment_provider_fake");
+  });
+});

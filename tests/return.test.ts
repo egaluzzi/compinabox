@@ -67,6 +67,7 @@ async function pay(
     provider,
     raw,
     new Headers({ [SIGNATURE_HEADER]: signWebhookBody(SECRET, raw) }),
+    "http://localhost/api/webhooks/payments",
     now,
   );
 }

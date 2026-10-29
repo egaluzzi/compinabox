@@ -216,7 +216,7 @@ if [ ! -f "$APP_ROOT/.env" ] && [ "$PG_MODE" != existing ] && pkg_installed post
    [ "$(psql_su -d "$DB_NAME" -c "select count(*) from information_schema.tables where table_schema='public'" 2>/dev/null || echo 0)" -gt 0 ]; then
   PROBLEMS+=("database '$DB_NAME' already has tables but $APP_ROOT/.env is missing. Generating new secrets would make its encrypted data unreadable; restore the old .env instead.")
 fi
-for f in Caddyfile complystart-migrate sudoers-complystart-deploy systemd/complystart.service systemd/complystart-backup.service systemd/complystart-backup.timer systemd/complystart-maintenance.service systemd/complystart-maintenance.timer; do
+for f in Caddyfile complystart-migrate sudoers-complystart-deploy systemd/complystart.service systemd/complystart-backup.service systemd/complystart-backup.timer systemd/complystart-maintenance.service systemd/complystart-maintenance.timer systemd/complystart-reconcile.service systemd/complystart-reconcile.timer; do
   [ -f "$OPS_DIR/$f" ] || PROBLEMS+=("$OPS_DIR/$f is missing: copy the whole ops/ folder to the server.")
 done
 
@@ -406,14 +406,14 @@ fi
 step "Services"
 UNIT_DIR="$R/etc/systemd/system"
 UNITS_CHANGED=0
-for u in complystart.service complystart-backup.service complystart-backup.timer complystart-maintenance.service complystart-maintenance.timer; do
+for u in complystart.service complystart-backup.service complystart-backup.timer complystart-maintenance.service complystart-maintenance.timer complystart-reconcile.service complystart-reconcile.timer; do
   put_file "$OPS_DIR/systemd/$u" "$UNIT_DIR/$u" 644 root:root; [ "$FILE_CHANGED" = 1 ] && UNITS_CHANGED=1
 done
 tmp=$(mktemp); printf '[Service]\nEnvironment=NODE_OPTIONS=--max-old-space-size=%s\n' "$HEAP_MB" > "$tmp"
 put_file "$tmp" "$UNIT_DIR/complystart.service.d/10-memory.conf" 644 root:root; [ "$FILE_CHANGED" = 1 ] && UNITS_CHANGED=1; rm -f "$tmp"
 if [ "$UNITS_CHANGED" = 1 ]; then systemctl daemon-reload; changed "systemd reloaded"; fi
 systemctl is-enabled complystart.service >/dev/null 2>&1 && same "complystart.service enabled" || { systemctl enable complystart.service >/dev/null 2>&1; changed "enabled complystart.service (starts after the first deploy)"; }
-for t in complystart-backup.timer complystart-maintenance.timer; do
+for t in complystart-backup.timer complystart-maintenance.timer complystart-reconcile.timer; do
   systemctl is-enabled "$t" >/dev/null 2>&1 && same "$t enabled" || { systemctl enable --now "$t" >/dev/null 2>&1; changed "enabled $t"; }
 done
 

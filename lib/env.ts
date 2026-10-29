@@ -55,6 +55,16 @@ export function checkEnvironment(env: Env = process.env): string[] {
   if ((env.PAYMENT_PROVIDER ?? "").trim().toLowerCase() === "fake") {
     out.push("payment_provider_fake");
   }
+  if ((env.PAYMENT_PROVIDER ?? "").trim().toLowerCase() === "mercadopago") {
+    for (const name of [
+      "MERCADOPAGO_ACCESS_TOKEN",
+      "MERCADOPAGO_WEBHOOK_SECRET",
+    ] as const) {
+      const v = (env[name] ?? "").trim();
+      if (v === "") out.push(`${name.toLowerCase()}_missing`);
+      else if (isPlaceholder(v)) out.push(`${name.toLowerCase()}_placeholder`);
+    }
+  }
   if (isOn(env.EMAIL_DEV_SINK)) out.push("email_dev_sink_set");
   for (const name of REQUIRED_IN_PRODUCTION) {
     const v = (env[name] ?? "").trim();
