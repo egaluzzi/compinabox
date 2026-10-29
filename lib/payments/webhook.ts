@@ -37,6 +37,7 @@ export type Outcome =
   | "refunded"
   | "partial_refund"
   | "refund_unprovisioned"
+  | "duplicate_payment"
   | "ignored";
 
 export type WebhookResult = {
@@ -211,7 +212,15 @@ export async function applyPayment(
     if (!(await claim(ledgerKey()))) return { outcome: "replay" };
 
     // A different event for an attempt that is already provisioned must not create a second company.
-    if (attempt.status === "paid") return { outcome: "already_paid" };
+    // A second approved payment (different payment id) for an attempt that is already provisioned:
+    // the buyer paid twice (retry, back button, second tab). No second company; a human must refund.
+    if (attempt.status === "paid")
+      return {
+        outcome: "duplicate_payment",
+        alert:
+          "DUPLICATE PAYMENT for an already provisioned attempt: refund needed",
+        alertFacts: facts,
+      };
 
     const [clash] = await tx
       .select({ id: users.id })

@@ -575,6 +575,44 @@ describe("webhook -> database (real Postgres)", () => {
       ].sort(),
     );
   });
+  it("a second approved payment id for a paid attempt -> duplicate_payment, one Company, one alert; redelivery of the first -> replay, no alert", async () => {
+    const a = await newAttempt();
+    const first = mpPayment(a);
+    await deliver(first);
+    const second = mpPayment(a);
+    const r = await deliver(second);
+    expect(r).toEqual({
+      status: 200,
+      body: { ok: true, outcome: "duplicate_payment" },
+    });
+    expect(await usersFor(a.billingEmail)).toHaveLength(1);
+    const dup = () =>
+      alerts().filter((m) => /DUPLICATE PAYMENT/.test(m.subject));
+    expect(dup()).toHaveLength(1);
+    expect(dup()[0].text).toContain(a.id);
+    expect(dup()[0].text).toContain(second);
+    expect(dup()[0].text).not.toContain(a.billingEmail);
+    expect((await deliver(second)).body.outcome).toBe("replay");
+    expect((await deliver(first)).body.outcome).toBe("replay");
+    expect(dup()).toHaveLength(1);
+  });
+  it("a second approved payment after email_in_use_after_payment alerts again (not only a log line)", async () => {
+    const a = await newAttempt();
+    const [c] = await db
+      .insert(companies)
+      .values({ name: "Other", slug: `o-${uid()}`, taxId: "1", country: "br" })
+      .returning();
+    await db.insert(users).values({ companyId: c.id, email: a.billingEmail });
+    await deliver(mpPayment(a));
+    const before = alerts().filter((m) =>
+      /PAID BUT NOT PROVISIONED/.test(m.subject),
+    ).length;
+    expect((await deliver(mpPayment(a))).body.outcome).toBe("email_conflict");
+    expect(
+      alerts().filter((m) => /PAID BUT NOT PROVISIONED/.test(m.subject)),
+    ).toHaveLength(before + 1);
+    expect(await usersFor(a.billingEmail)).toHaveLength(1);
+  });
   it("chargeback is recorded like a refund", async () => {
     const a = await newAttempt();
     const pid = mpPayment(a);
@@ -667,6 +705,24 @@ describe("reconciler", () => {
       .from(checkoutAttempt)
       .where(eq(checkoutAttempt.id, a.id));
     expect(row.status).toBe("failed");
+  });
+  it("two approved payments for one attempt: one Company, one duplicate alert on the first run, none on the second", async () => {
+    const a = await newAttempt();
+    await old(a, 10 * 60_000);
+    mpPayment(a);
+    mpPayment(a);
+    await reconcilePending(db, provider);
+    const dup = () =>
+      alerts().filter((m) => /DUPLICATE PAYMENT/.test(m.subject));
+    expect(await usersFor(a.billingEmail)).toHaveLength(1);
+    expect(dup()).toHaveLength(1);
+    await db
+      .update(checkoutAttempt)
+      .set({ status: "pending" })
+      .where(eq(checkoutAttempt.id, a.id));
+    await reconcilePending(db, provider);
+    expect(dup()).toHaveLength(1);
+    expect(await usersFor(a.billingEmail)).toHaveLength(1);
   });
   it("route token: derived from the webhook secret, compared safely", () => {
     const t = reconcileToken(SECRET);

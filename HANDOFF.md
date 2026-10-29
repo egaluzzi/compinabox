@@ -48,6 +48,9 @@ Pix expiry = `cancelled` + `status_detail: expired`; `back_urls`/`auto_return`; 
 7. A verified webhook that gets a 422 (unknown/mismatch) is retried by MP, so it can repeat the ops alert; accepted (bounded, verified-only).
 8. The existing test "refuses the placeholder price for any provider other than fake" now sets `APP_ENV=production` (rule is production-only for MP, per the notes).
 
+9. **Duplicate payment (supervisor review of PR #13):** a second approved payment id for an already-`paid` attempt now returns `duplicate_payment` (200, so MP stops retrying) and sends the ops alert "DUPLICATE PAYMENT for an already provisioned attempt: refund needed" (ids/amounts only); same-id redelivery stays `replay`, no alert. After `email_in_use_after_payment`, a further approved payment alerts again via the existing PAID BUT NOT PROVISIONED path (tested). Reconciler with two approved ids: one Company, one duplicate alert on the first run, none on the second (ledger).
+10. **Known UX limitation (not changed):** a `rejected` payment marks the attempt `failed` although the buyer may retry inside the same MP checkout; a later approval still provisions (money is safe), but the return-page status can read "failed" mid-retry. Fixing it means deferring the `failed` mark, which changes phase-2 semantics; left for the supervisor.
+
 ## Evidence
 `./verify.sh` (run at commit fac889a; this HANDOFF is the only later change) — exit 0:
 ```

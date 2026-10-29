@@ -412,7 +412,7 @@ describe("webhook -> provisioning", () => {
     const a = await newAttempt();
     await webhook(a.attempt, "paid");
     const again = await webhook(a.attempt, "paid", randomUUID());
-    expect(again.body.outcome).toBe("already_paid");
+    expect(again.body.outcome).toBe("duplicate_payment");
     expect(await companiesFor(a.email)).toHaveLength(1);
   });
 
