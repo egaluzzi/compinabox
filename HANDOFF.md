@@ -52,13 +52,13 @@ Pix expiry = `cancelled` + `status_detail: expired`; `back_urls`/`auto_return`; 
 10. **Known UX limitation (not changed):** a `rejected` payment marks the attempt `failed` although the buyer may retry inside the same MP checkout; a later approval still provisions (money is safe), but the return-page status can read "failed" mid-retry. Fixing it means deferring the `failed` mark, which changes phase-2 semantics; left for the supervisor.
 
 ## Evidence
-`./verify.sh` (run at commit fac889a; this HANDOFF is the only later change) — exit 0:
+`./verify.sh` re-run at commit 7897178 (after the duplicate-payment fix; this HANDOFF edit is the only later change) — exit 0, 904 tests (was 901 at fac889a):
 ```
 fresh database / db:migrate   ok (from scratch), 22 tables
 lint ok · typecheck ok · build ok · smoke: PASS
-tests: Test Files 57 passed (57) · Tests 901 passed (901) · counts total=901 pass=901 fail=0 skip=0
+tests: Test Files 57 passed (57) · Tests 904 passed (904) · counts total=904 pass=904 fail=0 skip=0
 migration drift: schema changed, migration present · tenant isolation ok · forbidden claims none · secrets none found
-verify.sh: PASS (HEAD fac889a)
+verify.sh: PASS (HEAD 7897178)
 ```
 New tests (real Postgres): `tests/mercadopago.test.ts` (35: amount conversion, preference body, every status, signature cases, live_mode both ways, timeout/5xx/429 → 503,
 replay of paid and refunded, concurrent duplicate deliveries → one Company, forged → 401, ignored notifications, mismatch/unknown + alerts, paid-but-not-provisioned alert,
